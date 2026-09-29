@@ -43,17 +43,25 @@ moddys.net/resonance, ready to paste.
   the workflows, all four Java sources
 - the bundled web app is byte-identical to what moddys.net serves (sha256 manifest, checked
   in CI and again against the built APK's contents)
+- the APK's signing certificate is the release keystore (fingerprint 08:B8:CB:…:B6), decoded
+  from the shipped file rather than a build log — and the site's copy is the same bytes
 
 ## Install
 
+Two ways to get it, same signed file either way: the card on
+**moddys.net/moddys-downloads.html**, or the APK attached to this release.
+
 Copy the APK to your phone and open it. Android will ask you to allow "install unknown apps"
-for your file manager, and Play Protect will warn about an unknown developer — that is the
-sideload flow, not a problem with the build. Updates from here are one tap (Update now in the
-app) once the update feed entry is live; until then, this page is the update.
+for whichever app is opening it, and Play Protect will warn about an unknown developer — that
+is the sideload flow, not a problem with the build.
+
+This first version installs the way you installed it. From the next version on, the app
+updates itself — one tap on **Update now**, and the download is checksum-verified against the
+site's feed before Android asks to install it.
 
 ## Known limitations
 
-- the in-app update check waits on the `resonance-android` entry in moddys.net/updates.json
+- this first version installs by hand; from the next one, **Update now** in the app does it
 - swiping the app away ends the session (Android gives the WebView no life after the task)
 - help and credits open in the browser; the Quick guide in-app covers the essentials offline
 - this is a beta: background playback across every OEM's battery manager is the thing to

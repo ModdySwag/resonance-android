@@ -62,6 +62,9 @@ The build runs in GitHub Actions, so you don't need the Android SDK on your mach
    manager when prompted. Android will warn about unknown developers — that is the sideload
    flow, not a problem with the build.
 
+The signed APK is also on the site's downloads hub — **moddys.net/moddys-downloads.html** —
+and the site's copy and the GitHub release asset are the same bytes.
+
 Note: the debug artifact is a **different package** (`…​.debug`) signed with the CI debug key.
 It is for testing; uninstall it before installing a signed release, or you will have two apps.
 
@@ -131,9 +134,10 @@ renames those, the shell needs the matching edit — one place, and the harness 
 
 ## Known limitations (v1.0.0-beta)
 
-- **The in-app update check waits on a feed entry** (`resonance-android` in
-  `moddys.net/updates.json`); until that is live the check simply reports it cannot reach the
-  feed, and updates arrive by re-downloading the APK.
+- **This first release installs by hand** (like any first release). Every later version
+  updates itself: one tap on **Update now** in the app, with the download checksum-verified
+  against the site's feed (`resonance-android` in `moddys.net/updates.json`) before Android
+  asks to install it.
 - **Swiping the app away ends the session.** That is Android: the WebView (and its audio) die
   with the task — the notification goes with it rather than lying about it.
 - **Help, credits and the licence pages open in the phone's browser** (the site's full help is
