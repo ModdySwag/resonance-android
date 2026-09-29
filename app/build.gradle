@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.moddys.resonance'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.moddys.resonance"
+        minSdk 26            // 2017+; also lets us use Notification.Builder(context, channel)
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0-beta"
+    }
+
+    signingConfigs {
+        release {
+            // Filled in from CI secrets (see .github/workflows/release.yml). When the env
+            // var is absent - any normal local build - the release variant is simply left
+            // unsigned rather than failing the build.
+            def ksPath = System.getenv("KEYSTORE_FILE")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+                storeType "PKCS12"
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // side-loadable; signed with the CI debug key
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled false
+            if (System.getenv("KEYSTORE_FILE")) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

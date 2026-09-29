@@ -1,0 +1,23 @@
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+captures/
+
+# Signing material must never be committed
+*.jks
+*.keystore
+*.p12
+keystore.properties
+
+# Local tooling
+.devvenv/
+__pycache__/
+
+# OS noise
+Thumbs.db
+.DS_Store
+desktop.ini

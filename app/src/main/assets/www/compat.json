@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "app": "Resonance Studio",
+  "platform": "android",
+  "appVersion": "1.0.0-beta",
+  "download": "https://moddys.net/resonance/",
+
+  "os": {
+    "name": "Android",
+    "hard": { "api": 26, "label": "Android 8.0 (API 26)" },
+    "soft": { "api": 30, "label": "Android 11 (API 30)" },
+    "hardBlocksInstall": true
+  },
+
+  "engine": {
+    "name": "Android System WebView",
+    "label": "WebView",
+    "softMajor": 100,
+    "note": "the studio synthesises and plays all of its audio in the device's Android System WebView, and that component's version - not the Android version - is what decides how smoothly it runs"
+  },
+
+  "notice": {
+    "title": "Heads up: this Android version is older than the app is tuned for",
+    "body": "Resonance Studio installs on {hard} or newer, and is tuned for {soft} or newer.\n\nThis device reports {system}. The app will run, and this notice is the whole warning - expect rough edges.\n\nThe sound is synthesised in the device's own {engine}, not in the app. On a release this old that component is often years behind, and very old WebViews fall back to a slower audio engine with more chance of clicks when the screen is doing a lot.\n\nThe Check panel shows exactly what this device reports - engine version, audio path, notification permission - and has a Copy button for sending that on.",
+    "positiveAction": "Continue anyway",
+    "neutralAction": "Open the Check panel"
+  },
+
+  "unsupported": {
+    "title": "Resonance Studio does not support this Android version",
+    "body": "The app needs {hard} or newer; this device reports {system}.\n\nWhy: the background-playback notification needs Android 8's notification channels, and the Web Audio engine the studio depends on is far too old below this version to be worth pretending otherwise.\n\nInstall it on a newer device, or use moddys.net/resonance in this device's browser - the whole studio works there."
+  }
+}
