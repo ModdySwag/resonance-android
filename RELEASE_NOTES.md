@@ -4,6 +4,12 @@ The studio's first Android build: the full Gnaural Web engine — binaural and m
 isochronic pulses, noise beds, the session library, the schedule editor and the visualizers —
 with the things a phone needs added around it, and nothing about the web app changed.
 
+A look at the Android build:
+
+<img src="https://raw.githubusercontent.com/ModdySwag/resonance-android/main/screenshots/resonance-android-bar.jpg" width="240" alt="The session browser and the player bar"> <img src="https://raw.githubusercontent.com/ModdySwag/resonance-android/main/screenshots/resonance-android-menu.jpg" width="240" alt="The menu: sessions, tools, files and the quick guide"> <img src="https://raw.githubusercontent.com/ModdySwag/resonance-android/main/screenshots/resonance-android-viz.jpg" width="240" alt="The fullscreen visualizer">
+
+<img src="https://raw.githubusercontent.com/ModdySwag/resonance-android/main/screenshots/resonance-android-tablet.jpg" width="660" alt="A tablet in landscape: the whole studio at once">
+
 ## What's in it
 
 **A player bar that follows you.** Play/pause, stop, the session name, the clock, fullscreen

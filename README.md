@@ -10,6 +10,14 @@ The web app itself is untouched. The bundled copy is byte-identical to what `mod
 serves — the build checks every file against a manifest — so when the site changes, re-sync,
 rebuild, and you have the new version.
 
+## Screenshots
+
+The Android build, captured from the app itself:
+
+<img src="screenshots/resonance-android-bar.jpg" width="240" alt="The session browser and the player bar"> <img src="screenshots/resonance-android-menu.jpg" width="240" alt="The menu: sessions, tools, files and the quick guide"> <img src="screenshots/resonance-android-viz.jpg" width="240" alt="The fullscreen visualizer">
+
+<img src="screenshots/resonance-android-tablet.jpg" width="660" alt="A tablet in landscape: the whole studio at once">
+
 ## What it does
 
 - **One player bar, always there.** Play/pause, stop, the session name, the clock, the
