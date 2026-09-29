@@ -191,7 +191,7 @@ def main() -> int:
     application = m.get("application", {})
 
     pkg = manifest.get("package", "?")
-    check("package is com.moddys.worldradio", pkg == "com.moddys.worldradio", pkg)
+    check("package is com.moddys.resonance", pkg == "com.moddys.resonance", pkg)
     check("it is NOT the debug build (no .debug id)", ".debug" not in str(pkg), pkg)
     check("the app is not marked debuggable", not application.get("debuggable"), application.get("debuggable"))
     check("application has a label", bool(application.get("label")), application.get("label"))
@@ -209,9 +209,12 @@ def main() -> int:
     check("targetSdkVersion is set", isinstance(target, int), target)
 
     print("\n== the web app it carries ==")
-    for asset in ("assets/www/index.html", "assets/www/_shell_shim.js",
-                  "assets/www/compat.json", "assets/www/stations.js",
-                  "assets/www/countries.js"):
+    for asset in ("assets/www/app/index.html", "assets/www/app/app.js",
+                  "assets/www/app/engine.js", "assets/www/app/worklet-processor.js",
+                  "assets/www/app/studio.js", "assets/www/app/viz.js",
+                  "assets/www/app/pack.js", "assets/www/app/pack/classic.zip",
+                  "assets/www/site.css", "assets/www/_shell_shim.js",
+                  "assets/www/compat.json"):
         check("bundles %s" % asset, asset in names)
 
     if "assets/www/compat.json" in names:
@@ -233,13 +236,22 @@ def main() -> int:
               "WebView" in str(cj.get("engine", {}).get("name")),
               cj.get("engine", {}).get("name"))
 
-    if a.site and "assets/www/index.html" in names:
-        site_page = os.path.join(a.site, "index.html")
-        if os.path.exists(site_page):
-            here = hashlib.sha256(z.read("assets/www/index.html")).hexdigest()
-            there = hashlib.sha256(open(site_page, "rb").read()).hexdigest()
-            check("the bundled page is byte-identical to the site's",
-                  here == there, "%s vs %s" % (here[:16], there[:16]))
+    if a.site:
+        # the sync source root (the site's reson<ance folder); every compared file must be
+        # byte-identical - the site is the source of truth for everything bundled
+        pairs = ["app/index.html", "app/app.js", "app/studio.js", "app/viz.js",
+                 "app/engine.js", "app/worklet-processor.js", "app/pack.js",
+                 "app/pack/classic.zip", "site.css"]
+        for rel in pairs:
+            asset = "assets/www/" + rel
+            source = os.path.join(a.site, rel.replace("/", os.sep))
+            if asset not in names or not os.path.exists(source):
+                check("bundled %s exists and has a source" % rel, False)
+                continue
+            here = hashlib.sha256(z.read(asset)).hexdigest()
+            there = hashlib.sha256(open(source, "rb").read()).hexdigest()
+            check("bundled %s is byte-identical to the site's" % rel, here == there,
+                  "%s vs %s" % (here[:16], there[:16]))
 
     if "assets/www/_shell_shim.js" in names:
         shim = z.read("assets/www/_shell_shim.js").decode("utf-8", "replace")

@@ -125,16 +125,17 @@ def main():
             import os
             print(f"\n=== bundled assets vs {a.assets_dir} ===")
             for n in assets:
-                src = os.path.join(a.assets_dir, os.path.basename(n))
+                rel = n[len("assets/www/"):]            # keep the tree, not just the basename
+                src = os.path.join(a.assets_dir, rel.replace("/", os.sep))
                 if not os.path.isfile(src):
-                    fail(f"no source file for {os.path.basename(n)}")
+                    fail(f"no source file for {rel}")
                     continue
                 a_hash = hashlib.sha256(z.read(n)).hexdigest()
                 b_hash = hashlib.sha256(open(src, "rb").read()).hexdigest()
                 if a_hash == b_hash:
-                    print(f"  MATCH  {os.path.basename(n)}  {a_hash[:16]}")
+                    print(f"  MATCH  {rel}  {a_hash[:16]}")
                 else:
-                    fail(f"DIFFERS {os.path.basename(n)}: apk={a_hash[:16]} source={b_hash[:16]}"
+                    fail(f"DIFFERS {rel}: apk={a_hash[:16]} source={b_hash[:16]}"
                          "  (line-ending rewrite? see .gitattributes -text)")
 
     print("\n" + ("APK VERIFICATION PASSED" if ok else "APK VERIFICATION FAILED"))
