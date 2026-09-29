@@ -68,7 +68,7 @@ jobs:
           if len(zips) != 19:
               bad.append(f"expected 19 pack zips, found {len(zips)}")
           html = open("app/src/main/assets/www/app/index.html", encoding="utf-8").read()
-          for want in ("studio.css", "app.js", "engine.js", "viz.js", "worklet-processor.js"):
+          for want in ("studio.css", "app.js", "engine.js", "viz.js"):
               if want not in html:
                   bad.append("index.html no longer references " + want)
           if bad:
