@@ -287,10 +287,18 @@ def main():
                                  " if (!c) return null; const r = c.getBoundingClientRect();"
                                  " return { w: Math.round(r.width), h: Math.round(r.height), vw: innerWidth, vh: innerHeight }; })()")
             suite.check("the moved canvas fills the screen", size and abs(size["w"] - size["vw"]) < 8 and abs(size["h"] - size["vh"]) < 8, size)
-            lit = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
-                                " if (!c) return -1; const x = c.getContext('2d');"
-                                " const d = x.getImageData(0, 0, Math.min(220, c.width), Math.min(220, c.height)).data;"
-                                " let n = 0; for (let i = 3; i < d.length; i += 40) if (d[i] > 0) n++; return n; })()")
+            # the first frames after a resize can be empty while the scene warms up, and a
+            # busy CI runner renders slower than a laptop - so poll for paint rather than
+            # sleeping a fixed time and hoping
+            lit = 0
+            for _ in range(12):
+                lit = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
+                                    " if (!c) return -1; const x = c.getContext('2d');"
+                                    " const d = x.getImageData(0, 0, c.width, c.height).data;"
+                                    " let n = 0; for (let i = 3; i < d.length; i += 400) if (d[i] > 0) n++; return n; })()")
+                if isinstance(lit, int) and lit > 0:
+                    break
+                page.wait_for_timeout(500)
             suite.check("the fullscreen canvas is genuinely painting", isinstance(lit, int) and lit > 0, "lit=%s" % lit)
             suite.check("fullscreen has the embedded play/pause at the bottom",
                         page.evaluate("!!document.querySelector('#rsFsCtl [data-rs=fsPlay]')"))
