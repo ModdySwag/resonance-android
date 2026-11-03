@@ -2,7 +2,8 @@ Gnaural Web — attribution and licensing
 =======================================
 
 A browser re-implementation of Gnaural's scheduling engine and .gnaural preset
-format, built for the moddys.net music hub ("runs here" collection).
+format, built for the moddys.net music hub ("runs here" collection), bundled unchanged
+inside the Android app in this repository.
 
 UPSTREAM
 --------
