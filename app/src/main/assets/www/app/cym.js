@@ -49,7 +49,7 @@
   var lastF0 = 0;
   var ana = { nearest: 0, detune: 0, peak: 0 };   /* persists between weight updates */
   var cursors = [], cursorVoices = null, beatPh = [];
-  var dirtyField = true, resizeT = 0, lastMediumKey = "", lastWaterBuild = 0;
+  var dirtyField = true, resizeT = 0, lastMediumKey = "", lastWaterBuild = 0, lastResizeT = 0;
 
   /* ==================================================================== *
    * medium construction
@@ -209,6 +209,13 @@
       field = new F.Field(medium, 256);
       dirtyField = true;
       refreshPhysics();
+    }
+
+    /* The overlay is built while hidden, so its canvas can be sized 1x1 and
+     * never recover (the Android WebView does exactly this). Re-check the box. */
+    if (t - lastResizeT > 0.5 && Math.abs((renderer.W || 0) - root.clientWidth) > 1) {
+      lastResizeT = t;
+      resize(false);
     }
 
     var rate = a.rate > 0 ? Math.min(a.rate, 1) : 0.12;      /* visible modulation cap */
