@@ -4,6 +4,9 @@
 # not rewrite line endings inside it: a newline inside a JS template literal is content,
 # and byte-identity is what makes hash comparisons against the live site meaningful.
 app/src/main/assets/www/** text eol=lf
+app/src/main/assets/www/**/*.zip binary
+app/src/main/assets/www/**/*.png binary
+app/src/main/assets/www/**/*.jpg binary
 
 # Source files: normalise to LF in the repository (checked out per platform default).
 *.java text
