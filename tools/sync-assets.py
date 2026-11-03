@@ -47,6 +47,31 @@ DEFAULT_SITES = [
 LIVE = "https://www.moddys.net/resonance/"
 
 
+TEXT_EXT = (".js", ".css", ".html", ".txt", ".md", ".json", ".svg")
+
+
+def normalise(path):
+    """Store text assets with LF, so the manifest, the worktree and the git blob
+    are the same bytes on every platform (a CRLF worktree hashed against an LF
+    checkout is exactly how the release build failed)."""
+    if not path.lower().endswith(TEXT_EXT):
+        return
+    with open(path, "rb") as f:
+        data = f.read()
+    fixed = data.replace(bytes([13, 10]), bytes([10]))
+    if fixed != data:
+        with open(path, "wb") as f:
+            f.write(fixed)
+
+
+def normalised_sha(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    if path.lower().endswith(TEXT_EXT):
+        data = data.replace(bytes([13, 10]), bytes([10]))
+    return hashlib.sha256(data).hexdigest()
+
+
 def sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -167,7 +192,7 @@ def main():
                 dst = os.path.join(DEST, rel.replace("/", os.sep))
                 if not os.path.isfile(dst):
                     drift.append(f"{rel}: not in assets")
-                elif sha256(src) != sha256(dst):
+                elif normalised_sha(src) != normalised_sha(dst):
                     drift.append(f"{rel}: assets copy differs from source")
             for d in drift:
                 print("  DRIFT:", d)
@@ -179,6 +204,7 @@ def main():
             dst = os.path.join(DEST, rel.replace("/", os.sep))
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copyfile(src, dst)
+            normalise(dst)
         print(f"  copied {len(files)} files")
         source = site
         sanity(site, files)
