@@ -22,6 +22,16 @@ The Android build, captured from the app itself:
 
 <img src="screenshots/resonance-android-tablet.jpg" width="660" alt="A tablet in landscape: the whole studio at once">
 
+## The Cymatic Chamber
+
+A dedicated instrument on the phone: it takes the session's own carrier and beat, solves the
+vibration modes of a real plate, and draws the figure that tone actually drives — sand on the nodal
+lines. Six media, each solved rather than painted: a free steel plate (Rayleigh–Ritz), the classical
+centre-bolted plate, a clamped disc, a drum, Faraday waves on water, and bubble acoustics. Open it
+from the menu; the mode ladder drives any mode exactly.
+
+<img src="screenshots/resonance-android-cymatics.png" width="300" alt="The Cymatic Chamber on Android: a bronze plate with sand along the nodal cross">
+
 ## What it does
 
 - **One player bar, always there.** Play/pause, stop, the session name, the clock, the
