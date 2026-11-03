@@ -1,5 +1,9 @@
 # Resonance Studio — Android
 
+[![Licence: GPL-2.0](https://img.shields.io/badge/licence-GPL-2.0-0E8C7C?style=flat-square)](COPYING)
+![Platform: Android](https://img.shields.io/badge/platform-Android-0A7A6C?style=flat-square)
+[![Latest release](https://img.shields.io/github/v/release/ModdySwag/resonance-android?color=FFB86B&label=release&style=flat-square)](https://github.com/ModdySwag/resonance-android/releases)
+
 **The tone, beat and noise studio, in your pocket.** Resonance Studio's web app, wrapped in the
 Android shell it never had: it keeps playing with the screen off, puts the session on your lock
 screen, and reworks the studio's three-column desktop face for a phone — a player bar that
@@ -168,5 +172,18 @@ is more alerting than a steady tone, and if you have to raise your voice to be h
 length it is too loud. If you have epilepsy or a seizure disorder, ask a clinician before using
 repetitive pulsed tones. Skip it while driving or operating machinery, and stop if it feels
 unpleasant. Not a medical device or treatment.
+
+## Licence
+
+The studio bundled inside this app is the Gnaural Web re-implementation, so the repository
+carries the same terms as its parent:
+
+- `engine.js` — **LGPL-2.1-or-later**, because it re-implements Gnaural's BinauralBeat engine.
+  Licence text: [`COPYING.LESSER`](COPYING.LESSER).
+- Everything else in the studio — **GPL-2.0-or-later**. Licence text: [`COPYING`](COPYING).
+- Gnaural attribution and the preset position: [`NOTICE.txt`](NOTICE.txt).
+
+The Android shell around it — Kotlin, the foreground service, the update check, the Gradle
+build — is part of the same work and ships under the same GPL-2.0-or-later terms.
 
 Cheers Moddy !
