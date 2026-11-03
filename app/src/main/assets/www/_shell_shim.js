@@ -236,6 +236,7 @@
     ["grp", "Look"],
     ["act", "Visualizer \u2014 fullscreen", "fill the screen with the sound", "fs"],
     ["jump", "Visualizer settings", "modes, calm, scramble", "#vizCard"],
+    ["act", "Cymatic Chamber", "the tone made visible", "cym"],
     ["grp", "App"],
     ["act", "Quick guide", "how to use all of this", "guide"],
     ["ext", "Full help", "opens moddys.net in the browser", "https://moddys.net/resonance/help/"],
@@ -418,6 +419,7 @@
       if (what === "skin") { cycleSkin(); return; }
       if (what === "focus") { toggleFocus(); return; }
       if (what === "fs") { openSheet(false); enterFullscreen(); return; }
+      if (what === "cym") { openSheet(false); if (window.ResonanceCymatics) window.ResonanceCymatics.open(); return; }
       if (what === "guide") { openSheet(false); openGuide(); return; }
       if (what === "check") { openSheet(false); openCheck(); return; }
       if (what === "about") { openSheet(false); openAbout(); return; }

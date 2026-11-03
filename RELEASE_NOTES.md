@@ -1,3 +1,19 @@
+# Resonance Studio v1.1.0-beta (Android)
+
+The Cymatic Chamber arrives on the phone: a separate, full-screen instrument that takes the session's
+own carrier and beat, solves the vibration modes of a real plate, and draws the figure that tone
+actually drives. Sand collects on the nodal lines; the mode ladder lets you drive any mode exactly;
+the readout gives the nearest mode and the detuning in cents.
+
+Six media, each solved rather than painted: a free steel plate (Rayleigh-Ritz, Leissa's frequencies),
+the classical centre-bolted plate, a clamped disc (Bessel modes), a circular drum, Faraday waves on
+water (the true gravity-capillary wavelength at half the drive), and bubble acoustics (Minnaert
+resonance and Bjerknes forces). The free plate reproduces the published lambda-squared table to three
+decimals, and the sand measurably converges on the nodal set.
+
+It opens from the menu, or from the website's header. Everything else is the studio you know - the
+same engine, the same sessions, the same offline packs.
+
 # Resonance Studio v1.0.0-beta (Android)
 
 The studio's first Android build: the full Gnaural Web engine — binaural and monaural beats,

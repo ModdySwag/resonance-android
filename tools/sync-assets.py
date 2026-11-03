@@ -36,6 +36,7 @@ FILES = [
     "app/gnm.js", "app/presets.js", "app/packs.js", "app/rates.js",
     "app/pack.js", "app/studio.js", "app/vizmath.js", "app/vizpal.js",
     "app/vizmodes.js", "app/viz.js", "app/worklet-processor.js",
+    "app/cymatics.js", "app/cymfield.js", "app/cymrender.js", "app/cym.js", "app/cym.css",
     "app/NOTICE.txt", "app/COPYING", "app/COPYING.LESSER",
     "site.css",
 ]
