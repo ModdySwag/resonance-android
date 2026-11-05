@@ -3,7 +3,7 @@
     "app/COPYING": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
     "app/COPYING.LESSER": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95",
     "app/NOTICE.txt": "400e97a40370aeb2082dafb0156ccbf7af11aaf970cf00b7052d378c9c1a40b2",
-    "app/app.js": "e3fec3965553802690434e2d8c442ccdd3cfc27be08d11b7e39fc16ffba03cc2",
+    "app/app.js": "df307ea30f9defb9cfb16fa0d884a9852b091e02f50f2734e379dcc4010870ca",
     "app/cym.css": "47a859c8fb3bc00d4c1930c37f9130890644f51c96c51d961c6dbb5ef15d6633",
     "app/cym.js": "8da819c2cae9da1e2a43b46cde0b1854c02950bb77398cc416b5acd641ae41ec",
     "app/cymatics.js": "b3adf83c9fd2be8d3a86b8f83549bd0f9b6c82358c564cbe55d9019466953874",
@@ -12,7 +12,7 @@
     "app/cymrender.js": "a3703cc3c5f186e6683fae27ab8eb3460d1c835742c261d1af8011f681166dcc",
     "app/engine.js": "f124c24025f0896fdc40a1c0958af5ca7fa5798bfff6ccf8ad3f365137cae3ed",
     "app/gnm.js": "a89fec6affee780142431264597d9e56938897a4ee4d4a74b5d55215c577b969",
-    "app/index.html": "c6378575fa3098785e627139ace827dc6d9a1069702a0ce9fc923f0db24ef664",
+    "app/index.html": "236fa8d6d513ac7ff4e8cea13f6e6e59dc69ff4b5b706828d5bb53e3eea3713b",
     "app/pack.js": "906fb29dc6b21506ab2572f39e2c8cc0207e218288fcd1ecce7800b4d6dc84f4",
     "app/pack/breathing.zip": "e3441816843101ae2a9ca6aa50dc50167202d5c65ce7b26d2bee194aba531399",
     "app/pack/classic.zip": "5c22d02f9a075a8f0f09511d1ab588a9b9e6a39750ffc5cab8ea90f57d064ce8",
@@ -36,8 +36,8 @@
     "app/packs.js": "1e1329b7810fcb227d0936f198a8980b41189f1aed72bf3bf2d961a272b9ac4a",
     "app/presets.js": "47d1c41eab225f126e58400f8086733cf1b238fc5842439c846da32eb9ced71a",
     "app/rates.js": "a68080a4c334e054b88757813603e6e8ed2c46399aabe0336d8b53dd12cd4b7a",
-    "app/studio.css": "1a60eae902d8f94a88edced7a3c5d8f24ee74ca17741af2c74a392c19a44d4c1",
-    "app/studio.js": "3919ef73b4978696c2327554b465a50b91a1a7a5c9d53d5b5236d9e2168df8ef",
+    "app/studio.css": "3f208947d1ec83b5644a4b0527fdea8481fb85bb6e4a81c08349a4d0c6d05bad",
+    "app/studio.js": "39fe9a0e8ef7718c6e13d43b1f719c56e16f46ec9c7ed18e758f311e0c08ff81",
     "app/viz.js": "3e170226ee8e023c661846f3552c5c5def6af6ac8476fd11efa2c0c4007ac282",
     "app/vizmath.js": "3ab65a25fb6a799e1972b59aaa417d1dc9b6e4b8797071640f62e50bc006b3e9",
     "app/vizmodes.js": "1d20cad6dd793eed8c2702bd3a6888625c0710faccf7996cbad88ae67133a73b",
@@ -46,6 +46,6 @@
     "app/worklet-processor.js": "face806669c3afa63e32f77510d8710e9d1926d9e56e65dcc90b7692362d29cd",
     "site.css": "0d890288f848f30b30adf34174539706b43b5f2f8465a1be487d6b0c477b81f9"
   },
-  "generated": "2026-11-05T16:16:12Z",
+  "generated": "2026-11-05T17:03:42Z",
   "source": "C:\\Users\\Moddy\\webmusic-hub\\site\\resonance"
 }
