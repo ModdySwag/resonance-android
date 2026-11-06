@@ -14,6 +14,7 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -31,6 +32,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
+import android.window.OnBackInvokedDispatcher;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
@@ -86,6 +88,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        edgeToEdge();
+        registerBack();
         askForNotificationPermission();
 
         root = new FrameLayout(this);
@@ -103,6 +107,47 @@ public class MainActivity extends Activity {
             web.restoreState(state);
         }
         pageRef = new WeakReference<>(web);
+    }
+
+    /** Draw behind the system bars: the page pads itself with env(safe-area-inset-*). */
+    private void edgeToEdge() {
+        try {
+            Window w = getWindow();
+            if (Build.VERSION.SDK_INT >= 30) {
+                w.setDecorFitsSystemWindows(false);
+                w.setStatusBarColor(Color.TRANSPARENT);
+                w.setNavigationBarColor(Color.TRANSPARENT);
+                if (Build.VERSION.SDK_INT >= 29) w.setNavigationBarContrastEnforced(false);
+            } else {
+                w.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+                w.setStatusBarColor(Color.TRANSPARENT);
+                w.setNavigationBarColor(Color.TRANSPARENT);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "edgeToEdge: " + t);
+        }
+    }
+
+    /** Back walks the page's own history (the shell pushes an entry per layer). Predictive
+     *  back is enabled in the manifest, so the same job is registered as a callback on
+     *  Android 13+; onKeyDown stays for the devices that still deliver key events. */
+    private void registerBack() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        try {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, new android.window.OnBackInvokedCallback() {
+                        @Override public void onBackInvoked() { goBackOrFinish(); }
+                    });
+        } catch (Throwable t) {
+            Log.w(TAG, "registerBack: " + t);
+        }
+    }
+
+    private void goBackOrFinish() {
+        if (web != null && web.canGoBack()) web.goBack();
+        else finish();
     }
 
     /** Build the WebView and its client. False when this device has no usable one. */
@@ -126,7 +171,7 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        web.setBackgroundColor(Color.parseColor("#0E0B09"));
+        web.setBackgroundColor(Color.parseColor("#0E1211"));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(), "ResonanceJs");
         web.setWebChromeClient(new Chrome());
@@ -496,6 +541,10 @@ public class MainActivity extends Activity {
 
     /* ------------------------------------------------------------------ bridge ---- */
 
+    private static String hex(int color) {
+        return String.format("#%06X", (0xFFFFFF & color));
+    }
+
     /** Receives state from the page and answers its requests. Public: WebView finds these
      *  methods by reflection, and a non-public class can fail that lookup. */
     public class Bridge {
@@ -519,6 +568,51 @@ public class MainActivity extends Activity {
             if (error != null && !error.isEmpty()) {
                 Log.i(TAG, "session error: " + error);
             }
+        }
+
+        /** The system accent, as Material colour roles. Empty when the platform has no
+         *  palette (below Android 12) - the page then keeps its own teal. */
+        @JavascriptInterface
+        public String palette() {
+            try {
+                if (Build.VERSION.SDK_INT < 31) return "";
+                boolean dark = (getResources().getConfiguration().uiMode
+                        & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                int pri = getColor(dark ? android.R.color.system_accent1_200 : android.R.color.system_accent1_600);
+                int onPri = getColor(dark ? android.R.color.system_accent1_900 : android.R.color.system_accent1_50);
+                int con = getColor(dark ? android.R.color.system_accent1_700 : android.R.color.system_accent1_200);
+                int onCon = getColor(dark ? android.R.color.system_accent1_100 : android.R.color.system_accent1_900);
+                return "{\"primary\":\"" + hex(pri) + "\",\"onPrimary\":\"" + hex(onPri)
+                        + "\",\"container\":\"" + hex(con) + "\",\"onContainer\":\"" + hex(onCon) + "\"}";
+            } catch (Throwable t) {
+                return "";
+            }
+        }
+
+        /** Keep the status/navigation bar icons legible against the page's theme. */
+        @JavascriptInterface
+        public void chrome(final boolean light) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        View d = getWindow().getDecorView();
+                        int flags = d.getSystemUiVisibility();
+                        if (Build.VERSION.SDK_INT >= 23) {
+                            flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
+                                          : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+                        }
+                        if (Build.VERSION.SDK_INT >= 26) {
+                            flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)
+                                          : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+                        }
+                        d.setSystemUiVisibility(flags);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "chrome: " + t);
+                    }
+                }
+            });
         }
 
         @JavascriptInterface

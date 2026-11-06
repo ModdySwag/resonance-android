@@ -1,26 +1,23 @@
-/* Platform shell for Resonance Studio (Android).
+/* Platform shell for Resonance Studio (Android) — 2.0.
  *
  * The web app is the source of truth and is not forked. This file is the only new
- * front-end code: it adds the mobile layer the studio never had and removes what only
- * makes sense on a desktop.
+ * front-end code: it turns the desktop studio into a phone application.
  *
- *   1. A bottom bar that follows you: play/pause, stop, the session name and clock, a
- *      fullscreen-visualizer button and the menu. The page's own header (three rows of
- *      transport on a phone) is hidden; its controls stay live and are what this drives.
- *   2. The MENU: a drag-up sheet that names every part of the studio in plain words and
- *      jumps to it, plus the things you would otherwise have to find: skins, focus mode,
- *      the quick guide, the device check, the update check.
- *   3. FULLSCREEN VISUALIZER: tap any visual panel (or the bar button) and the panel's
- *      own canvas - moved, never copied, so the page keeps drawing into it - fills the
- *      screen, with a small play/pause embedded at the bottom. Back or the X returns.
- *   4. File work that a phone cannot do by itself: .gnaural/.zip import through the
- *      system picker, and every save (share packs, .gnaural, WAV exports of any length)
- *      streamed to Downloads/Resonance Studio by the shell.
+ *   1. A real app shell: five destinations (Home, Sessions, Studio, Visualise, Settings)
+ *      in a Material 3 bottom navigation, a large-title app bar, and a mini player that
+ *      follows you. The page's own desktop header is hidden; its controls stay live and
+ *      are what the shell drives.
+ *   2. The page's own cards are MOVED into the screens - never copied - so the page's
+ *      renderers keep painting into the same nodes. Every action goes through
+ *      window.__gnauralAPI; every fact comes from the page's own DOM/state.
+ *   3. A VISUALISE section bound to the session: the Cymatic Chamber resolves the
+ *      session's own carrier onto its mode ladder and breathes at its beat; the screen
+ *      picks a medium from the voice type and the beat band and prints the mapping.
+ *   4. File work a phone cannot do by itself: .gnaural/.zip import through the system
+ *      picker, and every save (pack zips, .gnaural, WAV exports of any length) streamed
+ *      to Downloads/Resonance Studio by the shell.
  *   5. Playback state reported to the native service, so sessions keep going with the
  *      screen off and the lock screen has pause/stop - driven in the service itself.
- *
- * Playback is never reimplemented: every action below goes through the page's own
- * window.__gnauralAPI, and every fact comes from the page's own DOM/state.
  *
  * BRIDGE (the only platform-specific part):
  *   Android  window.ResonanceJs   synchronous @JavascriptInterface object
@@ -49,6 +46,7 @@
   var doc = document;
   var $id = function (id) { return doc.getElementById(id); };
   var $ = function (sel) { return doc.querySelector(sel); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || doc).querySelectorAll(sel)); };
 
   var APP_NAME = "Resonance Studio";
   var SITE_BASE = "https://moddys.net/resonance/app/";   // where this page really lives
@@ -95,8 +93,6 @@
 
   function pageReady() { return !!(api() && $id("plist")); }
 
-  /* ============================================================ injected CSS === */
-
   function injectCss(css, id) {
     if (id && doc.getElementById(id)) return;
     var s = doc.createElement("style");
@@ -105,426 +101,1014 @@
     (doc.head || doc.documentElement).appendChild(s);
   }
 
-  var BAR_H = 66;
-
-  function appCss() {
-    injectCss([
-      "html.rs-app{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}",
-      /* the page's own header is the desktop control island: the shell owns the bar now */
-      "html.rs-app header.studio{display:none !important}",
-      "html.rs-app body{padding-bottom:calc(" + (BAR_H + 18) + "px + env(safe-area-inset-bottom,0px)) !important}",
-      /* the page's toast sits behind the bar; lift it above */
-      "html.rs-app #toast{bottom:calc(" + (BAR_H + 22) + "px + env(safe-area-inset-bottom,0px)) !important;z-index:88 !important}",
-      /* the WAV-export progress lives in the hidden header: keep it visible above the bar */
-      "html.rs-app #prog:not([hidden]){display:block !important;position:fixed;left:14px;right:14px;",
-      "  bottom:calc(" + (BAR_H + 8) + "px + env(safe-area-inset-bottom,0px));height:8px;z-index:78;accent-color:var(--acc)}",
-      /* phone-sized touch-ups, all measured against the page's own rules */
-      "@media (max-width:640px){",
-      "  html.rs-app #plist{max-height:58vh}",
-      "  html.rs-app button,html.rs-app select{min-height:40px}",
-      "  html.rs-app .chip{min-height:34px}",
-      "  html.rs-app #plist .item{padding:9px 8px}",
-      "}",
-      /* the keyboard-shortcut card is dead weight on a phone */
-      "@media (max-width:900px){html.rs-app .col.right section.card:last-child{display:none}}",
-      /* jump highlight */
-      "html.rs-app .rs-jump{outline:2px solid var(--acc);outline-offset:2px;border-radius:12px;transition:outline-color .3s}",
-      /* locked while a sheet or overlay is open */
-      "html.rs-locked,html.rs-locked body{overflow:hidden !important}"
-    ].join(""), "rsAppCss");
-  }
-
-  /* ================================================================= the bar === */
-
-  var barEl = null;
-
-  function barCss() {
-    injectCss([
-      "#rsBar{position:fixed;left:0;right:0;bottom:0;z-index:75;display:flex;align-items:center;gap:9px;",
-      "  padding:9px 10px calc(9px + env(safe-area-inset-bottom,0px));",
-      "  background:color-mix(in srgb, var(--panel,#1b1510) 97%, transparent);",
-      "  border-top:1px solid var(--line,#3a2c20);box-shadow:0 -10px 26px rgba(0,0,0,.38);",
-      "  font:14px/1.25 var(--sans,system-ui);color:var(--ink,#f2e6d8);touch-action:manipulation;",
-      "  user-select:none;-webkit-user-select:none}",
-      "#rsBar .rs-round{flex:0 0 auto;width:50px;height:50px;border-radius:50%;padding:0;",
-      "  border:2px solid var(--acc,#e0b96f);background:var(--acc,#e0b96f);color:var(--acc-ink,#2a1a08);",
-      "  font-size:18px;font-weight:900;line-height:1;cursor:pointer}",
-      "#rsBar .rs-round:active{transform:scale(.94)}",
-      "#rsBar .rs-mini{flex:0 0 auto;width:38px;height:38px;border-radius:50%;padding:0;",
-      "  border:1.5px solid var(--line2,#5a452c);background:transparent;color:var(--ink,#f2e6d8);",
-      "  font-size:12px;line-height:1;cursor:pointer}",
-      "#rsBar .rs-now{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;",
-      "  cursor:pointer;padding:4px 2px}",
-      "#rsBar .rs-now b{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;",
-      "  text-overflow:ellipsis;color:var(--ink,#f2e6d8)}",
-      "#rsBar .rs-now span{font-family:var(--mono,monospace);font-size:11.5px;color:var(--ink-dim,#b9a48c);",
-      "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-      "#rsBar .rs-icon{flex:0 0 auto;width:44px;height:44px;border-radius:12px;padding:0;",
-      "  border:1.5px solid var(--line2,#5a452c);background:transparent;color:var(--ink-dim,#b9a48c);",
-      "  font-size:17px;line-height:1;cursor:pointer}",
-      "#rsBar .rs-icon:active{transform:scale(.95)}",
-      "#rsBar .rs-icon.rs-on{border-color:var(--acc,#e0b96f);color:var(--acc,#e0b96f)}"
-    ].join(""), "rsBarCss");
-  }
-
-  function buildBar() {
-    barCss();
-    var bar = doc.createElement("div");
-    bar.id = "rsBar";
-    bar.innerHTML =
-      '<button class="rs-round" data-rs="play" aria-label="Play or pause">\u25B6</button>' +
-      '<button class="rs-mini" data-rs="stop" aria-label="Stop">\u25A0</button>' +
-      '<div class="rs-now" data-rs="open" role="button" tabindex="0" aria-label="Open the menu">' +
-      '  <b id="rsTitle">Pick a session</b>' +
-      '  <span id="rsSub">\u2014</span>' +
-      '</div>' +
-      '<button class="rs-icon" data-rs="viz" aria-label="Fullscreen visualizer">\u25D0</button>' +
-      '<button class="rs-icon" data-rs="menu" aria-label="Menu">\u2630</button>';
-    doc.body.appendChild(bar);
-
-    bar.addEventListener("click", function (ev) {
-      var b = ev.target.closest("[data-rs]");
-      if (!b) return;
-      var act = b.getAttribute("data-rs");
-      if (act === "play") { pageToggle(); pushState(true); }
-      else if (act === "stop") { pageStop(); pushState(true); }
-      else if (act === "open" || act === "menu") { openSheet(true); }
-      else if (act === "viz") { enterFullscreen(); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
-    bar.querySelector('[data-rs="open"]').addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openSheet(true); }
-    });
-
-    /* drag the bar up to open the sheet (buttons and sliders are never stolen) */
-    var y0 = null;
-    bar.addEventListener("pointerdown", function (ev) {
-      if (ev.target.closest("button,input")) return;
-      y0 = ev.clientY;
-    }, { passive: true });
-    doc.addEventListener("pointerup", function (ev) {
-      if (y0 == null) return;
-      var dy = ev.clientY - y0; y0 = null;
-      if (dy < -26) openSheet(true);
-    }, { passive: true });
-
-    return bar;
   }
 
-  /* =============================================================== the sheet === */
-  /* The menu and the player: one drag-up panel. Everything in it either jumps to the
-     page's own card or performs one named action - nothing is re-implemented. */
+  /* ================================================================== theme === */
 
-  var sheetEl = null;
-  var SHEET = { open: false };
-  var sheetH = 0;
+  var THEME_KEY = "resonance.app.theme.v1";
+  var prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(THEME_KEY) || "{}") || {}; } catch (e) { prefs = {}; }
+  function savePrefs() { try { localStorage.setItem(THEME_KEY, JSON.stringify(prefs)); } catch (e) { } }
 
-  var ROWS = [
-    ["grp", "Play"],
-    ["jump", "Sessions", "search the built-in library", "#plist"],
-    ["jump", "Quick picks", "add a layer to the sound", "#quickpick"],
-    ["jump", "Player & schedule", "the graph of what plays when", "#graph"],
-    ["jump", "What you hear", "carrier, rate, band", "#hearinfo"],
-    ["grp", "Edit"],
-    ["jump", "Voices & entries", "shape the schedule", "#voicelist"],
-    ["grp", "Tools"],
-    ["jump", "Live tools", "meter \u00B7 timer \u00B7 pacer \u00B7 mute", "#timerBtn"],
-    ["act", "Skin", "the look of the studio", "skin"],
-    ["act", "Focus mode", "hide everything else", "focus"],
-    ["grp", "Files"],
-    ["jump", "Files & export", "open \u00B7 save \u00B7 WAV \u00B7 share link", "#loadBtn"],
-    ["jump", "Pack downloads", "save a pack for any tool", "#pklist"],
-    ["grp", "Look"],
-    ["act", "Visualizer \u2014 fullscreen", "fill the screen with the sound", "fs"],
-    ["jump", "Visualizer settings", "modes, calm, scramble", "#vizCard"],
-    ["act", "Cymatic Chamber", "the tone made visible", "cym"],
-    ["grp", "App"],
-    ["act", "Quick guide", "how to use all of this", "guide"],
-    ["ext", "Full help", "opens moddys.net in the browser", "https://moddys.net/resonance/help/"],
-    ["act", "Check device", "what this phone reports", "check"],
-    ["act", "About Resonance Studio", "version and licences", "about"],
-    ["act", "Check for updates", "asks moddys.net", "upd"]
+  var mqDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function systemPalette() {
+    try {
+      var raw = native("palette", []);
+      if (!raw) return null;
+      var p = typeof raw === "string" ? JSON.parse(raw) : raw;
+      return (p && p.primary) ? p : null;
+    } catch (e) { return null; }
+  }
+
+  function applyTheme() {
+    var want = prefs.theme || "system";
+    var dark = want === "dark" || (want === "system" && (!mqDark || mqDark.matches));
+    var html = doc.documentElement;
+    html.setAttribute("data-rs-theme", dark ? "dark" : "light");
+    /* the page's own canvases and skin tokens follow the app theme */
+    var skin = $id("skin");
+    if (skin && skin.value !== (dark ? "forge" : "paper")) {
+      skin.value = dark ? "forge" : "paper";
+      try { skin.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { }
+    }
+    native("chrome", [!dark]);
+    var pal = prefs.accent === "system" ? systemPalette() : null;
+    var root = html.style;
+    var map = { primary: "--rs-pri", onPrimary: "--rs-on-pri", container: "--rs-pri-c",
+                onContainer: "--rs-on-pri-c" };
+    var k;
+    for (k in map) root.removeProperty(map[k]);
+    if (pal) for (k in map) if (pal[k]) root.setProperty(map[k], pal[k]);
+  }
+
+  if (mqDark && mqDark.addEventListener) mqDark.addEventListener("change", applyTheme);
+  else if (mqDark && mqDark.addListener) mqDark.addListener(applyTheme);
+
+  /* ==================================================================== css === */
+
+  var SAFE_T = "env(safe-area-inset-top,0px)";
+  var SAFE_B = "env(safe-area-inset-bottom,0px)";
+
+  var CSS = [
+    /* ---------------------------------------------------------------- tokens --- */
+    "html[data-rs-theme]{",
+    "  --rs-bg:#0E1211; --rs-surface:#111615; --rs-s1:#171D1B; --rs-s2:#1D2422;",
+    "  --rs-s3:#242C2A; --rs-s4:#2C3533;",
+    "  --rs-ink:#E6ECEA; --rs-ink2:#C2CFCB; --rs-dim:#A7B5B1; --rs-out:#7E8C88;",
+    "  --rs-line:#33403D; --rs-line2:#48565A;",
+    "  --rs-pri:#7FDCCB; --rs-on-pri:#003731; --rs-pri-c:#12463F; --rs-on-pri-c:#A9F2E4;",
+    "  --rs-live:#E9B972; --rs-on-live:#3A2405;",
+    "  --rs-good:#8FD6A8; --rs-bad:#FFB4AB;",
+    "  --rs-r-card:16px; --rs-r-hero:24px; --rs-r-sheet:28px;",
+    "  --rs-ease:cubic-bezier(.2,0,0,1)",
+    "}",
+    "html[data-rs-theme=\"light\"]{",
+    "  --rs-bg:#F5FAF8; --rs-surface:#FFFFFF; --rs-s1:#EEF5F2; --rs-s2:#E6EFEB;",
+    "  --rs-s3:#DDE8E3; --rs-s4:#D3E0DA;",
+    "  --rs-ink:#141A18; --rs-ink2:#2C3633; --rs-dim:#465450; --rs-out:#5F6E6A;",
+    "  --rs-line:#C6D4CF; --rs-line2:#AABAB4;",
+    "  --rs-pri:#00695E; --rs-on-pri:#FFFFFF; --rs-pri-c:#9EF2E2; --rs-on-pri-c:#00201B;",
+    "  --rs-live:#8A5A00; --rs-on-live:#FFF3DC;",
+    "  --rs-good:#1D6B3A; --rs-bad:#B3261E",
+    "}",
+
+    /* --------------------------------------------------------------- reset --- */
+    "html.rs-app{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}",
+    "html.rs-app header.studio{display:none !important}",
+    "html.rs-app body{margin:0 !important;padding:0 !important;background:var(--rs-bg) !important;",
+    "  color:var(--rs-ink) !important;font:15px/1.45 -apple-system,Roboto,'Segoe UI',system-ui,sans-serif;",
+    "  overscroll-behavior-y:none}",
+    "html.rs-app .wrap{display:none !important}",
+    "html.rs-locked,html.rs-locked body{overflow:hidden !important}",
+    "html.rs-app :focus-visible{outline:2.5px solid var(--rs-pri);outline-offset:2px;border-radius:6px}",
+
+    /* ---------------------------------------------------------------- shell --- */
+    "#rsApp{position:fixed;top:0;right:0;bottom:0;left:0;display:flex;flex-direction:column;",
+    "  background:var(--rs-bg);z-index:70}",
+    "#rsTop{flex:0 0 auto;padding:calc(6px + " + SAFE_T + ") 8px 6px 16px;display:flex;",
+    "  align-items:center;gap:4px;background:var(--rs-bg);min-height:56px}",
+    "#rsTop.rs-lg{align-items:flex-end;padding-bottom:12px;min-height:0}",
+    "#rsTop .rs-tt{flex:1 1 auto;min-width:0}",
+    "#rsTop h1{margin:0;font-size:20px;line-height:26px;font-weight:600;letter-spacing:-.01em}",
+    "#rsTop.rs-lg h1{font-size:31px;line-height:36px;font-weight:700;letter-spacing:-.025em}",
+    "#rsTop p{margin:2px 0 0;font-size:13px;line-height:18px;color:var(--rs-dim);",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    "#rsBody{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;",
+    "  -webkit-overflow-scrolling:touch;padding-bottom:20px;scroll-behavior:smooth}",
+    "#rsBody.rs-nosmooth{scroll-behavior:auto}",
+    ".rs-screen{display:none;animation:rsIn .18s var(--rs-ease)}",
+    ".rs-screen.rs-on{display:block}",
+    "@keyframes rsIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}",
+
+    /* -------------------------------------------------------------- buttons --- */
+    ".rs-ico{width:48px;height:48px;flex:0 0 auto;display:inline-flex;align-items:center;",
+    "  justify-content:center;border:0;border-radius:50%;background:transparent;",
+    "  color:var(--rs-ink2);cursor:pointer;padding:0}",
+    ".rs-ico:active{background:var(--rs-s2)}",
+    ".rs-ico svg{width:24px;height:24px;display:block}",
+    "button.rs-btn{min-height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink);font:600 15px/1 inherit;cursor:pointer}",
+    "button.rs-btn.rs-filled{background:var(--rs-pri);border-color:var(--rs-pri);color:var(--rs-on-pri)}",
+    "button.rs-btn.rs-tonal{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
+    "button.rs-btn:active{transform:scale(.98)}",
+    ".rs-fab{width:64px;height:64px;flex:0 0 auto;border-radius:50%;border:0;display:flex;",
+    "  align-items:center;justify-content:center;background:var(--rs-pri);color:var(--rs-on-pri);",
+    "  cursor:pointer;position:relative}",
+    ".rs-fab svg{width:30px;height:30px}",
+    ".rs-fab.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
+    ".rs-fab::after{content:'';position:absolute;top:-5px;right:-5px;bottom:-5px;left:-5px;",
+    "  border-radius:50%;border:2px solid var(--rs-live);opacity:0}",
+    "html.rs-playing .rs-fab::after{animation:rsRing 3.4s ease-out infinite}",
+    "@keyframes rsRing{0%{opacity:.55;transform:scale(.92)}70%{opacity:0;transform:scale(1.18)}100%{opacity:0}}",
+
+    /* ---------------------------------------------------------------- cards --- */
+    ".rs-screen section.card{display:block;margin:0 16px 12px;padding:16px;border-radius:var(--rs-r-card);",
+    "  background:var(--rs-s1);border:1px solid var(--rs-line);color:var(--rs-ink);",
+    "  box-shadow:none;max-width:none;width:auto;float:none}",
+    ".rs-screen section.card h3,.rs-screen section.card h2{margin:0 0 10px;font-size:15px;line-height:20px;",
+    "  font-weight:600;letter-spacing:0;text-transform:none;color:var(--rs-ink);display:block}",
+    ".rs-screen section.card h3:empty,.rs-screen section.card h2:empty{display:none}",
+    ".rs-screen .hint,.rs-screen .readout{font-size:13px;line-height:19px;color:var(--rs-dim);margin:0 0 10px}",
+    ".rs-screen .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0}",
+    ".rs-screen .row.between{justify-content:space-between}",
+    ".rs-screen .sep{display:none}",
+    ".rs-screen section.card .row > button,.rs-screen section.card > button{min-height:44px;",
+    "  border-radius:12px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
+    "  font:600 14px/1 inherit;padding:0 14px;cursor:pointer}",
+    ".rs-screen section.card .row > button:active,.rs-screen section.card > button:active{background:var(--rs-s3)}",
+    ".rs-screen select{min-height:44px;border-radius:12px;border:1px solid var(--rs-line2);",
+    "  background:var(--rs-s2);color:var(--rs-ink);font:14px/1 inherit;padding:0 10px;max-width:100%}",
+    ".rs-screen input[type=search],.rs-screen input[type=text]{min-height:48px;width:100%;",
+    "  border-radius:999px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
+    "  font:15px/1 inherit;padding:0 18px;min-width:0}",
+    ".rs-screen input[type=search]::placeholder{color:var(--rs-out)}",
+    ".rs-screen input[type=range]{-webkit-appearance:none;appearance:none;height:44px;width:100%;",
+    "  background:transparent;margin:0}",
+    ".rs-screen input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;",
+    "  background:var(--rs-s3)}",
+    ".rs-screen input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;",
+    "  margin-top:-9px;border-radius:50%;background:var(--rs-pri);border:2px solid var(--rs-bg)}",
+    ".rs-screen kbd{display:none}",
+    ".rs-screen .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}",
+    ".rs-screen .chip{min-height:36px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;padding:0 14px;cursor:pointer}",
+    ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
+    ".rs-screen .cnt{color:var(--rs-dim);font-weight:400}",
+    ".rs-screen .grp{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;",
+    "  color:var(--rs-out);padding:14px 4px 6px}",
+    ".rs-screen #plist{max-height:none;overflow:visible;margin:0;display:flex;flex-direction:column;gap:8px}",
+    ".rs-screen #plist .item{display:flex;gap:10px;align-items:flex-start;padding:12px 10px;",
+    "  border-radius:12px;border:1px solid var(--rs-line);background:var(--rs-s2);cursor:pointer}",
+    ".rs-screen #plist .item .nm b{font-size:15px;font-weight:600}",
+    ".rs-screen #plist .item .nm span{font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    ".rs-screen #plist .item.sel{border-color:var(--rs-pri);background:var(--rs-pri-c)}",
+    ".rs-screen #plist .item.sel .nm b,.rs-screen #plist .item.sel .nm span{color:var(--rs-on-pri-c)}",
+    ".rs-screen #plist .star{width:44px;height:44px;border:0;background:transparent;color:var(--rs-ink2);",
+    "  font-size:19px;cursor:pointer;padding:0;flex:0 0 auto}",
+    ".rs-screen #plist .star.on{color:var(--rs-live)}",
+    ".rs-screen .scrollbox{max-height:none;overflow:visible}",
+
+    /* the entries table is a 7-col grid on desktop; on a phone it wraps into a card */
+    ".rs-screen .ehead{display:none}",
+    ".rs-screen .erow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 34px;",
+    "  gap:6px;padding:10px;border-radius:12px;border:1px solid var(--rs-line);",
+    "  background:var(--rs-s2);margin:0 0 8px;align-items:center}",
+    ".rs-screen .erow .idx{grid-column:1 / -1;font:600 11px/1 inherit;letter-spacing:.06em;",
+    "  text-transform:uppercase;color:var(--rs-out)}",
+    ".rs-screen .erow input{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
+    "  background:var(--rs-bg);color:var(--rs-ink);font:14px/1 ui-monospace,monospace;",
+    "  padding:0 8px;width:100%;min-width:0}",
+    ".rs-screen .erow .mini{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
+    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 8px;font:600 13px/1 inherit}",
+    ".rs-screen .erow .etools{grid-column:1 / -1}",
+    ".rs-screen #voicelist .vrow{min-height:48px;border-radius:12px;background:var(--rs-s2);",
+    "  border:1px solid var(--rs-line);margin:0 0 8px;padding:6px 10px}",
+    ".rs-screen #voicelist .vrow.sel{border-color:var(--rs-pri);background:var(--rs-pri-c)}",
+    ".rs-screen #voicelist .vrow button{min-height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
+    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 10px;font:600 12px/1 inherit}",
+    ".rs-screen #voicelist .vrow .vname{font-size:14px}",
+    ".rs-screen .etools{padding:0}",
+    ".rs-screen #quickpick .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}",
+    ".rs-screen #quickpick input,.rs-screen #quickpick select{width:100%;min-width:0;min-height:42px;",
+    "  border-radius:10px;border:1px solid var(--rs-line2);background:var(--rs-bg);",
+    "  color:var(--rs-ink);font:14px/1 inherit;padding:0 10px}",
+    ".rs-screen #quickpick label.small,.rs-screen label.small{font-size:11px;letter-spacing:.06em;",
+    "  text-transform:uppercase;color:var(--rs-dim);margin:0 0 3px;display:block}",
+    ".rs-screen #quickpick button.chip{width:100%}",
+    ".rs-screen .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}",
+    ".rs-screen .grid2 input,.rs-screen .grid2 select{width:100%;min-width:0;min-height:42px;",
+    "  border-radius:10px;border:1px solid var(--rs-line2);background:var(--rs-bg);",
+    "  color:var(--rs-ink);font:14px/1 inherit;padding:0 10px}",
+    ".rs-screen details.tool{border:1px solid var(--rs-line);border-radius:12px;margin:0 0 8px;",
+    "  padding:0 12px;background:var(--rs-s2)}",
+    ".rs-screen details.tool > summary{min-height:48px;display:flex;align-items:center;",
+    "  font-weight:600;font-size:14px;cursor:pointer}",
+    ".rs-screen details.tool .body{padding:0 0 10px}",
+
+    /* ----------------------------------------------------------------- hero --- */
+    ".rs-hero{margin:0 16px 12px;padding:16px;border-radius:var(--rs-r-hero);",
+    "  background:linear-gradient(160deg,var(--rs-s2),var(--rs-s1));border:1px solid var(--rs-line)}",
+    ".rs-hero-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}",
+    ".rs-hero-top .rs-tt{flex:1 1 auto;min-width:0}",
+    ".rs-hero h1{margin:0;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.015em}",
+    ".rs-hero p{margin:3px 0 0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    ".rs-pill{flex:0 0 auto;font:600 11px/1 inherit;letter-spacing:.06em;text-transform:uppercase;",
+    "  padding:7px 11px;border-radius:999px;background:var(--rs-s3);color:var(--rs-ink2)}",
+    "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
+    ".rs-hero canvas#graph{width:100%;height:132px;display:block;border-radius:12px;",
+    "  background:var(--rs-bg);border:1px solid var(--rs-line);margin-bottom:14px}",
+    ".rs-transport{display:flex;align-items:center;gap:14px}",
+    ".rs-transport .rs-vol{flex:1 1 auto;min-width:0}",
+    ".rs-transport .rs-vol small{display:block;font:600 11px/1 inherit;letter-spacing:.07em;",
+    "  text-transform:uppercase;color:var(--rs-out);margin-bottom:2px}",
+    ".rs-transport #rsClock{font-variant-numeric:tabular-nums;font-size:13px;color:var(--rs-dim);",
+    "  flex:0 0 auto}",
+
+    /* --------------------------------------------------------------- tiles --- */
+    ".rs-states{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}",
+    ".rs-tile{min-height:96px;text-align:left;border-radius:var(--rs-r-card);border:1px solid var(--rs-line);",
+    "  background:var(--rs-s1);color:var(--rs-ink);padding:13px;display:flex;flex-direction:column;",
+    "  justify-content:space-between;gap:8px;cursor:pointer;font:inherit}",
+    ".rs-tile:active{background:var(--rs-s3)}",
+    ".rs-tile svg{width:22px;height:22px;color:var(--rs-pri)}",
+    ".rs-tile b{display:block;font-size:15px;font-weight:600}",
+    ".rs-tile span{display:block;font-size:12px;line-height:16px;color:var(--rs-dim);",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+
+    /* --------------------------------------------------------------- build --- */
+    ".rs-build .rs-field{margin:0 0 14px}",
+    ".rs-build .rs-field label{display:flex;justify-content:space-between;align-items:baseline;",
+    "  font:600 13px/1.4 inherit;color:var(--rs-ink2);margin-bottom:2px}",
+    ".rs-build .rs-field output{font-variant-numeric:tabular-nums;color:var(--rs-pri);font-weight:700}",
+    ".rs-build .rs-field .rs-sub{font-size:12px;color:var(--rs-out);margin-top:-2px;display:block}",
+    ".rs-seg{display:flex;gap:6px;margin:0 0 14px}",
+    ".rs-seg button{flex:1 1 0;min-height:44px;border-radius:12px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;cursor:pointer}",
+    ".rs-seg button[aria-pressed=\"true\"]{background:var(--rs-pri-c);border-color:transparent;",
+    "  color:var(--rs-on-pri-c)}",
+
+    /* ------------------------------------------------------------------ nav --- */
+    "#rsNav{flex:0 0 auto;display:flex;background:var(--rs-s1);border-top:1px solid var(--rs-line);",
+    "  padding:6px 4px calc(6px + " + SAFE_B + ")}",
+    "#rsNav button{flex:1 1 0;min-height:56px;border:0;background:transparent;color:var(--rs-dim);",
+    "  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;",
+    "  cursor:pointer;padding:0;position:relative;font:600 11px/1 inherit}",
+    "#rsNav button svg{width:24px;height:24px}",
+    "#rsNav button .rs-npill{position:absolute;top:3px;width:60px;height:32px;border-radius:999px;",
+    "  background:transparent;transition:background .18s var(--rs-ease)}",
+    "#rsNav button[aria-selected=\"true\"]{color:var(--rs-on-pri-c)}",
+    "#rsNav button[aria-selected=\"true\"] .rs-npill{background:var(--rs-pri-c)}",
+    "#rsNav button svg{position:relative;z-index:1;margin-top:6px}",
+    "#rsNav button span{position:relative;z-index:1}",
+
+    /* ---------------------------------------------------------- mini player --- */
+    "#rsMini{flex:0 0 auto;display:none;align-items:center;gap:10px;margin:0 10px 8px;",
+    "  padding:8px 8px 8px 14px;border-radius:16px;background:var(--rs-s2);border:1px solid var(--rs-line)}",
+    "#rsMini.rs-on{display:flex}",
+    "#rsMini .rs-mt{flex:1 1 auto;min-width:0}",
+    "#rsMini b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;",
+    "  text-overflow:ellipsis}",
+    "#rsMini span{display:block;font-size:12px;color:var(--rs-dim);font-variant-numeric:tabular-nums}",
+    "#rsMini button{width:48px;height:48px;flex:0 0 auto;border:0;border-radius:50%;",
+    "  background:var(--rs-pri);color:var(--rs-on-pri);display:flex;align-items:center;",
+    "  justify-content:center;cursor:pointer;padding:0}",
+    "#rsMini button svg{width:22px;height:22px}",
+
+    /* --------------------------------------------------------------- sheet --- */
+    "#rsSheet{position:fixed;left:0;right:0;bottom:0;z-index:86;display:flex;flex-direction:column;",
+    "  background:var(--rs-s2);color:var(--rs-ink);border-radius:var(--rs-r-sheet) var(--rs-r-sheet) 0 0;",
+    "  border-top:1px solid var(--rs-line);box-shadow:0 -18px 44px rgba(0,0,0,.45);",
+    "  transform:translateY(110%);transition:transform .26s var(--rs-ease);",
+    "  padding-bottom:calc(8px + " + SAFE_B + ");max-height:82vh}",
+    "#rsSheet.rs-open{transform:none}",
+    "#rsSheet.rs-drag{transition:none}",
+    "#rsSheet .rs-grab{height:26px;display:flex;align-items:center;justify-content:center;",
+    "  touch-action:none;cursor:grab}",
+    "#rsSheet .rs-grab i{width:36px;height:4px;border-radius:2px;background:var(--rs-line2)}",
+    "#rsSheet .rs-shead{display:flex;align-items:center;gap:8px;padding:0 20px 10px}",
+    "#rsSheet .rs-shead b{flex:1 1 auto;font-size:16px}",
+    "#rsSheet .rs-sbody{overflow-y:auto;padding:0 10px 10px}",
+    ".rs-mrow{width:100%;display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 12px;",
+    "  border:0;border-radius:14px;background:transparent;color:var(--rs-ink);text-align:left;",
+    "  cursor:pointer;font:inherit}",
+    ".rs-mrow:active{background:var(--rs-s3)}",
+    ".rs-mrow .rs-mtxt{flex:1 1 auto;min-width:0}",
+    ".rs-mrow b{display:block;font-size:15px;font-weight:600}",
+    ".rs-mrow span{display:block;font-size:12.5px;color:var(--rs-dim)}",
+    ".rs-mrow svg{flex:0 0 auto;color:var(--rs-ink2)}",
+
+    /* -------------------------------------------------------------- generic --- */
+    ".rs-pad{height:8px}",
+    ".rs-note{font-size:12.5px;line-height:18px;color:var(--rs-out);margin:10px 0 0}",
+    ".rs-kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;",
+    "  border-bottom:1px solid var(--rs-line);font-size:14px}",
+    ".rs-kv:last-child{border-bottom:0}",
+    ".rs-kv b{color:var(--rs-dim);font-weight:500}",
+    ".rs-kv span{font-variant-numeric:tabular-nums;text-align:right}",
+    ".rs-sw{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 0}",
+    ".rs-sw .rs-swt{flex:1 1 auto;min-width:0}",
+    ".rs-sw b{display:block;font-size:15px;font-weight:600}",
+    ".rs-sw span{display:block;font-size:12.5px;color:var(--rs-dim)}",
+    ".rs-sw input{position:absolute;opacity:0;width:1px;height:1px}",
+    ".rs-sw .rs-track{flex:0 0 auto;width:52px;height:32px;border-radius:16px;background:var(--rs-s4);",
+    "  border:2px solid var(--rs-out);position:relative;transition:background .16s,border-color .16s}",
+    ".rs-sw .rs-track::after{content:'';position:absolute;top:6px;left:6px;width:16px;height:16px;",
+    "  border-radius:50%;background:var(--rs-out);transition:transform .16s var(--rs-ease),background .16s}",
+    ".rs-sw input:checked + .rs-track{background:var(--rs-pri);border-color:var(--rs-pri)}",
+    ".rs-sw input:checked + .rs-track::after{transform:translateX(20px);background:var(--rs-on-pri)}",
+    ".rs-sw input:focus-visible + .rs-track{outline:2.5px solid var(--rs-pri);outline-offset:2px}",
+
+    /* --------------------------------------------------------------- toast --- */
+    "html.rs-app #toast{bottom:auto !important;top:calc(10px + " + SAFE_T + ") !important;",
+    "  left:16px !important;right:16px !important;z-index:120 !important;border-radius:14px}",
+    "html.rs-app #prog:not([hidden]){display:block !important;position:fixed;left:14px;right:14px;",
+    "  bottom:calc(150px + " + SAFE_B + ");height:8px;z-index:78;accent-color:var(--rs-pri)}",
+
+    /* ---------------------------------------------------- visualise section --- */
+    ".rs-map{font-variant-numeric:tabular-nums;font-size:13px;line-height:19px;color:var(--rs-ink2);",
+    "  background:var(--rs-bg);border:1px solid var(--rs-line);border-radius:12px;padding:12px;margin:10px 0}",
+    ".rs-map b{color:var(--rs-pri)}",
+    ".rs-chips{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;-webkit-overflow-scrolling:touch}",
+    ".rs-chips button{flex:0 0 auto;min-height:40px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;padding:0 15px;cursor:pointer}",
+    ".rs-chips button[aria-pressed=\"true\"]{background:var(--rs-pri-c);border-color:transparent;",
+    "  color:var(--rs-on-pri-c)}",
+    "#vizCard .viz-inline{margin:0}",
+    "#vizCard canvas.viz-canvas{width:100% !important;height:190px !important;border-radius:12px;",
+    "  border:1px solid var(--rs-line)}",
+    "#vizCard .viz-badge{font-size:11px}",
+    "#vizCard button,#vizCard .ghost{color:var(--rs-ink2) !important}",
+    ".rs-screen #vizCard button{min-height:40px;border-radius:10px;",
+    "  border:1px solid var(--rs-line2) !important;background-color:var(--rs-s2) !important}",
+    ".rs-screen #vizCard .ghost{background-color:transparent !important}",
+    ".rs-screen #vizCard .vz-scenes button{min-width:40px;padding:0 6px;background-color:transparent !important}",
+    "#vizCard select,#vizCard input{color:var(--rs-ink) !important}",
+    "#vizCard .viz-scenes button{min-width:40px}",
+
+    /* ------------------------------------------------------- reduced motion --- */
+    "@media (prefers-reduced-motion: reduce){",
+    "  .rs-screen{animation:none} #rsSheet{transition:none}",
+    "  html.rs-playing .rs-fab::after{animation:none;opacity:.5}",
+    "  #rsNav button .rs-npill{transition:none}",
+    "}"
+  ].join("\n");
+
+  function shellCss() { injectCss(CSS, "rsShellCss"); }
+
+  /* ================================================================== icons === */
+
+  var I = {
+    home: "M4 11.2 12 4l8 7.2V20a1 1 0 0 1-1 1h-4.6v-6.2H9.6V21H5a1 1 0 0 1-1-1z",
+    list: "M4 6h16M4 12h16M4 18h10",
+    sliders: "M5 7h6M15 7h4M5 17h4M13 17h6M13 7a2 2 0 1 0 0-.01M9 17a2 2 0 1 0 0-.01",
+    vis: "M12 3.4a8.6 8.6 0 1 0 0 17.2 8.6 8.6 0 0 0 0-17.2zM7.4 12c1.4-2.6 2.9-2.6 4.3 0s2.9 2.6 4.3 0",
+    gear: "M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zM19.3 12a7.3 7.3 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7.4 7.4 0 0 0-2-1.2L14.6 3h-3.9l-.4 2.5a7.4 7.4 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7.3 7.3 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7.4 7.4 0 0 0 2 1.2l.4 2.5h3.9l.4-2.5a7.4 7.4 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z",
+    play: "M8 5.2v13.6L19 12z",
+    pause: "M7 5h3.6v14H7zM13.4 5H17v14h-3.6z",
+    stop: "M6 6h12v12H6z",
+    moon: "M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4z",
+    sun: "M12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4",
+    focus: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+    book: "M5 4h9a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM17 4h2v16h-2",
+    shield: "M12 3 5 6v6c0 4 3 7 7 9 4-2 7-5 7-9V6z",
+    info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM11 10.5h2V17h-2zM11 7h2v2h-2z",
+    down: "M12 4v11M7.5 11 12 15.5 16.5 11M5 19h14",
+    wave: "M3 12h3l2-5 3 10 3-8 2 5h5",
+    close: "M6 6l12 12M18 6 6 18",
+    chev: "M9 6l6 6-6 6"
+  };
+  function svg(name, size) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
+      (size ? ' width="' + size + '" height="' + size + '"' : "") + '><path d="' + I[name] + '"/></svg>';
+  }
+  function svgFill(name) {
+    return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + I[name] + '"/></svg>';
+  }
+
+  /* ================================================================ screens === */
+
+  var SCREENS = [
+    { id: "home", label: "Home", icon: "home", title: "Resonance", large: true,
+      sub: function () { return sessionTitle() || "Binaural, tones and noise — on this device"; } },
+    { id: "sessions", label: "Sessions", icon: "list", title: "Sessions",
+      sub: function () { return "The built-in library"; } },
+    { id: "studio", label: "Studio", icon: "sliders", title: "Studio",
+      sub: function () { return "Voices, entries and tools"; } },
+    { id: "vis", label: "Visualise", icon: "vis", title: "Visualise",
+      sub: function () { return "The tone made visible"; } },
+    { id: "settings", label: "Settings", icon: "gear", title: "Settings",
+      sub: function () { return ""; } }
   ];
 
-  function sheetCss() {
-    injectCss([
-      "#rsSheet{position:fixed;left:0;right:0;bottom:0;z-index:80;",
-      "  height:min(78vh,760px);display:flex;flex-direction:column;",
-      "  background:linear-gradient(180deg,var(--panel2,#241c15),var(--panel,#1b1510));",
-      "  border-top:1px solid var(--line,#3a2c20);border-radius:18px 18px 0 0;",
-      "  box-shadow:0 -18px 50px rgba(0,0,0,.55);color:var(--ink,#f2e6d8);",
-      "  font:14.5px/1.4 var(--sans,system-ui);",
-      "  transform:translateY(calc(100% + 30px));transition:transform .28s cubic-bezier(.22,.61,.36,1);",
-      "  padding-bottom:env(safe-area-inset-bottom,0px)}",
-      "#rsSheet.rs-open{transform:translateY(0)}",
-      "#rsSheet.rs-drag{transition:none}",
-      "#rsGrab{flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:26px;",
-      "  cursor:grab;touch-action:none;position:relative}",
-      "#rsGrab i{width:46px;height:5px;border-radius:3px;background:var(--line2,#5a452c);display:block}",
-      "#rsGrab b{position:absolute;right:16px;font-size:15px;color:var(--ink-faint,#7d6a58);",
-      "  transform:rotate(180deg);transition:transform .28s}",
-      "#rsSheet.rs-open #rsGrab b{transform:rotate(0)}",
-      "#rsSHead{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:2px 16px 10px}",
-      "#rsSHead .rs-brand{font:italic 600 1.08rem 'Palatino Linotype',Palatino,Georgia,serif;",
-      "  background:linear-gradient(180deg,#f6e7c4 8%,#d9b66f 55%,#ab8742 100%);",
-      "  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}",
-      "#rsSHead .rs-pill{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;",
-      "  border:1px solid var(--line2,#5a452c);border-radius:999px;padding:2px 8px;color:var(--ink-faint,#7d6a58)}",
-      "#rsSHead .rs-pill.ok{color:var(--good,#93c793);border-color:var(--good,#93c793)}",
-      "#rsSHead .rs-pill.warn{color:var(--bad,#e0604f);border-color:var(--bad,#e0604f)}",
-      "#rsSScroll{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;",
-      "  padding:0 14px calc(18px + env(safe-area-inset-bottom,0px));touch-action:pan-y}",
-      ".rs-player{border:1px solid var(--line,#3a2c20);border-radius:14px;padding:12px 12px 10px;",
-      "  background:color-mix(in srgb, var(--acc,#e0b96f) 5%, var(--panel,#1b1510))}",
-      ".rs-player .rs-p-title{font-weight:800;font-size:16px;line-height:1.2}",
-      ".rs-player .rs-p-src{color:var(--ink-faint,#7d6a58);font-size:12px;margin-top:2px;",
-      "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-      ".rs-player .rs-p-row{display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap}",
-      ".rs-player .rs-p-time{font-family:var(--mono,monospace);color:var(--ink-dim,#b9a48c);font-size:12.5px}",
-      ".rs-player button.rs-tbtn{min-height:44px;border-radius:12px;padding:9px 14px;font-weight:700;",
-      "  border:1.5px solid var(--line2,#5a452c);background:transparent;color:inherit;cursor:pointer}",
-      ".rs-player button.rs-tbtn.rs-primary{background:var(--acc,#e0b96f);border-color:var(--acc,#e0b96f);",
-      "  color:var(--acc-ink,#2a1a08);flex:1}",
-      ".rs-player .rs-vol{display:flex;align-items:center;gap:10px;margin-top:10px}",
-      ".rs-player .rs-vol input{flex:1;accent-color:var(--acc,#e0b96f);height:30px}",
-      ".rs-player .rs-vol .rs-volpct{font-family:var(--mono,monospace);font-size:12px;",
-      "  color:var(--ink-dim,#b9a48c);min-width:44px;text-align:right}",
-      ".rs-player label.rs-loop{display:inline-flex;align-items:center;gap:7px;color:var(--ink-dim,#b9a48c);",
-      "  font-size:13px;cursor:pointer}",
-      ".rs-player .rs-loop input{accent-color:var(--acc,#e0b96f);width:20px;height:20px}",
-      ".rs-grp{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint,#7d6a58);",
-      "  margin:16px 4px 6px;font-weight:700}",
-      ".rs-mrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;",
-      "  min-height:52px;padding:9px 11px;margin:5px 0;border-radius:13px;cursor:pointer;",
-      "  border:1px solid var(--line,#3a2c20);background:var(--panel,#1b1510);color:inherit;",
-      "  font:inherit}",
-      ".rs-mrow:active{transform:scale(.99)}",
-      ".rs-mrow .rs-mtxt{flex:1 1 auto;min-width:0}",
-      ".rs-mrow .rs-mtxt b{display:block;font-weight:700;font-size:14.5px}",
-      ".rs-mrow .rs-mtxt span{display:block;color:var(--ink-faint,#7d6a58);font-size:12px;",
-      "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-      ".rs-mrow .rs-mend{flex:0 0 auto;color:var(--ink-faint,#7d6a58);font-size:16px}",
-      ".rs-mrow .rs-chip{flex:0 0 auto;font-size:11px;letter-spacing:.05em;border:1px solid var(--line2,#5a452c);",
-      "  border-radius:999px;padding:3px 9px;color:var(--ink-dim,#b9a48c)}",
-      ".rs-mrow .rs-chip.on{color:var(--acc,#e0b96f);border-color:var(--acc,#e0b96f)}"
-    ].join(""), "rsSheetCss");
+  var CUR = "home";
+  var screenEls = {}, navEls = {};
+
+  function buildShell() {
+    var app = doc.createElement("div");
+    app.id = "rsApp";
+    app.innerHTML =
+      '<header id="rsTop" role="banner">' +
+      '  <div class="rs-tt"><h1 id="rsTitle" tabindex="-1"></h1><p id="rsSub"></p></div>' +
+      '  <button class="rs-ico" id="rsOverflow" aria-label="More" aria-haspopup="dialog" aria-expanded="false">' +
+      '    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/>' +
+      '    <circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>' +
+      '</header>' +
+      '<main id="rsBody" tabindex="-1"></main>' +
+      '<div id="rsMini"><div class="rs-mt"><b id="rsMiniTitle"></b><span id="rsMiniTime"></span></div>' +
+      '  <button id="rsMiniPlay" aria-label="Play or pause"></button></div>' +
+      '<nav id="rsNav" role="tablist" aria-label="Sections"></nav>';
+    doc.body.appendChild(app);
+
+    var body = $id("rsBody");
+    SCREENS.forEach(function (s) {
+      var sec = doc.createElement("section");
+      sec.className = "rs-screen";
+      sec.id = "scr-" + s.id;
+      sec.setAttribute("role", "tabpanel");
+      sec.setAttribute("aria-labelledby", "nav-" + s.id);
+      body.appendChild(sec);
+      screenEls[s.id] = sec;
+    });
+
+    var nav = $id("rsNav");
+    SCREENS.forEach(function (s) {
+      var b = doc.createElement("button");
+      b.id = "nav-" + s.id;
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", s.id === CUR ? "true" : "false");
+      b.setAttribute("aria-controls", "scr-" + s.id);
+      b.innerHTML = '<span class="rs-npill" aria-hidden="true"></span>' + svg(s.icon) + '<span>' + s.label + '</span>';
+      b.addEventListener("click", function () { go(s.id); });
+      nav.appendChild(b);
+      navEls[s.id] = b;
+    });
+
+    $id("rsOverflow").addEventListener("click", function () { openSheet(true); });
+    $id("rsMiniPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
+
+    return app;
   }
 
-  function buildSheet() {
-    sheetCss();
-    var sheet = doc.createElement("div");
-    sheet.id = "rsSheet";
-    var rowsHtml = "";
-    for (var i = 0; i < ROWS.length; i++) {
-      var r = ROWS[i];
-      if (r[0] === "grp") { rowsHtml += '<div class="rs-grp">' + r[1] + '</div>'; continue; }
-      var chip = (r[3] === "skin" || r[3] === "focus") ? '<span class="rs-chip" id="rsChip_' + r[3] + '">\u2014</span>'
-               : '<span class="rs-mend">\u203A</span>';
-      rowsHtml += '<button class="rs-mrow" data-act="' + r[3] + '" data-kind="' + r[0] + '">' +
-        '<span class="rs-mtxt"><b>' + r[1] + '</b><span>' + r[2] + '</span></span>' + chip + '</button>';
+  function go(id, opts) {
+    if (!screenEls[id]) return;
+    CUR = id;
+    SCREENS.forEach(function (s) {
+      var on = s.id === id;
+      screenEls[s.id].classList.toggle("rs-on", on);
+      navEls[s.id].setAttribute("aria-selected", on ? "true" : "false");
+    });
+    var top = $id("rsTop");
+    top.classList.toggle("rs-lg", !!SCREENS.filter(function (s) { return s.id === id; })[0].large);
+    renderTop();
+    if (!opts || opts.scroll !== false) {
+      var b = $id("rsBody");
+      b.classList.add("rs-nosmooth");
+      b.scrollTop = 0;
+      window.setTimeout(function () { b.classList.remove("rs-nosmooth"); }, 40);
     }
-    sheet.innerHTML =
-      '<div id="rsGrab" data-rs="grab"><i></i><b>\u25BE</b></div>' +
-      '<div id="rsSHead">' +
-      '  <span class="rs-brand">Resonance Studio</span>' +
-      '  <span class="rs-pill" id="rsVerPill"></span>' +
-      '  <span class="rs-pill" id="rsCompatPill"></span>' +
-      '</div>' +
-      '<div id="rsSScroll">' +
-      '  <div class="rs-player">' +
-      '    <div class="rs-p-title" id="rsPTitle">Pick a session</div>' +
-      '    <div class="rs-p-src" id="rsPSrc"></div>' +
-      '    <div class="rs-p-row">' +
-      '      <button class="rs-tbtn rs-primary" data-rs="sPlay">\u25B6 Play</button>' +
-      '      <button class="rs-tbtn" data-rs="sStop">\u25A0 Stop</button>' +
-      '      <span class="rs-p-time" id="rsPTime">0:00 / 0:00</span>' +
-      '      <label class="rs-loop"><input type="checkbox" id="rsLoop"> Loop</label>' +
-      '    </div>' +
-      '    <div class="rs-vol">' +
-      '      <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint,#7d6a58)">Vol</span>' +
-      '      <input type="range" id="rsVol" min="0" max="1" step="0.01" value="0.7" aria-label="volume">' +
-      '      <span class="rs-volpct" id="rsVolPct">\u2014</span>' +
-      '    </div>' +
+    syncMini();
+    if (id === "vis") syncVis();
+  }
+
+  function renderTop() {
+    var s = SCREENS.filter(function (x) { return x.id === CUR; })[0];
+    var h = $id("rsTitle"), p = $id("rsSub");
+    if (h && h.textContent !== s.title) h.textContent = s.title;
+    var sub = s.sub ? s.sub() : "";
+    if (p && p.textContent !== sub) p.textContent = sub;
+    if (p) p.style.display = sub ? "" : "none";
+  }
+
+  /* =================================================================== home === */
+
+  var STATES = [
+    { label: "Sleep", re: /sleep|delta|drift off|deep/i, icon: "moon" },
+    { label: "Focus", re: /focus|study|alpha|work|concentrat/i, icon: "focus" },
+    { label: "Relax", re: /relax|calm|theta|meditat|unwind/i, icon: "wave" },
+    { label: "Wake", re: /wake|alert|gamma|beta|morning|energis/i, icon: "sun" }
+  ];
+
+  function presetByName(re) {
+    var list = (pState() && pState().presetList) || [];
+    var i;
+    for (i = 0; i < list.length; i++) if (re.test(list[i].name)) return { i: i, it: list[i] };
+    for (i = 0; i < list.length; i++) if (re.test(list[i].blurb || "")) return { i: i, it: list[i] };
+    return null;
+  }
+
+  function loadPresetAt(i, it) {
+    var a = api(); if (!a) return;
+    try { a.loadPreset(i); } catch (e) { }
+    var sel = $id("presets");
+    if (sel) sel.value = String(i);
+    var pl = $id("plist");
+    if (pl) $$(".item", pl).forEach(function (row) {
+      row.classList.toggle("sel", !!it && text(row).indexOf(it.name) === 0);
+    });
+    pushState(true);
+    syncHero();
+  }
+
+  function buildHome() {
+    var scr = screenEls.home;
+    scr.innerHTML =
+      '<div class="rs-hero">' +
+      '  <div class="rs-hero-top"><div class="rs-tt">' +
+      '    <h1 id="rsNowTitle">Pick a session</h1><p id="rsNowSrc"></p></div>' +
+      '    <span class="rs-pill rs-live" id="rsMode">idle</span></div>' +
+      '  <div class="rs-transport">' +
+      '    <button class="rs-fab" id="rsPlay" aria-label="Play"></button>' +
+      '    <div class="rs-vol"><small>Volume</small>' +
+      '      <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>' +
+      '    <button class="rs-ico" id="rsStop" aria-label="Stop and rewind">' + svg("stop") + '</button>' +
       '  </div>' +
-      rowsHtml +
-      '</div>';
-    doc.body.appendChild(sheet);
+      '  <div class="rs-transport" style="margin-top:10px">' +
+      '    <span id="rsClock" aria-live="polite">0:00 / 0:00</span>' +
+      '    <label class="rs-sw" style="flex:1 1 auto;min-height:40px;padding:0">' +
+      '      <span class="rs-swt"><span style="font-size:12.5px">Loop</span></span>' +
+      '      <input type="checkbox" id="rsLoop" checked><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  </div>' +
+      '</div>' +
+      '<div class="rs-states" id="rsStates"></div>' +
+      '<section class="card rs-build" id="rsBuild" aria-labelledby="rsBuildH">' +
+      '  <h3 id="rsBuildH">Build a tone</h3>' +
+      '  <div class="rs-field"><label for="rsCarrier">Carrier <output id="rsCarrierOut">220 Hz</output></label>' +
+      '    <input id="rsCarrier" type="range" min="90" max="560" step="5" value="220" aria-label="Carrier frequency">' +
+      '    <span class="rs-sub">The pitch you hear.</span></div>' +
+      '  <div class="rs-field"><label for="rsBeat">Beat <output id="rsBeatOut">7.8 Hz</output></label>' +
+      '    <input id="rsBeat" type="range" min="0.5" max="30" step="0.1" value="7.8" aria-label="Beat frequency">' +
+      '    <span class="rs-sub" id="rsBand">Alpha — relaxed, present. Headphones.</span></div>' +
+      '  <div class="rs-seg" id="rsBed" role="group" aria-label="Background bed">' +
+      '    <button data-bed="none" aria-pressed="true">No bed</button>' +
+      '    <button data-bed="pink" aria-pressed="false">Pink</button>' +
+      '    <button data-bed="brown" aria-pressed="false">Brown</button>' +
+      '    <button data-bed="white" aria-pressed="false">White</button></div>' +
+      '  <button class="rs-btn rs-filled" id="rsBuildGo" style="width:100%">Play this tone</button>' +
+      '</section>';
+  }
 
-    /* --- gesture controller: full-height panel, translated down when closed -------- */
-    var y = 0, dragging = false, startY = 0, startOffset = 0;
+  function bandOf(hz) {
+    if (hz < 4) return ["Delta", "deep, drowsy — headphones"];
+    if (hz < 8) return ["Theta", "drowsy, drifting — headphones"];
+    if (hz < 13) return ["Alpha", "relaxed, present — headphones"];
+    if (hz < 30) return ["Beta", "alert, active — headphones"];
+    return ["Gamma", "bright, alert — headphones"];
+  }
 
-    function measure() {
-      sheetH = sheet.offsetHeight || Math.min(Math.round(window.innerHeight * 0.78), 760);
-      if (!SHEET.open) apply(sheetH, false);
-    }
-    function apply(offset, animate) {
-      if (animate === false) sheet.classList.add("rs-drag");
-      else sheet.classList.remove("rs-drag");
-      sheet.style.transform = "translateY(" + offset + "px)";
-      y = offset;
-    }
-    function setOpen(open, animate) {
-      SHEET.open = !!open;
-      sheet.classList.toggle("rs-open", SHEET.open);
-      apply(SHEET.open ? 0 : sheetH, animate);
-      doc.documentElement.classList.toggle("rs-locked", SHEET.open);
-      if (SHEET.open) { syncSheet(); refreshChips(); }
-    }
-    openSheet = function (open) { if (!sheetH) measure(); setOpen(open, true); };
-
-    function onDown(ev) {
-      if (!ev.isPrimary) return;
-      if (ev.target.closest("button,input")) return;
-      dragging = true;
-      startY = ev.clientY;
-      startOffset = y;
-      sheet.classList.add("rs-drag");
-    }
-    function onMove(ev) {
-      if (!dragging) return;
-      var dy = ev.clientY - startY;
-      var next = Math.min(sheetH, Math.max(0, startOffset + dy));
-      apply(next, false);
-      ev.preventDefault();
-    }
-    function onUp(ev) {
-      if (!dragging) return;
-      dragging = false;
-      sheet.classList.remove("rs-drag");
-      var dy = ev.clientY - startY;
-      if (Math.abs(dy) < 24 && startOffset === 0) { setOpen(false); return; }   // tap on handle closes
-      if (Math.abs(dy) < 24) { setOpen(!SHEET.open); return; }
-      setOpen(dy < 0);
-    }
-    sheet.querySelector("#rsGrab").addEventListener("pointerdown", onDown, { passive: true });
-    sheet.querySelector("#rsSHead").addEventListener("pointerdown", onDown, { passive: true });
-    doc.addEventListener("pointermove", onMove, { passive: false });
-    doc.addEventListener("pointerup", onUp, { passive: true });
-    doc.addEventListener("pointercancel", onUp, { passive: true });
-    window.addEventListener("resize", measure);
-
-    sheet.addEventListener("click", function (ev) {
-      var b = ev.target.closest("[data-rs]");
-      if (b) {
-        var act = b.getAttribute("data-rs");
-        if (act === "sPlay") { pageToggle(); pushState(true); return; }
-        if (act === "sStop") { pageStop(); pushState(true); return; }
-        return;   // grab handled by the gesture code
-      }
-      var row = ev.target.closest(".rs-mrow");
-      if (!row) return;
-      var what = row.getAttribute("data-act");
-      var kind = row.getAttribute("data-kind");
-      if (kind === "jump") { jumpTo(what); return; }
-      if (kind === "ext") { native("url", [what]); return; }
-      if (what === "skin") { cycleSkin(); return; }
-      if (what === "focus") { toggleFocus(); return; }
-      if (what === "fs") { openSheet(false); enterFullscreen(); return; }
-      if (what === "cym") { openSheet(false); if (window.ResonanceCymatics) window.ResonanceCymatics.open(); return; }
-      if (what === "guide") { openSheet(false); openGuide(); return; }
-      if (what === "check") { openSheet(false); openCheck(); return; }
-      if (what === "about") { openSheet(false); openAbout(); return; }
-      if (what === "upd") {
-        toast("Checking for updates\u2026");
-        native("checkUpdate", []);
-        return;
-      }
+  function wireHome() {
+    var tiles = $id("rsStates");
+    STATES.forEach(function (s) {
+      var hit = presetByName(s.re);
+      var b = doc.createElement("button");
+      b.className = "rs-tile";
+      b.type = "button";
+      b.innerHTML = svg(s.icon) + "<div><b>" + s.label + "</b><span>" +
+        (hit ? esc(hit.it.name) : "no match") + "</span></div>";
+      b.disabled = !hit;
+      b.addEventListener("click", function () {
+        if (!hit) return;
+        loadPresetAt(hit.i, hit.it);
+        pagePlay(); pushState(true);
+        toast(s.label + " — " + hit.it.name);
+      });
+      tiles.appendChild(b);
     });
 
-    var vol = sheet.querySelector("#rsVol");
-    vol.addEventListener("input", function () {
-      setMaster(parseFloat(vol.value));
-      sheet.querySelector("#rsVolPct").textContent = Math.round(parseFloat(vol.value) * 100) + "%";
-    });
-    var loop = sheet.querySelector("#rsLoop");
+    $id("rsPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
+    $id("rsStop").addEventListener("click", function () { pageStop(); pushState(true); });
+
+    var vol = $id("rsVol");
+    vol.addEventListener("input", function () { setMaster(parseFloat(vol.value)); });
+    var loop = $id("rsLoop");
     loop.addEventListener("change", function () {
       var el = $id("loop");
       if (el) { el.checked = loop.checked; el.dispatchEvent(new Event("change", { bubbles: true })); }
     });
 
-    measure();
-    return sheet;
-  }
-  var openSheet = function () { };   // replaced once the sheet is built
-
-  function jumpTo(sel) {
-    var el = $(sel);
-    if (!el) { return; }
-    openSheet(false);
-    var card = el.closest("section.card") || el;
-    try { card.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { card.scrollIntoView(); }
-    card.classList.add("rs-jump");
-    window.setTimeout(function () { card.classList.remove("rs-jump"); }, 1900);
-  }
-
-  function cycleSkin() {
-    var sel = $id("skin");
-    if (!sel) return;
-    var order = ["forge", "nocturne", "paper"];
-    var cur = doc.documentElement.getAttribute("data-skin") || "forge";
-    var next = order[(order.indexOf(cur) + 1) % order.length];
-    sel.value = next;
-    sel.dispatchEvent(new Event("change", { bubbles: true }));
-    refreshChips();
-    toast("Skin: " + next);
-  }
-  function toggleFocus() {
-    var b = $id("focusBtn");
-    if (b) b.click();
-    refreshChips();
-  }
-  function refreshChips() {
-    var skin = doc.documentElement.getAttribute("data-skin") || "forge";
-    var c1 = $id("rsChip_skin"); if (c1) c1.textContent = skin;
-    var c2 = $id("rsChip_focus");
-    if (c2) {
-      var on = doc.body.classList.contains("focus");
-      c2.textContent = on ? "on" : "off";
-      c2.classList.toggle("on", on);
+    var car = $id("rsCarrier"), beat = $id("rsBeat");
+    function outs() {
+      $id("rsCarrierOut").textContent = car.value + " Hz";
+      $id("rsBeatOut").textContent = parseFloat(beat.value).toFixed(1) + " Hz";
+      var b = bandOf(parseFloat(beat.value));
+      $id("rsBand").textContent = b[0] + " — " + b[1];
     }
+    car.addEventListener("input", outs);
+    beat.addEventListener("input", outs);
+    outs();
+
+    var bed = "none";
+    $$("#rsBed button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        bed = b.getAttribute("data-bed");
+        $$("#rsBed button").forEach(function (o) {
+          o.setAttribute("aria-pressed", o === b ? "true" : "false");
+        });
+      });
+    });
+
+    $id("rsBuildGo").addEventListener("click", function () {
+      var a = api(); if (!a) return;
+      var GE = window.GnauralEngine || {};
+      var c = parseFloat(car.value), bt = parseFloat(beat.value);
+      var voices = [{ type: GE.VOICE_BINAURAL, mute: false, mono: false,
+                      entries: [{ duration: 1800, volL: 0.3, volR: 0.3, basefreq: c, beat: bt }] }];
+      var bedType = { pink: GE.VOICE_PINK, brown: GE.VOICE_BROWN, white: GE.VOICE_WHITE }[bed];
+      if (bedType !== undefined) {
+        voices.push({ type: bedType, mute: false, mono: false,
+                      entries: [{ duration: 1800, volL: 0.1, volR: 0.1, basefreq: 1, beat: 0 }] });
+      }
+      try {
+        a.loadSchedule(voices, { title: "Custom " + c + " Hz / " + bt.toFixed(1) + " Hz",
+          source: "built in the app", loops: Infinity, warnings: [] });
+      } catch (e) { toast("Could not build that tone"); return; }
+      pagePlay(); pushState(true); syncHero();
+      toast("Playing your tone");
+    });
   }
 
-  /* ============================================================== overlays === */
-  /* Guide, device check, about and the fullscreen visualizer are one class of thing:
-     a fixed layer with a close X; Android's back button closes the topmost one. */
+  /* =============================================================== sessions === */
+
+  function buildSessions() {
+    screenEls.sessions.innerHTML =
+      '<div class="rs-pad"></div>' +
+      '<section class="card" id="rsBrowse" aria-labelledby="rsBrowseH">' +
+      '  <h3 id="rsBrowseH">Library</h3></section>' +
+      '<section class="card" id="rsQuick" aria-labelledby="rsQuickH">' +
+      '  <h3 id="rsQuickH">Quick picks</h3></section>' +
+      '<div class="rs-pad"></div>';
+  }
+
+  /* ================================================================= studio === */
+
+  function buildStudio() {
+    screenEls.studio.innerHTML =
+      '<div class="rs-pad"></div>' +
+      '<section class="card" id="rsVoices" aria-labelledby="rsVoicesH">' +
+      '  <h3 id="rsVoicesH">Voices &amp; entries</h3></section>' +
+      '<section class="card" id="rsLive" aria-labelledby="rsLiveH">' +
+      '  <h3 id="rsLiveH">Live tools</h3></section>' +
+      '<section class="card" id="rsFiles" aria-labelledby="rsFilesH">' +
+      '  <h3 id="rsFilesH">Files &amp; export</h3></section>' +
+      '<div class="rs-pad"></div>';
+  }
+
+  /* ==================================================================== vis === */
+
+  var MEDIA = [
+    ["plate", "Plate"], ["bolted", "Bolted"], ["disc", "Disc"],
+    ["drum", "Drum"], ["water", "Water"], ["bubbles", "Bubbles"]
+  ];
+
+  var SCENES = [
+    ["cathedral", "Cathedral"], ["cold-forge", "Cold Forge"], ["solar-disc", "Solar Disc"],
+    ["faraday-storm", "Faraday Storm"], ["skin-tight", "Skin Tight"], ["minnaert-cloud", "Bubbles"],
+    ["ember-pool", "Ember Pool"], ["black-water", "Black Water"]
+  ];
+
+  function sessionShape() {
+    var st = pState(); if (!st) return null;
+    var vs = (st.schedule && st.schedule.voices) || [];
+    var live = vs.filter(function (v) { return !v.mute; });
+    if (!live.length) return null;
+    var carrier = 0, beat = 0, iso = false, noise = false, binaural = false;
+    live.forEach(function (v) {
+      var e = (v.entries && v.entries[0]) || {};
+      if (v.type === 0) { binaural = true; if (!carrier) carrier = e.basefreq || 0; beat = e.beat || 0; }
+      else if (v.type === 3 || v.type === 4) { iso = true; beat = beat || e.beat || 0; if (!carrier) carrier = e.basefreq || 0; }
+      else { noise = true; }
+    });
+    if (!carrier) carrier = 220;
+    if (!beat && iso) beat = 8;
+    return { carrier: carrier, beat: beat, iso: iso, noise: noise, binaural: binaural,
+             voices: live.length };
+  }
+
+  function planFor(shape) {
+    if (!shape) return null;
+    var b = shape.beat;
+    if (shape.iso) return { medium: "water", scene: "ember-pool", band: "isochronic", why: "pulses drive the water surface" };
+    if (shape.noise && !shape.binaural) return { medium: "drum", scene: "skin-tight", band: "noise", why: "a noise bed shakes the skin and lifts dust" };
+    if (b < 4) return { medium: "plate", scene: "cathedral", band: "delta", why: "slow delta sits on a big free plate" };
+    if (b < 8) return { medium: "plate", scene: "cold-forge", band: "theta", why: "theta drifts across a steel plate" };
+    if (b < 13) return { medium: "disc", scene: "solar-disc", band: "alpha", why: "alpha rings a clamped disc" };
+    if (b < 30) return { medium: "water", scene: "faraday-storm", band: "beta", why: "beta makes fast Faraday ripples" };
+    return { medium: "water", scene: "black-water", band: "gamma", why: "gamma drives a tight, bright ripple" };
+  }
+
+  var follow = true;
+
+  function buildVis() {
+    screenEls.vis.innerHTML =
+      '<div class="rs-pad"></div>' +
+      '<section class="card" aria-labelledby="rsFollowH">' +
+      '  <h3 id="rsFollowH">Follow the session</h3>' +
+      '  <label class="rs-sw"><span class="rs-swt">' +
+      '    <b>Bind the chamber to what plays</b>' +
+      '    <span>The carrier picks the plate mode, the beat sets the pace.</span></span>' +
+      '    <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  <div class="rs-map" id="rsMap" aria-live="polite">No session loaded.</div>' +
+      '  <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
+      '  <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
+      '  <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
+      '    <button data-k="sand" aria-pressed="true">Sand</button>' +
+      '    <button data-k="lines" aria-pressed="true">Lines</button>' +
+      '    <button data-k="dust" aria-pressed="true">Dust</button></div>' +
+      '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
+      '</section>' +
+      '<section class="card" id="rsVizCard" aria-labelledby="rsVizH">' +
+      '  <h3 id="rsVizH">Ambient panels</h3></section>' +
+      '<div class="rs-pad"></div>';
+  }
+
+  function cymApi() {
+    var c = window.ResonanceCymatics;
+    return c && (c.api || c);
+  }
+
+  function syncVis() {
+    var map = $id("rsMap");
+    if (!map) return;
+    var shape = sessionShape();
+    var plan = planFor(shape);
+    if (!plan) { map.textContent = "No session loaded — pick one on Home and the chamber will follow it."; return; }
+    var mode = "—";
+    var c = cymApi();
+    try {
+      if (c && c.debugState) {
+        var s = c.debugState();
+        if (s && s.nearest !== undefined) mode = s.nearest;
+      }
+    } catch (e) { }
+    map.innerHTML = "carrier <b>" + shape.carrier.toFixed(1) + " Hz</b> · rate <b>" +
+      shape.beat.toFixed(1) + " Hz</b> " + plan.band + "<br>" + plan.why +
+      " · plate mode <b>" + mode + "</b>";
+    $$("#rsScenes button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-scene") === plan.scene ? "true" : "false");
+    });
+    $$("#rsMedia button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-medium") === plan.medium ? "true" : "false");
+    });
+  }
+
+  function wireVis() {
+    SCENES.forEach(function (s) {
+      var b = doc.createElement("button");
+      b.type = "button";
+      b.textContent = s[1];
+      b.setAttribute("data-scene", s[0]);
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () { applyVis({ scene: s[0] }); });
+      $id("rsScenes").appendChild(b);
+    });
+    MEDIA.forEach(function (m) {
+      var b = doc.createElement("button");
+      b.type = "button";
+      b.textContent = m[1];
+      b.setAttribute("data-medium", m[0]);
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () { applyVis({ medium: m[0] }); });
+      $id("rsMedia").appendChild(b);
+    });
+    $$("#rsVisToggles button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var on = b.getAttribute("aria-pressed") !== "true";
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        var o = {}; o[b.getAttribute("data-k")] = on; applyVis(o);
+      });
+    });
+    $id("rsFollow").addEventListener("change", function () {
+      follow = this.checked;
+      if (follow) syncVis();
+    });
+    $id("rsChamber").addEventListener("click", openChamber);
+  }
+
+  function applyVis(o) {
+    var c = cymApi(); if (!c) return;
+    try {
+      if (o.scene) c.scene(o.scene);
+      var p = {};
+      if (o.medium) p.medium = o.medium;
+      ["sand", "lines", "dust"].forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; });
+      if (follow) p.src = "session";
+      c.setPrefs(p);
+    } catch (e) { }
+    syncVis();
+  }
+
+  function openChamber() {
+    var c = window.ResonanceCymatics;
+    if (!c) { toast("The chamber is still starting — try again."); return; }
+    var plan = planFor(sessionShape());
+    try {
+      if (plan && c.api && c.api.scene) c.api.scene(plan.scene);
+      if (c.api && c.api.setPrefs) c.api.setPrefs({ src: follow ? "session" : "manual" });
+    } catch (e) { }
+    c.open();
+  }
+
+  /* =============================================================== settings === */
+
+  function buildSettings() {
+    screenEls.settings.innerHTML =
+      '<div class="rs-pad"></div>' +
+      '<section class="card" aria-labelledby="rsApprH">' +
+      '  <h3 id="rsApprH">Appearance</h3>' +
+      '  <div class="rs-seg" id="rsTheme" role="group" aria-label="Theme">' +
+      '    <button data-t="system" aria-pressed="true">System</button><button data-t="dark" aria-pressed="false">Dark</button>' +
+      '    <button data-t="light" aria-pressed="false">Light</button></div>' +
+      '  <label class="rs-sw"><span class="rs-swt"><b>Accent from wallpaper</b>' +
+      '    <span>Android 12 and later. Off uses the Resonance teal.</span></span>' +
+      '    <input type="checkbox" id="rsAccent"><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  <label class="rs-sw"><span class="rs-swt"><b>Focus mode</b>' +
+      '    <span>Hide the panels and just listen.</span></span>' +
+      '    <input type="checkbox" id="rsFocus"><span class="rs-track" aria-hidden="true"></span></label>' +
+      '</section>' +
+      '<section class="card" aria-labelledby="rsHelpH">' +
+      '  <h3 id="rsHelpH">Help &amp; about</h3>' +
+      '  <button class="rs-mrow" data-act="guide">' + svg("book", 22) +
+      '    <span class="rs-mtxt"><b>Quick guide</b><span>How to use all of this</span></span>' + svg("chev", 18) + '</button>' +
+      '  <button class="rs-mrow" data-act="check">' + svg("shield", 22) +
+      '    <span class="rs-mtxt"><b>Check device</b><span>What this phone reports</span></span>' + svg("chev", 18) + '</button>' +
+      '  <button class="rs-mrow" data-act="about">' + svg("info", 22) +
+      '    <span class="rs-mtxt"><b>About Resonance Studio</b><span>Version and licences</span></span>' + svg("chev", 18) + '</button>' +
+      '  <button class="rs-mrow" data-act="upd">' + svg("down", 22) +
+      '    <span class="rs-mtxt"><b>Check for updates</b><span>Asks moddys.net</span></span>' + svg("chev", 18) + '</button>' +
+      '</section>' +
+      '<section class="card" aria-labelledby="rsDataH">' +
+      '  <h3 id="rsDataH">Data</h3>' +
+      '  <div class="rs-kv"><b>Saved files</b><span>Downloads/Resonance Studio</span></div>' +
+      '  <div class="rs-kv"><b>Network</b><span>update check + help pages</span></div>' +
+      '  <div class="rs-kv"><b>Version</b><span id="rsVer">—</span></div>' +
+      '  <p class="rs-note">Everything is synthesised on this device. No account, no upload, no analytics.</p>' +
+      '</section>' +
+      '<div class="rs-pad"></div>';
+  }
+
+  function wireSettings() {
+    function paintTheme() {
+      $$("#rsTheme button").forEach(function (b) {
+        b.setAttribute("aria-pressed", (prefs.theme || "system") === b.getAttribute("data-t") ? "true" : "false");
+      });
+    }
+    $$("#rsTheme button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        prefs.theme = b.getAttribute("data-t"); savePrefs(); applyTheme(); paintTheme();
+      });
+    });
+    paintTheme();
+    var acc = $id("rsAccent");
+    acc.checked = prefs.accent === "system";
+    acc.addEventListener("change", function () {
+      prefs.accent = this.checked ? "system" : "brand"; savePrefs(); applyTheme();
+    });
+    var fo = $id("rsFocus");
+    fo.checked = doc.body.classList.contains("focus");
+    fo.addEventListener("change", function () {
+      var b = $id("focusBtn");
+      if (b) b.click();
+      fo.checked = doc.body.classList.contains("focus");
+    });
+    screenEls.settings.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-act]");
+      if (!b) return;
+      var a = b.getAttribute("data-act");
+      if (a === "guide") openGuide();
+      else if (a === "check") openCheck();
+      else if (a === "about") openAbout();
+      else if (a === "upd") { toast("Checking for updates…"); native("checkUpdate", []); }
+    });
+  }
+
+  /* ================================================================ overflow === */
+
+  var ROWS = [
+    ["guide", "Quick guide", "How to use all of this", "book"],
+    ["check", "Check device", "What this phone reports", "shield"],
+    ["about", "About Resonance Studio", "Version and licences", "info"],
+    ["upd", "Check for updates", "Asks moddys.net", "down"]
+  ];
+
+  var sheetEl = null;
+  var SHEET = { open: false };
+
+  function buildSheet() {
+    sheetEl = doc.createElement("div");
+    sheetEl.id = "rsSheet";
+    sheetEl.setAttribute("role", "dialog");
+    sheetEl.setAttribute("aria-label", "More");
+    var html = '<div class="rs-grab" id="rsGrab"><i></i></div>' +
+      '<div class="rs-shead"><b>More</b></div><div class="rs-sbody">';
+    ROWS.forEach(function (r) {
+      html += '<button class="rs-mrow" data-act="' + r[0] + '">' + svg(r[3], 22) +
+        '<span class="rs-mtxt"><b>' + r[1] + '</b><span>' + r[2] + '</span></span>' + svg("chev", 18) + '</button>';
+    });
+    html += '</div>';
+    sheetEl.innerHTML = html;
+    doc.body.appendChild(sheetEl);
+
+    var y = 0, dragging = false, startY = 0, startOff = 0;
+    function height() { return sheetEl.offsetHeight || Math.round(window.innerHeight * 0.6); }
+    function apply(off, animate) {
+      sheetEl.classList.toggle("rs-drag", animate === false);
+      sheetEl.style.transform = "translateY(" + off + "px)";
+      y = off;
+    }
+    function setOpen(open) {
+      SHEET.open = !!open;
+      sheetEl.classList.toggle("rs-open", SHEET.open);
+      apply(SHEET.open ? 0 : height(), true);
+      doc.documentElement.classList.toggle("rs-locked", SHEET.open);
+      var ov = $id("rsOverflow");
+      if (ov) ov.setAttribute("aria-expanded", SHEET.open ? "true" : "false");
+      if (SHEET.open) markBack();
+    }
+    openSheet = function (open) { if (!open && !SHEET.open) return; setOpen(open); };
+
+    function down(ev) {
+      if (ev.isPrimary === false) return;
+      dragging = true; startY = ev.clientY; startOff = y;
+      sheetEl.classList.add("rs-drag");
+    }
+    function move(ev) {
+      if (!dragging) return;
+      var next = Math.min(height(), Math.max(0, startOff + (ev.clientY - startY)));
+      apply(next, false);
+      ev.preventDefault();
+    }
+    function up(ev) {
+      if (!dragging) return;
+      dragging = false;
+      sheetEl.classList.remove("rs-drag");
+      var dy = ev.clientY - startY;
+      var wasOpen = SHEET.open;
+      if (Math.abs(dy) < 20) { setOpen(false); }
+      else setOpen(dy < 0);
+      if (wasOpen && !SHEET.open) unmarkBackTop();
+    }
+    sheetEl.querySelector("#rsGrab").addEventListener("pointerdown", down, { passive: true });
+    doc.addEventListener("pointermove", move, { passive: false });
+    doc.addEventListener("pointerup", up, { passive: true });
+    doc.addEventListener("pointercancel", up, { passive: true });
+
+    sheetEl.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-act]");
+      if (!b) return;
+      var a = b.getAttribute("data-act");
+      var wasOpen = SHEET.open;
+      setOpen(false);
+      if (wasOpen) unmarkBackTop();
+      if (a === "guide") openGuide();
+      else if (a === "check") openCheck();
+      else if (a === "about") openAbout();
+      else if (a === "upd") { toast("Checking for updates…"); native("checkUpdate", []); }
+    });
+    apply(height(), true);
+  }
+  var openSheet = function () { };
+
+  /* ================================================================ overlays === */
 
   var overlays = [];
 
   function overlayCss() {
     injectCss([
-      ".rs-ov{position:fixed;inset:0;z-index:85;display:none;flex-direction:column;",
-      "  background:var(--bg,#0e0b09);color:var(--ink,#f2e6d8);font:15px/1.55 var(--sans,system-ui)}",
+      ".rs-ov{position:fixed;top:0;right:0;bottom:0;left:0;z-index:95;display:none;flex-direction:column;",
+      "  background:var(--rs-bg);color:var(--rs-ink);font:15px/1.55 inherit}",
       ".rs-ov.rs-ov-on{display:flex}",
       ".rs-ov .rs-ov-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;",
-      "  padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;",
-      "  border-bottom:1px solid var(--line,#3a2c20)}",
-      ".rs-ov .rs-ov-head b{flex:1 1 auto;font-size:16px}",
-      ".rs-ov .rs-ov-x{flex:0 0 auto;width:42px;height:42px;border-radius:50%;",
-      "  border:1.5px solid var(--line2,#5a452c);background:transparent;color:inherit;",
-      "  font-size:17px;cursor:pointer}",
-      ".rs-ov .rs-ov-body{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;",
-      "  padding:14px 16px calc(26px + env(safe-area-inset-bottom,0px))}",
-      ".rs-ov h4{margin:18px 0 6px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;",
-      "  color:var(--acc,#e0b96f)}",
+      "  padding:calc(8px + " + SAFE_T + ") 10px 8px 18px;border-bottom:1px solid var(--rs-line)}",
+      ".rs-ov .rs-ov-head b{flex:1 1 auto;font-size:18px}",
+      ".rs-ov .rs-ov-body{flex:1 1 auto;overflow-y:auto;padding:16px 18px calc(28px + " + SAFE_B + ")}",
+      ".rs-ov h4{margin:20px 0 6px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;",
+      "  color:var(--rs-pri)}",
       ".rs-ov h4:first-child{margin-top:0}",
-      ".rs-ov p{margin:0 0 10px;color:var(--ink-dim,#b9a48c)}",
-      ".rs-ov p b,.rs-ov li b{color:var(--ink,#f2e6d8)}",
-      ".rs-ov ul{margin:0 0 10px;padding-left:18px;color:var(--ink-dim,#b9a48c)}",
-      ".rs-ov .rs-report{font-family:var(--mono,monospace);font-size:12px;white-space:pre-wrap;",
-      "  background:var(--panel,#1b1510);border:1px solid var(--line,#3a2c20);border-radius:10px;",
-      "  padding:10px;margin:8px 0;color:var(--ink-dim,#b9a48c)}",
-      ".rs-ov .rs-crow{display:flex;gap:10px;align-items:baseline;padding:9px 10px;",
-      "  font-size:13px;border-bottom:1px solid var(--line,#3a2c20)}",
+      ".rs-ov p{margin:0 0 10px;color:var(--rs-dim)}",
+      ".rs-ov p b,.rs-ov li b{color:var(--rs-ink)}",
+      ".rs-ov ul{margin:0 0 10px;padding-left:18px;color:var(--rs-dim)}",
+      ".rs-ov .rs-report{font-family:ui-monospace,monospace;font-size:12px;white-space:pre-wrap;",
+      "  background:var(--rs-s1);border:1px solid var(--rs-line);border-radius:12px;padding:12px;",
+      "  margin:8px 0;color:var(--rs-dim)}",
+      ".rs-ov .rs-crow{display:flex;gap:10px;align-items:baseline;padding:11px 12px;font-size:13px;",
+      "  border-bottom:1px solid var(--rs-line)}",
       ".rs-ov .rs-crow:last-child{border-bottom:0}",
-      ".rs-ov .rs-crow b{flex:0 0 auto;min-width:118px;color:var(--ink,#f2e6d8)}",
-      ".rs-ov .rs-crow span{color:var(--ink-dim,#b9a48c)}",
+      ".rs-ov .rs-crow b{flex:0 0 auto;min-width:112px}",
+      ".rs-ov .rs-crow span{color:var(--rs-dim)}",
       ".rs-ov .rs-crow i{font-style:normal;font-weight:800}",
-      ".rs-ov .rs-crow.ok i{color:var(--good,#93c793)}",
-      ".rs-ov .rs-crow.warn i{color:var(--bad,#e0604f)}",
-      ".rs-ov button.rs-cta{width:100%;min-height:46px;border-radius:12px;margin:8px 0;",
-      "  border:1.5px solid var(--acc,#e0b96f);background:transparent;color:var(--acc,#e0b96f);",
-      "  font:inherit;font-weight:700;cursor:pointer}",
-      ".rs-ov a{color:var(--acc2,#f2ddb0)}"
-    ].join(""), "rsOvCss");
+      ".rs-ov .rs-crow.ok i{color:var(--rs-good)}",
+      ".rs-ov .rs-crow.warn i{color:var(--rs-bad)}",
+      ".rs-ov button.rs-cta{width:100%;min-height:48px;border-radius:14px;margin:8px 0;",
+      "  border:1px solid var(--rs-pri);background:transparent;color:var(--rs-pri);",
+      "  font:600 15px/1 inherit;cursor:pointer}",
+      ".rs-ov a{color:var(--rs-pri)}"
+    ].join("\n"), "rsOvCss");
   }
 
   function buildOverlay(id, title, bodyHtml) {
@@ -532,9 +1116,11 @@
     var ov = doc.createElement("div");
     ov.className = "rs-ov";
     ov.id = id;
+    ov.setAttribute("role", "dialog");
+    ov.setAttribute("aria-label", title);
     ov.innerHTML =
       '<div class="rs-ov-head"><b>' + title + '</b>' +
-      '<button class="rs-ov-x" data-ov-x="' + id + '" aria-label="Close">\u2715</button></div>' +
+      '<button class="rs-ico" data-ov-x="' + id + '" aria-label="Close">' + svg("close") + '</button></div>' +
       '<div class="rs-ov-body">' + bodyHtml + '</div>';
     doc.body.appendChild(ov);
     ov.addEventListener("click", function (ev) {
@@ -548,6 +1134,8 @@
     ov.classList.add("rs-ov-on");
     doc.documentElement.classList.add("rs-locked");
     markBack();
+    var x = ov.querySelector("[data-ov-x]");
+    if (x) { try { x.focus(); } catch (e) { } }
   }
   function closeOverlay(ov, fromPop) {
     ov.classList.remove("rs-ov-on");
@@ -559,8 +1147,6 @@
     return FS.on;
   }
 
-  /* One history entry per opened layer, so Android's back button closes the topmost
-     layer first - and only then leaves the app. */
   var backStack = 0;
   function markBack() {
     try { history.pushState({ rsLayer: ++backStack }, ""); } catch (e) { }
@@ -569,6 +1155,7 @@
     if (history.state && history.state.rsLayer) { try { history.back(); } catch (e) { } }
   }
   window.addEventListener("popstate", function () {
+    if (SHEET.open) { openSheet(false); return; }
     var top = null;
     for (var i = overlays.length - 1; i >= 0; i--) {
       if (overlays[i].classList.contains("rs-ov-on")) { top = overlays[i]; break; }
@@ -577,7 +1164,7 @@
     if (FS.on) { exitFullscreen(true); return; }
   });
 
-  /* ------------------------------------------------------------- quick guide ---- */
+  /* ------------------------------------------------------------- quick guide --- */
 
   function openGuide() {
     var ov = doc.getElementById("rsGuide");
@@ -585,58 +1172,48 @@
       ov = buildOverlay("rsGuide", "Quick guide",
         '<h4>What this is</h4>' +
         '<p>A tone, beat and noise studio that runs entirely on this device. Everything is ' +
-        'synthesised live \u2014 nothing streams, nothing is uploaded, there is no account. ' +
-        'The built-in sessions are ready to play; everything about them can be changed.</p>' +
+        'synthesised live — nothing streams, nothing is uploaded, there is no account. The ' +
+        'built-in sessions are ready to play; everything about them can be changed.</p>' +
         '<h4>Start here</h4>' +
         '<ul>' +
-        '<li><b>Sessions</b> \u2014 tap one (search "sleep", "focus", "speaker", "7.83").</li>' +
-        '<li><b>Play</b> \u2014 the round button in the bar below. The bar follows you everywhere.</li>' +
-        '<li><b>Stop</b> rewinds; <b>Pause</b> keeps your place.</li>' +
+        '<li><b>Home</b> — tap Sleep, Focus, Relax or Wake and it plays.</li>' +
+        '<li><b>Build a tone</b> — set a carrier and a beat, pick a bed, press play.</li>' +
+        '<li><b>Sessions</b> — the whole library, searchable. Tap a row to load it.</li>' +
         '</ul>' +
         '<h4>Headphones or speakers?</h4>' +
-        '<p><b>Binaural pair</b> sessions need headphones \u2014 the beat is created in your ' +
-        'hearing, not in the file. The <b>Speakers</b> pack and the isochronic pulses work on ' +
-        'any loudspeaker, and nothing in them depends on a difference between your ears. The ' +
-        '"What you hear" panel says which you are holding.</p>' +
-        '<h4>The visualizer</h4>' +
-        '<p>Tap any visual panel \u2014 or the \u25D0 button in the bar \u2014 and it fills the ' +
-        'screen, with a small play/pause at the bottom. Tap the picture to hide those controls, ' +
-        'X or the back button to return. The panels are capped well below the flashing ' +
-        'thresholds, and can be switched off in Visualizer settings.</p>' +
+        '<p><b>Binaural pair</b> sessions need headphones — the beat is created in your hearing, ' +
+        'not in the file. The <b>Speakers</b> pack and the isochronic pulses work on any ' +
+        'loudspeaker, and nothing in them depends on a difference between your ears.</p>' +
+        '<h4>Visualise</h4>' +
+        '<p>The chamber takes the session’s own carrier and beat and draws the figure that tone ' +
+        'actually drives on a plate, in water or as bubbles. Open it from Visualise; the back ' +
+        'button returns. The panels are capped below the flashing thresholds.</p>' +
         '<h4>Make it yours</h4>' +
         '<ul>' +
         '<li><b>Quick picks</b> adds one layer to the current sound.</li>' +
-        '<li><b>Voices &amp; entries</b> edits each layer\u2019s schedule: every entry ramps into ' +
-        'the next one\u2019s values, and the last wraps around to the first.</li>' +
-        '<li><b>Files &amp; export</b> saves .gnaural files, exports WAV audio, and copies a ' +
-        'share link that opens the same schedule on moddys.net.</li>' +
+        '<li><b>Voices &amp; entries</b> edits each layer’s schedule: every entry ramps into the ' +
+        'next one’s values, and the last wraps around to the first.</li>' +
+        '<li><b>Files &amp; export</b> saves .gnaural files, exports WAV audio and copies a share ' +
+        'link that opens the same schedule on moddys.net.</li>' +
         '</ul>' +
         '<h4>Your files</h4>' +
         '<p><b>Open .gnaural</b> and <b>Add pack (.zip)</b> import from anywhere on the phone. ' +
         '<b>Save .gnaural</b>, <b>Export WAV</b> and <b>Pack downloads</b> all write to ' +
         '<b>Downloads/Resonance Studio</b>. Everything works offline.</p>' +
-        '<h4>Timer, pacer, mute</h4>' +
-        '<p><b>Live tools</b> has a session timer (stop after N minutes), a breathing pacer ' +
-        'that follows the sound, and Mute \u2014 which stops everything instantly.</p>' +
         '<h4>While the screen is off</h4>' +
         '<p>Leave the app or lock the screen and the session keeps going; the notification has ' +
         'pause and stop. Swiping the app away ends the session.</p>' +
-        '<h4>Skins</h4>' +
-        '<p><b>Forge</b> (warm), <b>nocturne</b> (cool), <b>paper</b> (light) \u2014 from the menu.</p>' +
         '<h4>Care</h4>' +
-        '<p>Keep volumes moderate \u2014 a pulse train is more alerting than a steady tone at the ' +
-        'same level, and if you have to raise your voice to be heard at arm\u2019s length it is ' +
-        'too loud. If you have epilepsy or a seizure disorder, ask a clinician before using ' +
-        'repetitive pulsed tones. Skip it while driving or operating machinery, and stop if it ' +
-        'feels unpleasant. <b>Not a medical device or treatment.</b></p>' +
-        '<h4>Offline</h4>' +
-        '<p>The whole studio is inside the app. Only the update check and the full help pages ' +
-        'touch the network.</p>');
+        '<p>Keep volumes moderate — a pulse train is more alerting than a steady tone at the same ' +
+        'level, and if you have to raise your voice to be heard at arm’s length it is too loud. If ' +
+        'you have epilepsy or a seizure disorder, ask a clinician before using repetitive pulsed ' +
+        'tones. Skip it while driving or operating machinery, and stop if it feels unpleasant. ' +
+        '<b>Not a medical device or treatment.</b></p>');
     }
     showOverlay(ov);
   }
 
-  /* ------------------------------------------------------------ device check ---- */
+  /* ------------------------------------------------------------ device check --- */
 
   var DEV = {};
   function deviceFacts() {
@@ -649,57 +1226,48 @@
 
   function audioPathText() {
     var m = pState() ? (pState().mode || "") : "";
-    if (m === "worklet") return "AudioWorklet \u2014 full quality";
-    if (m === "spn") return "Script fallback \u2014 reduced efficiency";
+    if (m === "worklet") return "AudioWorklet — full quality";
+    if (m === "spn") return "Script fallback — reduced efficiency";
     return m ? m : "not started yet";
   }
 
   function checkReport() {
     var d = deviceFacts();
     var c = d.compat || {};
-    var lines = [
+    return [
       APP_NAME + " " + (d.app || "?") + " (Android)",
       "Device: " + (d.manufacturer || "?") + " " + (d.model || "?"),
       "Android: " + (d.release || "?") + " (API " + (d.api || "?") + ")",
       "WebView: " + (d.webview || "?"),
       "Audio path: " + audioPathText(),
       "Notifications: " + (d.notifications ? "granted" : "not granted"),
-      "Compatibility: " + (c.system || "?") + " \u2014 " +
+      "Compatibility: " + (c.system || "?") + " — " +
         (c.supported ? (c.recommended ? "supported" : "supported, older than tuned-for") : "NOT supported")
-    ];
-    return lines.join("\n");
+    ].join("\n");
   }
 
   function checkRows() {
     var d = deviceFacts();
-    var c = d.compat || {};
     var rows = [];
     function row(ok, label, detail) { rows.push({ ok: ok, label: label, detail: detail }); }
     row(true, "Device", (d.manufacturer || "?") + " " + (d.model || "?"));
-
-    var api = d.api || 0;
-    row(api >= 30, "Android", (d.release || "?") + " (API " + api + ")" +
-      (api >= 30 ? "" : " \u2014 tuned for Android 11+; this release runs, with rough edges"));
-
+    var apiN = d.api || 0;
+    row(apiN >= 30, "Android", (d.release || "?") + " (API " + apiN + ")" +
+      (apiN >= 30 ? "" : " — tuned for Android 11+; this release runs, with rough edges"));
     row(true, "Engine", d.webview || "unknown");
-
     var mode = pState() ? (pState().mode || "") : "";
     row(mode !== "spn", "Audio path", audioPathText());
-
     row(!!d.notifications, "Notifications", d.notifications
-      ? "granted \u2014 the lock screen can pause and stop"
-      : "not granted \u2014 background play still works, the notification does not show");
-
-    var body = '<div class="rs-report" style="border:0;padding:0;background:transparent"></div>';
-    body = "";
-    for (var i = 0; i < rows.length; i++) {
-      body += '<div class="rs-crow ' + (rows[i].ok ? "ok" : "warn") + '">' +
-        '<i>' + (rows[i].ok ? "\u2713" : "!") + '</i><b>' + rows[i].label + '</b>' +
-        '<span>' + rows[i].detail + '</span></div>';
-    }
-    body += '<button class="rs-cta" id="rsCopyReport">\u29C9 Copy report</button>';
-    body += '<p style="font-size:12.5px">The report is plain text \u2014 paste it anywhere to ' +
-            'describe exactly what this device reports.</p>';
+      ? "granted — the lock screen can pause and stop"
+      : "not granted — background play still works, the notification does not show");
+    var body = "";
+    rows.forEach(function (r) {
+      body += '<div class="rs-crow ' + (r.ok ? "ok" : "warn") + '"><i>' + (r.ok ? "✓" : "!") +
+        '</i><b>' + r.label + '</b><span>' + r.detail + '</span></div>';
+    });
+    body += '<button class="rs-cta" id="rsCopyReport">Copy report</button>' +
+      '<p style="font-size:12.5px">The report is plain text — paste it anywhere to describe ' +
+      'exactly what this device reports.</p>';
     return body;
   }
 
@@ -711,8 +1279,8 @@
     var copy = body.querySelector("#rsCopyReport");
     if (copy) copy.addEventListener("click", function () {
       var ok = native("copy", [checkReport()]);
-      copy.textContent = ok ? "\u2713 Copied" : "\u2715 Copy failed";
-      window.setTimeout(function () { copy.innerHTML = "\u29C9 Copy report"; }, 2000);
+      copy.textContent = ok ? "✓ Copied" : "✕ Copy failed";
+      window.setTimeout(function () { copy.textContent = "Copy report"; }, 2000);
     });
     showOverlay(ov);
   }
@@ -722,18 +1290,19 @@
     if (!ov) {
       var d = deviceFacts();
       ov = buildOverlay("rsAbout", "About Resonance Studio",
-        '<h4>' + APP_NAME + ' <span style="color:var(--ink-faint,#7d6a58);font-size:13px">v' +
-        (d.app || "?") + ' \u00B7 Android</span></h4>' +
-        '<p>The mobile home of <b>Gnaural Web</b>, bundled from <b>moddys.net/resonance</b> \u2014 ' +
+        '<h4>' + APP_NAME + ' <span style="color:var(--rs-out);font-size:13px">v' +
+        esc(d.app || "?") + ' · Android</span></h4>' +
+        '<p>The mobile home of <b>Gnaural Web</b>, bundled from <b>moddys.net/resonance</b> — ' +
         'binaural and monaural beats, isochronic pulses and noise beds, with the full session ' +
-        'library, schedule editor and visualizers built in. Everything is synthesised on this ' +
+        'library, schedule editor and visualisers built in. Everything is synthesised on this ' +
         'device; nothing streams and nothing is collected.</p>' +
         '<h4>Licences</h4>' +
-        '<p><b>Gnaural Web</b> is a browser re-implementation of Gnaural\u2019s scheduling engine ' +
-        'and .gnaural format. Gnaural is \u00A9 Bret Logan and contributors: the upstream engine is ' +
-        'LGPL-2.1-or-later and this port keeps those terms; the rest of the app is GPL-2.0-or-later. ' +
-        'The full texts ship inside the app (app/COPYING, app/COPYING.LESSER) and on the site. ' +
-        'Not affiliated with the upstream project, the Monroe Institute or any other programme.</p>' +
+        '<p><b>Gnaural Web</b> is a browser re-implementation of Gnaural’s scheduling engine and ' +
+        '.gnaural format. Gnaural is © Bret Logan and contributors: the upstream engine is ' +
+        'LGPL-2.1-or-later and this port keeps those terms; the rest of the app is ' +
+        'GPL-2.0-or-later. The full texts ship inside the app (app/COPYING, app/COPYING.LESSER) ' +
+        'and on the site. Not affiliated with the upstream project, the Monroe Institute or any ' +
+        'other programme.</p>' +
         '<h4>More</h4>' +
         '<button class="rs-cta" data-about-ext="https://moddys.net/resonance/help/">Full help on moddys.net</button>' +
         '<button class="rs-cta" data-about-ext="https://moddys.net/resonance/credits/">Credits &amp; licence</button>' +
@@ -741,7 +1310,7 @@
       ov.addEventListener("click", function (ev) {
         var b = ev.target.closest("[data-about-ext]");
         if (b) { native("url", [b.getAttribute("data-about-ext")]); return; }
-        if (ev.target.closest("#rsAboutUpd")) { toast("Checking for updates\u2026"); native("checkUpdate", []); }
+        if (ev.target.closest("#rsAboutUpd")) { toast("Checking for updates…"); native("checkUpdate", []); }
       });
     }
     showOverlay(ov);
@@ -750,46 +1319,42 @@
   /* ======================================================= fullscreen viz === */
   /* The active visual panel is MOVED (never copied) into a fullscreen layer, so the
      page's own visualizer code keeps drawing into it. A resize event makes the viz
-     system re-fit its canvas to the new box - the same path it uses when a phone
-     rotates. */
+     system re-fit its canvas to the new box. */
 
   var FS = { on: false, host: null, home: null, homeNext: null };
 
   function fsCss() {
     injectCss([
-      "#rsFs{position:fixed;inset:0;z-index:90;background:#000;display:none}",
+      "#rsFs{position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:#000;display:none}",
       "html.rs-fs #rsFs{display:block}",
-      "html.rs-fs #rsBar{display:none}",
-      "html.rs-fs #rsSheet{display:none}",
-      "#rsFsStage{position:absolute;inset:0;overflow:hidden}",
-      "html.rs-fs .rs-fs-host{position:absolute !important;inset:0 !important;width:100% !important;",
-      "  height:100% !important;margin:0 !important;padding:0 !important;border:0 !important;",
-      "  border-radius:0 !important;background:transparent !important;box-shadow:none !important;",
-      "  min-height:0 !important}",
+      "html.rs-fs #rsApp{display:none}",
+      "#rsFsStage{position:absolute;top:0;right:0;bottom:0;left:0;overflow:hidden}",
+      "html.rs-fs .rs-fs-host{position:absolute !important;top:0 !important;right:0 !important;",
+      "  bottom:0 !important;left:0 !important;width:100% !important;height:100% !important;",
+      "  margin:0 !important;padding:0 !important;border:0 !important;border-radius:0 !important;",
+      "  background:transparent !important;box-shadow:none !important;min-height:0 !important}",
       "html.rs-fs .rs-fs-host h3{display:none !important}",
       "html.rs-fs .rs-fs-host .viz-canvas{width:100% !important;height:100% !important;",
       "  max-width:none !important;border-radius:0 !important}",
-      "#rsFsTop{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:14px;right:12px;",
-      "  display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.72);",
-      "  font:13px/1.3 var(--sans,system-ui);pointer-events:none;transition:opacity .25s;z-index:2}",
+      "#rsFsTop{position:absolute;top:calc(10px + " + SAFE_T + ");left:14px;right:12px;display:flex;",
+      "  align-items:center;gap:10px;color:rgba(255,255,255,.75);font:13px/1.3 inherit;",
+      "  pointer-events:none;transition:opacity .25s;z-index:2}",
       "#rsFsTop .rs-fs-title{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;",
       "  text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.8)}",
-      "#rsFsTop button{pointer-events:auto;width:42px;height:42px;border-radius:50%;",
+      "#rsFsTop button{pointer-events:auto;width:48px;height:48px;border-radius:50%;",
       "  border:1px solid rgba(255,255,255,.28);background:rgba(20,17,13,.42);color:#fff;",
-      "  font-size:17px;cursor:pointer;backdrop-filter:blur(6px)}",
-      "#rsFsCtl{position:absolute;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));",
-      "  display:flex;justify-content:center;align-items:center;gap:16px;z-index:2;",
-      "  pointer-events:none;transition:opacity .25s}",
+      "  font-size:17px;cursor:pointer}",
+      "#rsFsCtl{position:absolute;left:0;right:0;bottom:calc(18px + " + SAFE_B + ");display:flex;",
+      "  justify-content:center;align-items:center;gap:16px;z-index:2;pointer-events:none;",
+      "  transition:opacity .25s}",
       "#rsFsCtl button{pointer-events:auto;border-radius:50%;border:1px solid rgba(255,255,255,.28);",
-      "  background:rgba(20,17,13,.42);color:#fff;backdrop-filter:blur(6px);cursor:pointer}",
-      "#rsFsCtl .rs-fs-play{width:54px;height:54px;font-size:20px}",
-      "#rsFsCtl .rs-fs-stop{width:42px;height:42px;font-size:14px}",
-      /* the visualizer's own status badge ("paused", "x1 slowed") rises above the
-         controls instead of hiding behind them */
-      "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(86px + env(safe-area-inset-bottom,0px)) !important;opacity:.6}",
+      "  background:rgba(20,17,13,.42);color:#fff;cursor:pointer}",
+      "#rsFsCtl .rs-fs-play{width:58px;height:58px;font-size:20px}",
+      "#rsFsCtl .rs-fs-stop{width:46px;height:46px;font-size:14px}",
+      "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:.6}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
       "html.rs-fs-hide #rsFsCtl button,html.rs-fs-hide #rsFsTop button{pointer-events:none}"
-    ].join(""), "rsFsCss");
+    ].join("\n"), "rsFsCss");
   }
 
   function buildFs() {
@@ -799,24 +1364,18 @@
     fs.innerHTML =
       '<div id="rsFsStage" data-rs="fsStage"></div>' +
       '<div id="rsFsTop"><span class="rs-fs-title" id="rsFsTitle"></span>' +
-      '<button data-rs="fsExit" aria-label="Close the visualizer">\u2715</button></div>' +
-      '<div id="rsFsCtl">' +
-      '<button class="rs-fs-play" data-rs="fsPlay" aria-label="Play or pause">\u25B6</button>' +
-      '<button class="rs-fs-stop" data-rs="fsStop" aria-label="Stop">\u25A0</button>' +
-      '</div>';
+      '<button data-rs="fsExit" aria-label="Close the visualiser">✕</button></div>' +
+      '<div id="rsFsCtl"><button class="rs-fs-play" data-rs="fsPlay" aria-label="Play or pause">▶</button>' +
+      '<button class="rs-fs-stop" data-rs="fsStop" aria-label="Stop">■</button></div>';
     doc.body.appendChild(fs);
     fs.addEventListener("click", function (ev) {
       var b = ev.target.closest("[data-rs]");
-      if (b) {
-        var act = b.getAttribute("data-rs");
-        if (act === "fsExit") { exitFullscreen(false); return; }
-        if (act === "fsPlay") { pageToggle(); pushState(true); return; }
-        if (act === "fsStop") { pageStop(); pushState(true); return; }
-        if (act === "fsStage") {
-          doc.documentElement.classList.toggle("rs-fs-hide");
-          return;
-        }
-      }
+      if (!b) return;
+      var act = b.getAttribute("data-rs");
+      if (act === "fsExit") { exitFullscreen(false); return; }
+      if (act === "fsPlay") { pageToggle(); pushState(true); return; }
+      if (act === "fsStop") { pageStop(); pushState(true); return; }
+      if (act === "fsStage") { doc.documentElement.classList.toggle("rs-fs-hide"); return; }
     });
     return fs;
   }
@@ -825,7 +1384,7 @@
     if (FS.on) return;
     var cv = doc.querySelector("[data-viz-panel]");
     var viz = window.ResonanceViz && window.ResonanceViz.api;
-    if (!cv) { toast("The visualizer is still starting \u2014 try again in a moment."); return; }
+    if (!cv) { toast("The visualiser is still starting — try again in a moment."); return; }
     if (viz) { try { if (!viz.getPrefs().on) viz.enable(true); } catch (e) { } }
     var host = cv.classList && cv.classList.contains("viz-flank")
       ? cv : (cv.closest(".viz-inline") || cv.parentElement);
@@ -866,13 +1425,10 @@
     var fs = doc.getElementById("rsFs");
     if (!fs) return;
     var play = fs.querySelector('[data-rs="fsPlay"]');
-    if (play) play.textContent = isPlaying() ? "\u275A\u275A" : "\u25B6";
+    if (play) play.textContent = isPlaying() ? "❚❚" : "▶";
   }
 
-  /* ============================================================== downloads === */
-  /* The page saves through blob: URLs, which a WebView cannot download itself. The
-     shell reads the blob and streams it to the native side in chunks, so exports of
-     any length (a 20-minute WAV is ~200 MB) land in Downloads/Resonance Studio. */
+  /* ================================================================ downloads === */
 
   function mimeOf(name) {
     if (/\.wav$/i.test(name)) return "audio/wav";
@@ -903,7 +1459,7 @@
       }
       if (chunk.length && !native("fileChunk", [b64(chunk)])) { failed = true; return false; }
       if (total > 3 * 1024 * 1024) {
-        toast("Saving " + name + "\u2026 " + Math.round(done / 1048576) + " MB");
+        toast("Saving " + name + "… " + Math.round(done / 1048576) + " MB");
       }
       return true;
     }
@@ -914,27 +1470,23 @@
           if (!send()) { toast("Could not save " + name); return; }
           var res = native("fileEnd", []);
           if (res && String(res).indexOf("ok:") === 0) toast("Saved to " + String(res).substring(3));
-          else toast("Could not save " + name + (res ? " \u2014 " + String(res).replace(/^err:/, "") : ""));
+          else toast("Could not save " + name + (res ? " — " + String(res).replace(/^err:/, "") : ""));
           return;
         }
         done += r.value.length;
         buf.push(r.value); buflen += r.value.length;
         if (buflen >= 512 * 1024 && !send()) { toast("Could not save " + name); return; }
         step();
-      }).catch(function () {
-        toast("Could not save " + name);
-      });
+      }).catch(function () { toast("Could not save " + name); });
     }
     fetch(href).then(function (res) {
       if (!res.ok || !res.body) throw new Error("blob read failed");
       var cl = res.headers.get("Content-Length");
       total = cl ? parseInt(cl, 10) : 0;
-      toast("Saving " + name + "\u2026");
+      toast("Saving " + name + "…");
       reader = res.body.getReader();
       step();
-    }).catch(function () {
-      toast("Could not save " + name);
-    });
+    }).catch(function () { toast("Could not save " + name); });
   }
 
   function savePack(a, name) {
@@ -967,8 +1519,6 @@
     }, true);
   }
 
-  /* -------------------------------------------------------------------- copy ---- */
-
   function patchClipboard() {
     try {
       var clip = navigator.clipboard;
@@ -976,9 +1526,6 @@
       var orig = clip.writeText.bind(clip);
       clip.writeText = function (t) {
         var out = String(t == null ? "" : t);
-        /* The share link is built against the page's own origin; inside the app that is the
-           private asset origin, and in the harness a 127.0.0.1 one. The link is the one
-           thing that leaves the app, so rewrite any local address to the real site. */
         var here = location.origin + location.pathname;
         out = out.split(here).join(SITE_BASE);
         out = out.split(location.origin + "/app/").join(SITE_BASE);
@@ -989,11 +1536,6 @@
       };
     } catch (e) { report("clipboard patch: " + e); }
   }
-
-  /* ------------------------------------------------------------------ links ---- */
-  /* This app is one page. Relative links (help/, credits/, NOTICE.txt) and external
-     ones belong in the phone's browser - resolved against the real site, not the app's
-     private origin - so the player is never navigated away from. */
 
   function externalLinks() {
     var realOpen = window.open;
@@ -1007,14 +1549,12 @@
       if (!a) return;
       var href = a.getAttribute("href") || "";
       if (!href || href.charAt(0) === "#") return;
-      if (a.hasAttribute("download")) return;             // save handlers own those
+      if (a.hasAttribute("download")) return;
       if (/^blob:|^data:|^mailto:|^tel:/i.test(href)) return;
-      if (/\.zip($|[?#])/i.test(href)) return;            // pack zips: saved by the shell
+      if (/\.zip($|[?#])/i.test(href)) return;
       var absolute;
       if (/^https?:/i.test(href)) absolute = href;
-      else {
-        try { absolute = new URL(href, SITE_BASE).href; } catch (e) { return; }
-      }
+      else { try { absolute = new URL(href, SITE_BASE).href; } catch (e) { return; } }
       if (absolute.indexOf("appassets.androidplatform.net") !== -1) return;
       ev.preventDefault(); ev.stopPropagation();
       report("link handed to the shell: " + absolute);
@@ -1022,15 +1562,10 @@
     }, true);
   }
 
-  /* -------------------------------------------------------------- keyboard ---- */
-
   function wireSearchKeyboard() {
     var q = $id("search");
     if (!q) return;
-    function commit() {
-      try { q.blur(); } catch (e) { }
-      native("dismissKeyboard", []);
-    }
+    function commit() { try { q.blur(); } catch (e) { } native("dismissKeyboard", []); }
     q.addEventListener("keydown", function (e) {
       if (e.key === "Enter" || e.key === "Go" || e.keyCode === 13) commit();
     });
@@ -1042,31 +1577,24 @@
   var UPD = { state: "unknown", latest: null };
   var updEl = null;
 
-  function updStyle() {
-    injectCss(
-      "#rsUpd{position:fixed;left:0;right:0;top:0;z-index:95;display:flex;gap:9px;align-items:center;" +
-      "padding:calc(9px + env(safe-area-inset-top,0px)) 13px 9px;" +
-      "background:color-mix(in srgb, var(--panel2,#241c15) 97%, transparent);" +
-      "border-bottom:1px solid var(--acc,#e0b96f);color:var(--ink,#f2e6d8);" +
-      "box-shadow:0 8px 22px rgba(0,0,0,.45);" +
-      "font:13px/1.35 var(--sans,system-ui)}" +
-      "#rsUpd .rs-upd-t{flex:1 1 auto;min-width:0}" +
-      "#rsUpd b{color:var(--acc,#e0b96f)}" +
-      "#rsUpd .rs-upd-n{display:block;opacity:.8;font-size:12px}" +
-      "#rsUpd button{flex:0 0 auto;min-height:40px;border:1.5px solid var(--acc,#e0b96f);" +
-      "background:var(--acc,#e0b96f);color:var(--acc-ink,#2a1a08);font-weight:700;" +
-      "border-radius:10px;padding:8px 13px;font:inherit;cursor:pointer}" +
-      "#rsUpd button.rs-alt{background:transparent;color:var(--ink-dim,#b9a48c);border-color:var(--line2,#5a452c)}" +
-      "#rsUpd button:disabled{opacity:.6}", "rsUpdCss");
-  }
-
   function updShow() {
-    updStyle();
+    injectCss(
+      "#rsUpd{position:fixed;left:12px;right:12px;top:calc(10px + " + SAFE_T + ");z-index:125;" +
+      "display:flex;gap:9px;align-items:center;padding:12px;border-radius:16px;" +
+      "background:var(--rs-s3);border:1px solid var(--rs-live);color:var(--rs-ink);" +
+      "box-shadow:0 10px 30px rgba(0,0,0,.5);font:13px/1.35 inherit}" +
+      "#rsUpd .rs-upd-t{flex:1 1 auto;min-width:0}" +
+      "#rsUpd b{color:var(--rs-live)}" +
+      "#rsUpd .rs-upd-n{display:block;opacity:.85;font-size:12px}" +
+      "#rsUpd button{flex:0 0 auto;min-height:44px;border:1px solid var(--rs-live);" +
+      "background:var(--rs-live);color:var(--rs-on-live);font-weight:700;border-radius:12px;" +
+      "padding:8px 13px;font:inherit;cursor:pointer}" +
+      "#rsUpd button.rs-alt{background:transparent;color:var(--rs-dim);border-color:var(--rs-line2)}" +
+      "#rsUpd button:disabled{opacity:.6}", "rsUpdCss");
     if (!updEl) {
       updEl = doc.createElement("div");
       updEl.id = "rsUpd";
-      updEl.innerHTML = '<div class="rs-upd-t"></div>' +
-        '<button data-rs-upd="go"></button>' +
+      updEl.innerHTML = '<div class="rs-upd-t"></div><button data-rs-upd="go"></button>' +
         '<button class="rs-alt" data-rs-upd="later">Later</button>';
       updEl.addEventListener("click", function (e) {
         var b = e.target.closest("[data-rs-upd]");
@@ -1074,7 +1602,7 @@
         if (b.getAttribute("data-rs-upd") === "later") { updEl.style.display = "none"; return; }
         b.disabled = true;
         native("updateApp", [UPD.latest.url, UPD.latest.version, UPD.latest.sha256]);
-        b.textContent = "Downloading\u2026";
+        b.textContent = "Downloading…";
         var note = updEl.querySelector(".rs-upd-n");
         if (note) note.textContent = "Android will ask to install it when the download finishes.";
       });
@@ -1091,103 +1619,134 @@
     updEl.style.display = "";
   }
 
-  function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
-
   window.__rsUpdate = {
-    available: function (info) {
-      UPD.latest = info || {}; UPD.state = "available";
-      try { updShow(); } catch (e) { }
-      return UPD.state;
-    },
-    none: function (latest) {
-      UPD.state = "current"; UPD.latest = latest ? { version: latest } : null;
-      return UPD.state;
-    },
-    failed: function (why) {
-      UPD.state = "failed"; UPD.why = String(why || "");
-      return UPD.state;
-    },
+    available: function (info) { UPD.latest = info || {}; UPD.state = "available"; try { updShow(); } catch (e) { } return UPD.state; },
+    none: function (latest) { UPD.state = "current"; UPD.latest = latest ? { version: latest } : null; return UPD.state; },
+    failed: function (why) { UPD.state = "failed"; UPD.why = String(why || ""); return UPD.state; },
     state: function () { return { state: UPD.state, latest: UPD.latest }; }
   };
 
-  /* =================================================================== tick === */
+  /* ==================================================================== tick === */
 
-  var lastTitle = null;
-
-  function syncBar() {
-    var title = $id("rsTitle"), sub = $id("rsSub");
-    var playing = isPlaying();
-    var sess = sessionTitle() || "Pick a session";
-    if (title && title.textContent !== sess) title.textContent = sess;
-    var src = text($id("nowsrc"));
-    var clk = clockText();
-    var s2 = (src ? src : "\u2014") + (clk ? "  \u00B7  " + clk : "");
-    if (sub && sub.textContent !== s2) sub.textContent = s2;
-    var p = barEl ? barEl.querySelector('[data-rs="play"]') : null;
-    var glyph = playing ? "\u275A\u275A" : "\u25B6";
-    if (p && p.textContent !== glyph) p.textContent = glyph;
-    if (doc.title.indexOf(APP_NAME) === -1 && sess !== "Pick a session") {
-      doc.title = sess + " \u2014 " + APP_NAME;
+  function syncHero() {
+    var t = $id("rsNowTitle"), s = $id("rsNowSrc"), m = $id("rsMode");
+    var sess = sessionTitle();
+    if (t) t.textContent = sess || "Pick a session";
+    if (s) s.textContent = sess ? (text($id("nowsrc")) || "") : "Sleep, focus, relax or build a tone below.";
+    if (m) m.textContent = isPlaying() ? "live" : (modeText() || "idle");
+    var clk = $id("rsClock");
+    if (clk) clk.textContent = clockText() || "0:00 / 0:00";
+    var p = $id("rsPlay");
+    if (p) {
+      var on = isPlaying();
+      if (p.getAttribute("aria-label") !== (on ? "Pause" : "Play")) {
+        p.setAttribute("aria-label", on ? "Pause" : "Play");
+        p.innerHTML = on ? svgFill("pause") : svgFill("play");
+        p.classList.toggle("rs-live", on);
+      }
+      doc.documentElement.classList.toggle("rs-playing", on);
     }
+    var vol = $id("rsVol");
+    if (vol) { var v = masterNow(); if (Math.abs(parseFloat(vol.value) - v) > 0.005) vol.value = String(v); }
+    var lp = $id("rsLoop"), lel = $id("loop");
+    if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
   }
 
-  function syncSheet() {
-    if (!sheetEl || !SHEET.open) return;
-    var t = sheetEl.querySelector("#rsPTitle");
-    var src = sheetEl.querySelector("#rsPSrc");
-    var ti = sheetEl.querySelector("#rsPTime");
-    var sess = sessionTitle() || "(untitled)";
-    if (t && t.textContent !== sess) t.textContent = sess;
-    var stx = text($id("nowsrc")) + (modeText() ? "  \u00B7  " + modeText() : "");
-    if (src && src.textContent !== stx) src.textContent = stx;
-    if (ti && ti.textContent !== clockText()) ti.textContent = clockText() || "0:00 / 0:00";
-    var play = sheetEl.querySelector('[data-rs="sPlay"]');
-    if (play) {
-      var label = isPlaying() ? "\u275A\u275A Pause" : "\u25B6 Play";
-      if (play.textContent !== label) play.textContent = label;
-    }
-    var vol = sheetEl.querySelector("#rsVol");
-    var v = masterNow();
-    if (vol && parseFloat(vol.value) !== v) vol.value = String(v);
-    var pct = sheetEl.querySelector("#rsVolPct");
-    if (pct) pct.textContent = Math.round(v * 100) + "%";
-    var loop = sheetEl.querySelector("#rsLoop");
-    var lel = $id("loop");
-    if (loop && lel && loop.checked !== lel.checked) loop.checked = lel.checked;
-    refreshChips();
-  }
-
-  function syncHdrPills() {
-    var d = deviceFacts();
-    var v = doc.getElementById("rsVerPill");
-    if (v && !v.textContent) v.textContent = "v" + (d.app || "?");
-    var c = doc.getElementById("rsCompatPill");
-    if (c && !c.textContent && d.compat) {
-      if (!d.compat.supported) { c.textContent = "unsupported device"; c.classList.add("warn"); }
-      else if (!d.compat.recommended) { c.textContent = "older than tuned-for"; c.classList.add("warn"); }
-      else { c.textContent = "device ok"; c.classList.add("ok"); }
+  function syncMini() {
+    var mini = $id("rsMini");
+    if (!mini) return;
+    var sess = sessionTitle();
+    var show = !!sess && CUR !== "home";
+    mini.classList.toggle("rs-on", show);
+    if (!show) return;
+    var t = $id("rsMiniTitle");
+    if (t) t.textContent = sess;
+    var tm = $id("rsMiniTime");
+    if (tm) tm.textContent = clockText() || "";
+    var b = $id("rsMiniPlay");
+    if (b) {
+      var on = isPlaying();
+      b.innerHTML = on ? svgFill("pause") : svgFill("play");
+      b.setAttribute("aria-label", on ? "Pause" : "Play");
     }
   }
 
   function tick() {
-    syncBar();
-    syncSheet();
+    syncHero();
+    syncMini();
+    renderTop();
     syncFs();
+    if (CUR === "vis") syncVis();
     pushState(false);
   }
 
-  /* =================================================================== boot === */
+  /* ==================================================================== boot === */
 
   function markAsApp() {
     try { doc.documentElement.classList.add("rs-app"); } catch (e) { }
+    try {
+      var mv = doc.querySelector("meta[name=viewport]");
+      if (mv && mv.getAttribute("content").indexOf("viewport-fit") === -1) {
+        mv.setAttribute("content", mv.getAttribute("content") + ", viewport-fit=cover");
+      }
+    } catch (e) { }
+    applyTheme();
+  }
+
+  /* Move the page's real cards into the screens. The nodes are the page's own; its
+     renderers keep painting into them. */
+  function mountCards() {
+    function cardOf(sel) {
+      var n = typeof sel === "string" ? $(sel) : sel;
+      if (!n) return null;
+      return n.closest("section.card") || n;
+    }
+    var stage = cardOf("#graph");
+    if (stage) {
+      var hero = $(".rs-hero");
+      hero.insertBefore(stage, hero.querySelector(".rs-transport"));
+      $$("h2,h3,.hint", stage).forEach(function (n) { n.style.display = "none"; });
+      stage.classList.remove("stage");
+      stage.style.margin = "0 0 14px";
+    }
+    var hear = cardOf("#hearinfo");
+    if (hear) screenEls.home.appendChild(hear);
+
+    var browse = cardOf("#plist");
+    if (browse) $id("rsBrowse").appendChild(browse);
+    var quick = cardOf("#quickpick");
+    if (quick) $id("rsQuick").appendChild(quick);
+
+    var voices = cardOf("#voicelist");
+    if (voices) $id("rsVoices").appendChild(voices);
+    var live = cardOf("#barL");
+    if (live) $id("rsLive").appendChild(live);
+    var files = cardOf("#loadBtn");
+    if (files) $id("rsFiles").appendChild(files);
+
+    var packs = cardOf("#pklist");
+    if (packs) { packs.id = "rsPacks"; screenEls.settings.appendChild(packs); }
+
+    var kb = $$("section.card").filter(function (c) { return /Keyboard/.test(text(c.querySelector("h3"))); })[0];
+    if (kb && kb.parentNode) kb.parentNode.removeChild(kb);
+
+    var tries = 0;
+    (function adoptViz() {
+      var vc = $id("vizCard");
+      if (vc) {
+        $$("h3", vc).forEach(function (n) { n.style.display = "none"; });
+        $id("rsVizCard").appendChild(vc);
+        return;
+      }
+      if (++tries < 40) window.setTimeout(adoptViz, 250);
+    })();
+
+    var pv = $id("presets");
+    if (pv && pv.parentNode) pv.parentNode.style.display = "none";
   }
 
   markAsApp();
-  appCss();
+  shellCss();
   patchClipboard();
   externalLinks();
   downloadClicks();
@@ -1196,27 +1755,24 @@
   function boot() {
     if (!pageReady()) {
       if (++bootTries <= 60) { window.setTimeout(boot, 250); return; }
-      report("shim: the page never became ready - player bar not built");
+      report("shim: the page never became ready — shell not built");
       return;
     }
-    barEl = buildBar();
-    sheetEl = buildSheet();
-    measureFirstOpen();
-    deviceFacts();
-    syncHdrPills();
+    buildShell();
+    buildHome(); buildSessions(); buildStudio(); buildVis(); buildSettings();
+    buildSheet();
+    mountCards();
+    wireHome(); wireVis(); wireSettings();
     wireSearchKeyboard();
+    deviceFacts();
+    var ver = $id("rsVer");
+    if (ver) ver.textContent = "v" + (deviceFacts().app || "?");
+    go("home", { scroll: false });
     window.setInterval(tick, 1000);
     tick();
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });
-    window.addEventListener("beforeunload", function () {
-      native("state", [false, "", ""]);
-    });
+    window.addEventListener("beforeunload", function () { native("state", [false, "", ""]); });
     report("shim ready | session=" + (sessionTitle() || "none"));
-  }
-
-  function measureFirstOpen() {
-    /* The sheet measures itself when first opened; until then it rests closed. */
-    if (sheetEl) { try { sheetEl.style.transform = "translateY(calc(100% + 30px))"; } catch (e) { } }
   }
 
   /* Tapping a visual panel goes fullscreen - the panel is the button. */
@@ -1239,14 +1795,15 @@
     info: info,
     sheet: function () { return SHEET; },
     menu: function () { openSheet(true); return true; },
-    fullscreen: function () { openSheet(false); enterFullscreen(); },
+    nav: function (id) { go(id); return true; },
+    fullscreen: function () { enterFullscreen(); },
     fullscreenExit: function () { exitFullscreen(false); },
     guide: function () { openGuide(); },
     check: function () { openCheck(); },
     checkReport: checkReport,
     about: function () { openAbout(); },
-    /* From the launch compatibility notice: open the check panel directly. */
-    compat: function () { openSheet(true); openCheck(); },
+    compat: function () { openCheck(); },
+    chamber: openChamber,
     update: window.__rsUpdate,
     viz: function () { enterFullscreen(); }
   };

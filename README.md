@@ -4,196 +4,128 @@
 ![Platform: Android](https://img.shields.io/badge/platform-Android-0A7A6C?style=flat-square)
 [![Latest release](https://img.shields.io/github/v/release/ModdySwag/resonance-android?color=FFB86B&label=release&style=flat-square)](https://github.com/ModdySwag/resonance-android/releases)
 
-**The tone, beat and noise studio, in your pocket.** Resonance Studio's web app, wrapped in the
-Android shell it never had: it keeps playing with the screen off, puts the session on your lock
-screen, and reworks the studio's three-column desktop face for a phone — a player bar that
-follows you, a menu that names every corner of the app, and a fullscreen visualizer with a
-small play/pause at the bottom.
+**The tone, beat and noise studio, built for a phone.**
 
-The web app itself is untouched. The bundled copy is byte-identical to what `moddys.net/resonance`
-serves — the build checks every file against a manifest — so when the site changes, re-sync,
-rebuild, and you have the new version.
+Resonance Studio plays binaural and monaural beats, isochronic pulses and noise beds — a
+hundred ready sessions, a real schedule engine underneath, and a visualiser that shows what
+the tone does to a plate, to water, to a cloud of bubbles. Everything is synthesised on the
+device: no stream, no account, no upload, works in a tunnel.
 
-## Screenshots
-
-The Android build, captured from the app itself:
-
-<img src="screenshots/resonance-android-bar.jpg" width="240" alt="The session browser and the player bar"> <img src="screenshots/resonance-android-menu.jpg" width="240" alt="The menu: sessions, tools, files and the quick guide"> <img src="screenshots/resonance-android-viz.jpg" width="240" alt="The fullscreen visualizer">
-
-<img src="screenshots/resonance-android-tablet.jpg" width="660" alt="A tablet in landscape: the whole studio at once">
-
-## The Cymatic Chamber
-
-A dedicated instrument on the phone: it takes the session's own carrier and beat, solves the
-vibration modes of a real plate, and draws the figure that tone actually drives — sand on the nodal
-lines. Six media, each solved rather than painted: a free steel plate (Rayleigh–Ritz), the classical
-centre-bolted plate, a clamped disc, a drum, Faraday waves on water, and bubble acoustics. Open it
-from the menu; the mode ladder drives any mode exactly.
-
-<img src="screenshots/resonance-android-cymatics.png" width="300" alt="The Cymatic Chamber on Android: a bronze plate with sand along the nodal cross">
+This is the mobile arm of [Resonance Studio](https://moddys.net/resonance/). Since 2.0 it is no
+longer the desktop page with a bar bolted on — it is a purpose-built Android app, and the web
+studio is the engine it drives.
 
 ## What it does
 
-- **One player bar, always there.** Play/pause, stop, the session name, the clock, the
-  fullscreen-visualizer button and the menu, pinned across the bottom. The page's own
-  three-row desktop header is hidden; its controls stay live and are what the bar drives,
-  so there is exactly one source of truth for the sound.
-- **A menu that explains the studio.** Drag the bar up (or tap the title) and a sheet lists
-  every part of the app in plain words — Sessions, Quick picks, the schedule graph, what you
-  are hearing, Voices & entries, Live tools (meter · timer · pacer · mute), Files & export,
-  Pack downloads, the visualizer, skins, focus mode — and jumps to it. Plus the Quick guide,
-  the device check and the update check.
-- **Fullscreen visualizer.** Tap any visual panel — or the ◐ button — and it fills the screen
-  with a small translucent play/pause embedded at the bottom. Tap the picture to hide the
-  controls; the back button or the X returns. The panels are the site's own, with its own
-  flash caps, and stay switch-off-able.
+- **Home starts a sound in one tap.** Sleep, Focus, Relax and Wake tiles, a build-a-tone panel
+  (carrier, beat, optional noise bed) and the current session with its own transport.
+- **A real library.** 100+ sessions with search, packs, favourites and a headphones/speaker
+  split, all editable in place. Nothing is locked, there is nothing to buy.
+- **A Visualise section bound to the session.** The cymatic chamber resolves your carrier onto
+  its mode ladder and breathes at your beat; the medium follows the voice type, and the screen
+  prints the mapping so it is never a mystery. Sand on a plate, ripples on water, bubbles, dust.
+- **A studio when you want one.** Voices and entries with the page's own schedule editor, live
+  meter, session timer, breathing pacer and an instant mute.
+- **Files a phone can live with.** `Open .gnaural`, `Add pack (.zip)`, `Save .gnaural`,
+  `Export WAV` of any length and every pack download land in `Downloads/Resonance Studio`.
 - **Keeps playing, screen off.** A `mediaPlayback` foreground service and a partial wake lock
-  keep the session alive when you leave the app or lock the screen; the notification and the
-  lock screen get pause and stop. The service asks for **no audio focus** — the WebView's own
-  engine does that, exactly once per app, the same lesson the World Radio apps settled on
-  after three releases of learning it the hard way.
-- **A stop with a way back.** Pause keeps the notification with a Play button. A session that
-  finishes on its own (or is paused in the app) lands on that same paused notification, never
-  on a claim about why. Swiping the app away ends the session, as it must - the WebView dies
-  with the task.
-- **Files a phone can live with.** `Open .gnaural` and `Add pack (.zip)` import through the
-  system picker. `Save .gnaural`, `Export WAV` (any length — the shell streams in chunks, so a
-  full-length WAV is fine) and every **Pack download** land in `Downloads/Resonance Studio`.
-  Pack zips are bundled, so that part works with no network at all.
-- **Share links that work.** `Copy share link` builds the site address — the shell rewrites
-  the app's private origin to `moddys.net/resonance` — so the link opens anywhere, including
-  this app's own page on the web.
-- **Offline by default.** The whole studio — engine, worklet, sessions editor, visualizers
-  and all 19 pack archives — is inside the APK. The only network use is the update check and
-  the help/credits pages, which open in the phone's browser.
-- **The same data, saved properly.** Preferences, favourites and imported packs live in the
-  usual `localStorage`, and imports are real files the studio already knows how to read.
-- **Touch-correct.** No double-tap zoom, no tap highlights, no rubber-band bounce; safe-area
-  padding under the bar and in the sheet; every bar control is a 44 px-plus target.
-- **Three skins, dark to light.** Forge, nocturne and paper, from the menu — the bar and the
-  sheet follow the skin's tokens.
+  keep the session alive; the notification and lock screen carry pause and stop. The service
+  asks for no audio focus — the WebView's engine already does, once per app.
+- **Material 3, dark and light.** Tonal surfaces, 48 dp targets, screen-reader labels, reduced
+  motion support, an accent that can follow your wallpaper, and a nav you can work with one
+  thumb.
+
+## Screenshots
+
+<img src="store/01-home.png" width="200" alt="Home: state tiles, the current session and its transport"> <img src="store/03-sessions.png" width="200" alt="The session library"> <img src="store/05-visualise.png" width="200" alt="The Visualise section bound to the session"> <img src="store/06-chamber.png" width="200" alt="The Cymatic Chamber"> <img src="store/07-settings.png" width="200" alt="Settings">
 
 ## Quick start
 
-The build runs in GitHub Actions, so you don't need the Android SDK on your machine.
+The build runs in GitHub Actions, so you don't need the Android SDK here.
 
-1. Push this repo (or open **Actions → Build APK → Run workflow**).
-2. Download the **resonance-debug-apk** artifact when it goes green — or, for a real
-   install, tag `v*` and take the signed APK from the Release.
-3. Copy the `.apk` to your phone and open it, allowing "install unknown apps" for your file
-   manager when prompted. Android will warn about unknown developers — that is the sideload
-   flow, not a problem with the build.
+1. Push this repo (or **Actions → Build APK → Run workflow**).
+2. Take the **resonance-debug-apk** artifact when it goes green — or tag `v*` for a signed
+   release APK **and** the `.aab` the store wants.
+3. Copy the APK to your phone, allow "install unknown apps" for your file manager when asked.
+   Android warns about unknown developers; that is the sideload flow, not a fault in the build.
 
-The signed APK is also on the site's downloads hub — **moddys.net/moddys-downloads.html** —
-and the site's copy and the GitHub release asset are the same bytes.
+The signed APK is also on **moddys.net/moddys-downloads.html**, byte-identical to the GitHub
+asset.
 
-Note: the debug artifact is a **different package** (`…​.debug`) signed with the CI debug key.
-It is for testing; uninstall it before installing a signed release, or you will have two apps.
+Note: the debug artifact is a *different package* (`…​.debug`) signed with the CI debug key.
+Uninstall it before installing a signed release or you will have two apps.
 
-To build locally instead you need JDK 17 and the Android SDK (`platforms;android-34`,
-`build-tools;34.0.0`), then:
+Local build: JDK 17, `platforms;android-35`, `build-tools;35.0.0`, then
+`gradle :app:assembleDebug`.
+
+## Play Store release
+
+`store/` carries the whole submission pack: icon, feature graphic, seven 1080×1920 shots
+rendered from this build, the listing copy with counted fields (`tools/check_listing.py`),
+the data-safety answers with their evidence, and the privacy page.
 
 ```bash
-gradle :app:assembleDebug        # -> app/build/outputs/apk/debug/app-debug.apk
+python tools/play_assets.py     # regenerate the assets from the app
+python tools/check_listing.py   # limits, sizes, shot count
 ```
+
+The screenshots are web renders of the shipped build — the notification and lock screen only
+exist on a device, and the listing says so.
 
 ## Refreshing the bundled web app
 
-The studio under `app/src/main/assets/www/` is a snapshot, plus a manifest
-(`assets-manifest.json`) with a sha256 per file — CI checks the tree against the manifest
-before every build, so a hand-edit cannot slip out unrecognised. After the site changes:
+`app/src/main/assets/www/` is a snapshot with a sha256 manifest; CI checks every file before
+building, so a hand-edit cannot slip out unrecognised. After the site changes:
 
 ```bash
-python tools/sync-assets.py            # copy from C:\Users\Moddy\webmusic-hub\site\resonance
-python tools/sync-assets.py --from-url # or pull whatever is live on moddys.net
-python tools/sync-assets.py --check    # or just check for drift
+python tools/sync-assets.py            # from C:\Users\Moddy\webmusic-hub\site\resonance
+python tools/sync-assets.py --from-url # or pull what is live
+python tools/sync-assets.py --check    # or just look for drift
 ```
 
-Then commit the changed files. The CI workflow can also do the pull for you: run
-**Build APK** from the Actions tab with `sync_from_site` checked. (The **release** workflow
-never re-syncs: it ships exactly what is committed, so a release is reproducible.)
+The shell is the one file that is ours: `app/src/main/assets/www/_shell_shim.js`. The rest of
+`www/app` must stay byte-identical to the site.
 
 ## How it fits together
 
 | file | role |
 |---|---|
-| `MainActivity.java` | hosts the web app in a WebView, serves its files from the APK, injects `_shell_shim.js` after each load, opens the system file picker, streams saves to Downloads, routes external links to the phone's browser |
-| `PlaybackService.java` | foreground service + `MediaSession` + notification; never touches audio itself |
-| `Compat.java` | reads `compat.json`, decides whether this device is supported, shows the one-time notice |
-| `Updates.java` | asks `moddys.net/updates.json` (the `resonance-android` entry) and installs a newer APK through DownloadManager, checksum verified before the installer sees it |
-| `assets/www/_shell_shim.js` | the only new front-end code: the player bar, the menu sheet, the fullscreen visualizer, save/clipboard/link plumbing, and state reporting |
-| `assets/www/compat.json` | the version thresholds the notice, the Check panel and the website all read |
-| `tools/sync-assets.py` | copies the site into `assets/www/` and writes the manifest |
-| `tools/shim_harness.py` | drives the shim against the real page in a real browser — the acceptance gate |
+| `MainActivity.java` | serves the bundled files from the APK over `appassets.androidplatform.net`, injects the shell, edge-to-edge insets, back handling |
+| `_shell_shim.js` | the entire app UI: navigation, screens, visualise binding, file paths, state to the service |
+| `PlaybackService.java` | foreground service, MediaSession, notification and lock-screen controls |
+| `Compat.java` · `Updates.java` | launch compatibility notice · self-update via the site's feed |
+| `tools/shim_harness.py` | the acceptance gate: 71 checks against the real page in a real browser |
+| `tools/validate_android_project.py` · `tools/apk_identity.py` | static pre-flight · published-APK identity and signature proof |
 
-**The app has its own origin.** The page is served from
-`https://appassets.androidplatform.net/app/index.html`, with every request answered from the
-APK's assets. Not a detail: the studio's audio boot `fetch()`es `engine.js` and
-`worklet-processor.js` to build its AudioWorklet module, which a `file://` origin cannot do —
-and an https origin is a secure context, so the worklet path works exactly as it does on the
-site. The WebView never talks to the network for its own files, and external links are handed
-to the phone's browser rather than followed.
-
-### The shell is coupled to the page's markup, on purpose
-
-It does not reimplement playback — every action goes through the page's own API and DOM:
-`window.__gnauralAPI` (`play`/`pause`/`togglePlay`/`stopPlayback`/`setMaster`/`toast`/`state`/
-`toGnauralText`), and the elements `#plist`, `#search`, `#quickpick`, `#graph`, `#hearinfo`,
-`#voicelist`, `#timerBtn`, `#vizCard`, `#pklist`, `#saveGnm`, `#shareBtn`, `#loadBtn`,
-`#master`, `#loop`, `#skin`, `#focusBtn`, `#nowtitle`, `#nowsrc`, `#clock`, `#modePill`, the
-`[data-viz-host]`/`[data-viz-panel]` panels and the footer's site links. If the web app ever
-renames those, the shell needs the matching edit — one place, and the harness catches it.
-
-## Compatibility
-
-| | |
-|---|---|
-| Android | **8.0 (API 26) and newer**; `targetSdk 34` |
-| Tuned for | **Android 11 (API 30)** and newer — below it, the app says so at launch and points at the Check panel |
-| Installing on something older | Android's own installer refuses: the APK declares `minSdkVersion 26` |
-| Audio | synthesised in the device's **Android System WebView**; its version, not the Android version, decides whether you get AudioWorklet or the slower script fallback (the Check panel reports which) |
-| No WebView at all | the app says so and tells you what to install, instead of crashing |
-
-## Known limitations (v1.0.0-beta)
-
-- **This first release installs by hand** (like any first release). Every later version
-  updates itself: one tap on **Update now** in the app, with the download checksum-verified
-  against the site's feed (`resonance-android` in `moddys.net/updates.json`) before Android
-  asks to install it.
-- **Swiping the app away ends the session.** That is Android: the WebView (and its audio) die
-  with the task — the notification goes with it rather than lying about it.
-- **Help, credits and the licence pages open in the phone's browser** (the site's full help is
-  not bundled). The in-app Quick guide covers the essentials offline.
-- **Aggressive OEM battery savers** (Xiaomi, some Samsungs) may still cut a backgrounded
-  session; the foreground service and wake lock are the standard defence, and the Check panel
-  exists to make a device report actionable when one misbehaves.
+Nothing about playback is reimplemented: every button calls the page's own
+`window.__gnauralAPI`, and every fact comes from the page's own DOM and state.
 
 ## Privacy & safety
 
-Nothing is collected and nothing is uploaded; the app has **no analytics, no ads and no
-third-party SDKs** — zero dependencies beyond Android's own WebView, MediaSession and
-Notification APIs. The whole studio is synthesised on the device, so nothing streams; the only
-network traffic the app itself makes is the update check (an HTTPS GET of one JSON file).
-Cleartext HTTP is not permitted anywhere in the app.
+**Nothing is collected.** No analytics, no ads, no account, no upload. Preferences, favourites
+and imported packs live in `localStorage` on the phone; saved files go only where you choose.
+The only network use is the update check (a plain JSON fetch, no identifier) and the help pages,
+which open in your browser. Read the full [privacy statement](https://moddys.net/resonance/privacy/).
 
-Headphones for binaural sessions — the beat happens in your hearing, not the file; the Speakers
-pack and the isochronic pulses are made for loudspeakers. Keep volumes moderate: a pulse train
-is more alerting than a steady tone, and if you have to raise your voice to be heard at arm's
-length it is too loud. If you have epilepsy or a seizure disorder, ask a clinician before using
-repetitive pulsed tones. Skip it while driving or operating machinery, and stop if it feels
-unpleasant. Not a medical device or treatment.
+**Use headphones for binaural sessions** — the beat is made in your hearing, not in the file.
+The Speakers pack and isochronic pulses work on any loudspeaker. Keep volumes moderate; if you
+have to raise your voice to be heard at arm's length it is too loud. If you have epilepsy or a
+seizure disorder, ask a clinician before using repetitive pulsed tones. Not a medical device or
+treatment.
+
+## Known limitations
+
+- Binaural beats need headphones. That is physics, not a missing feature.
+- The visualiser's WebGL path needs a reasonably modern WebView; older ones fall back to 2D.
+- The app is one page served from the APK, so help and credits open in the browser rather than
+  inside the app.
+- Play availability, the AAB and listing review are new in 2.0 and still need a real submission.
 
 ## Licence
 
-The studio bundled inside this app is the Gnaural Web re-implementation, so the repository
-carries the same terms as its parent:
-
-- `engine.js` — **LGPL-2.1-or-later**, because it re-implements Gnaural's BinauralBeat engine.
-  Licence text: [`COPYING.LESSER`](COPYING.LESSER).
-- Everything else in the studio — **GPL-2.0-or-later**. Licence text: [`COPYING`](COPYING).
-- Gnaural attribution and the preset position: [`NOTICE.txt`](NOTICE.txt).
-
-The Android shell around it — Kotlin, the foreground service, the update check, the Gradle
-build — is part of the same work and ships under the same GPL-2.0-or-later terms.
+Gnaural Web is a browser re-implementation of Gnaural's scheduling engine and `.gnaural`
+format. Gnaural is © Bret Logan and contributors; the ported engine keeps LGPL-2.1-or-later,
+everything else is GPL-2.0-or-later. Not affiliated with the upstream project, the Monroe
+Institute or any other programme.
 
 Cheers Moddy !

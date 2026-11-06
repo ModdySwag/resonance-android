@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" data-skin="forge">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — Resonance Studio</title>
+<meta name="description" content="Resonance Studio's privacy statement: nothing collected, nothing uploaded, no account.">
+<link rel="stylesheet" href="../site.css">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMiAzMic+PHJlY3Qgd2lkdGg9JzMyJyBoZWlnaHQ9JzMyJyByeD0nNicgZmlsbD0nIzE2MTQwZicvPjxjaXJjbGUgY3g9JzE2JyBjeT0nMTYnIHI9JzcnIGZpbGw9JyNlMGI5NmYnLz48L3N2Zz4=">
+</head>
+<body>
+<header class="site"><a class="brand" href="../">Resonance Studio</a>
+  <nav><a href="../">Home</a> <a href="../help/">Help</a> <a href="../credits/">Credits</a></nav>
+</header>
+<main class="wrap prose">
+  <h1>Privacy</h1>
+  <p class="lede">Resonance Studio for Android collects nothing, uploads nothing, and has no
+    account. This page says exactly what that means.</p>
+
+  <h2>What is stored, and where</h2>
+  <p>All of it stays on your phone, inside the app's own storage:</p>
+  <ul>
+    <li>your preferences — theme, accent, volume, loop, the visualiser's settings;</li>
+    <li>your favourites;</li>
+    <li>packs you import;</li>
+    <li>files you explicitly save, which go to <b>Downloads/Resonance Studio</b> where any
+      file manager can see them.</li>
+  </ul>
+  <p>Nothing above is transmitted anywhere. Uninstalling the app removes all of it except
+    the files you saved, which you delete like any other download.</p>
+
+  <h2>What goes over the network</h2>
+  <ul>
+    <li><b>The update check.</b> The app fetches a small JSON file from moddys.net to see
+      whether a newer version exists. It sends no identifier, no cookie and no account —
+      the request is the same one any browser makes for a file.</li>
+    <li><b>Help and credits.</b> Those pages open in your browser, so they are an ordinary
+      web visit under the site's own terms.</li>
+  </ul>
+  <p>Nothing else touches the network. The engine, the sessions, the editor, the packs and
+    the visualisers all ship inside the app and work in a tunnel.</p>
+
+  <h2>What is never collected</h2>
+  <ul>
+    <li>no analytics and no crash reporting SDK;</li>
+    <li>no advertising and no ad identifier;</li>
+    <li>no location, contacts, calendar, photos or microphone access;</li>
+    <li>no account, email or profile.</li>
+  </ul>
+  <p>The app has no third-party dependencies at all: it is the platform WebView plus its own
+    Java shell.</p>
+
+  <h2>Permissions and why</h2>
+  <p>Internet (update check, help pages) · network state (skip the check on a dead link) ·
+    wake lock and a media foreground service (keep playing with the screen off, with pause
+    and stop on the lock screen) · notifications (the playback notification) · install
+    packages (the app updates itself; you still confirm) · write external storage, only on
+    Android 9 and older (save to Downloads).</p>
+
+  <h2>Claims</h2>
+  <p>Tones here are entertainment and a nudge, not a medical device or treatment. If you
+    have epilepsy or a seizure disorder, ask a clinician before using repetitive pulsed
+    tones. Keep volumes moderate. See <a href="../help/">the help pages</a> for the
+    details.</p>
+
+  <h2>Contact</h2>
+  <p>The project lives at <b>github.com/ModdySwag/resonance-android</b>; issues there reach
+    the author. Last updated 2026-11-07.</p>
+</main>
+<footer class="site"><p>Resonance Studio is free software (GPL-2.0-or-later for the app,
+  LGPL-2.1-or-later for the ported engine).</p></footer>
+</body>
+</html>

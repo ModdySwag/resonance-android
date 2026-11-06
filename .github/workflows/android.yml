@@ -35,7 +35,7 @@ jobs:
       - name: Ensure the exact SDK components this build targets
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -75,7 +75,7 @@ jobs:
               print("\n".join(bad)); sys.exit(1)
           print(f"assets ok: {len(man['files'])} files match the manifest, 19 pack zips, index references intact")
           PY
-          node --check app/src/main/assets/www/_shell_shim.js
+          node --input-type=module --check < app/src/main/assets/www/_shell_shim.js
           python3 -c "import json; json.load(open('app/src/main/assets/www/compat.json')); print('compat.json parses')"
 
       - name: Build

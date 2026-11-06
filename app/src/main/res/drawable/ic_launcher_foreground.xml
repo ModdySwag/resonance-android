@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: the Resonance ring and a wave inside it. Drawn on the
+     108dp canvas with the 66dp safe zone in mind, so no launcher mask clips the glyph. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <path android:fillColor="#7FDCCB" android:pathData="M54,34a20,20 0 1,0 0,40a20,20 0 1,0 0,-40zM54,40a14,14 0 1,1 0,28a14,14 0 1,1 0,-28z"/>
+  <path android:strokeColor="#7FDCCB" android:strokeWidth="3.2" android:strokeLineCap="round" android:fillColor="#00000000"
+    android:pathData="M40,54h4.5l3,-7 4.5,14 4,-10 3,6 4.5,-3h6.5"/>
+</vector>

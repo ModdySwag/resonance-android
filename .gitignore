@@ -15,6 +15,7 @@ keystore.properties
 
 # Local tooling
 .devvenv/
+cache/
 __pycache__/
 
 # OS noise

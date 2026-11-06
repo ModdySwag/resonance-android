@@ -32,7 +32,7 @@ jobs:
       - name: Ensure the exact SDK components this build targets
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -60,7 +60,7 @@ jobs:
               print("\n".join(bad)); sys.exit(1)
           print(f"assets ok: {len(man['files'])} files match the manifest")
           PY
-          node --check app/src/main/assets/www/_shell_shim.js
+          node --input-type=module --check < app/src/main/assets/www/_shell_shim.js
 
       - name: Decode the signing keystore
         run: |
@@ -77,7 +77,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.RESONANCE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RESONANCE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RESONANCE_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --stacktrace
+        run: gradle :app:assembleRelease :app:bundleRelease --stacktrace
 
       # Never publish something unsigned by accident: an unsigned APK installs for nobody.
       - name: Confirm the APK is actually signed
@@ -97,14 +97,33 @@ jobs:
           fi
           unzip -l "$APK" | grep -E "assets/www/(app/index.html|app/app.js|_shell_shim.js|compat.json)"
 
-      - name: Name the download for humans
-        run: cp app/build/outputs/apk/release/*.apk "resonance-studio-${{ github.ref_name }}.apk"
+      # The store wants an .aab, not an APK, so the bundle is built in the SAME job from the
+      # same signing config and checked with the same suspicion: Play refuses an empty or
+      # asset-less bundle and the console only says so after upload.
+      - name: Confirm the bundle carries the app and its assets
+        run: |
+          set -e
+          AAB=$(ls app/build/outputs/bundle/release/*.aab | head -1)
+          echo "bundle: $AAB"
+          test -s "$AAB" || { echo "bundle is empty"; exit 1; }
+          unzip -l "$AAB" | grep -q "base/manifest/AndroidManifest.xml" || { echo "no manifest in the bundle"; exit 1; }
+          for f in base/assets/www/app/index.html base/assets/www/_shell_shim.js base/assets/www/app/pack/focus.zip; do
+            unzip -l "$AAB" | grep -q "$f" || { echo "bundle missing $f"; exit 1; }
+          done
+          unzip -l "$AAB" | grep -E "base/(manifest|assets/www/app/index.html)" | head -3
+
+      - name: Name the downloads for humans
+        run: |
+          cp app/build/outputs/apk/release/*.apk "resonance-studio-${{ github.ref_name }}.apk"
+          cp app/build/outputs/bundle/release/*.aab "resonance-studio-${{ github.ref_name }}.aab"
 
       - name: Keep it as a workflow artifact too
         uses: actions/upload-artifact@v4
         with:
           name: resonance-release-apk
-          path: resonance-studio-*.apk
+          path: |
+            resonance-studio-*.apk
+            resonance-studio-*.aab
           if-no-files-found: error
 
       - name: Publish the GitHub Release
@@ -115,9 +134,9 @@ jobs:
           set -e
           TAG="${{ github.ref_name }}"
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" "resonance-studio-$TAG.apk" --clobber
+            gh release upload "$TAG" "resonance-studio-$TAG.apk" "resonance-studio-$TAG.aab" --clobber
           else
-            gh release create "$TAG" "resonance-studio-$TAG.apk" \
+            gh release create "$TAG" "resonance-studio-$TAG.apk" "resonance-studio-$TAG.aab" \
               --title "Resonance Studio $TAG" \
               --notes-file RELEASE_NOTES.md
           fi
