@@ -14,7 +14,7 @@ Read this whole block before touching anything. The tree is clean; nothing is pu
 - Build: `JAVA_HOME=C:/Program Files/Microsoft/jdk-17.0.20.101-hotspot`, Gradle at
   `C:\Users\Moddy\tools\gradle-8.7`; env `KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD`
   for a signed `:app:assembleRelease`. SDK at `C:\Users\Moddy\nakamichi-remote\sdk`.
-- **GATES: `py -3.11 tools/shim_harness.py` 112/112, `py -3.11 cache/contrast.py` 0.**
+- **GATES: `py -3.11 tools/shim_harness.py` 124/124, `py -3.11 cache/contrast.py` 0.**
 
 ## WHAT THIS APP IS NOW
 
@@ -67,6 +67,12 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
   experience, FOCUS VIEW / Gentle visuals), each with its own button.
 - **Chrome that leaves**: focus and fullscreen chrome slide away after 4.5 s / 6 s of quiet and come
   back on any touch (`rs-fs-hide`, armed on pointerdown, `FSWAS.hidden` remembers the pre-tap state).
+- **Home is the module grid** (eight: Deep sleep, Drift off, Focus, Deep work, Relax, Meditate, Wake,
+  Morning), each a 132 px card with its own picture and the session it loads, tap = load + play. The
+  player stays above them. `#rsBuild` and the folded hearing row moved into Studio.
+- **Band tints on Sessions**: a 3 px band edge plus a wash that dies by mid-card, applied by
+  `paintItems()` on a 300 ms beat (it must survive re-render, so never in the renderer itself).
+- The app-bar subtitle is empty on Home and Sessions (it mirrored the player).
 
 ## OPEN — in the order to take them
 
