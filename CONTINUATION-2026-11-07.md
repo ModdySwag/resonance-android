@@ -14,7 +14,7 @@ Read this whole block before touching anything. The tree is clean; nothing is pu
 - Build: `JAVA_HOME=C:/Program Files/Microsoft/jdk-17.0.20.101-hotspot`, Gradle at
   `C:\Users\Moddy\tools\gradle-8.7`; env `KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD`
   for a signed `:app:assembleRelease`. SDK at `C:\Users\Moddy\nakamichi-remote\sdk`.
-- **GATES: `py -3.11 tools/shim_harness.py` 124/124, `py -3.11 cache/contrast.py` 0.**
+- **GATES: `py -3.11 tools/shim_harness.py` 129/129, `py -3.11 cache/contrast.py` 0.**
 
 ## WHAT THIS APP IS NOW
 
@@ -73,6 +73,13 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
 - **Band tints on Sessions**: a 3 px band edge plus a wash that dies by mid-card, applied by
   `paintItems()` on a 300 ms beat (it must survive re-render, so never in the renderer itself).
 - The app-bar subtitle is empty on Home and Sessions (it mirrored the player).
+- **Visualise, tightened**: the two entry cards each carry their own picture (a cymatic nodal figure,
+  an aurora ribbon) bled in at the head and faded into the card; the follow row is one switch labelled
+  "Follow the tone"; the mapping is one line (carrier, rate, band, medium, mode); the empty state is
+  two words; the panels hint is one line. The chamber's own Back/Stop/?/Close controls wear the strip
+  metal with a brass edge and its Play is the theme knob — Full only, like everything else.
+- **Minimal must stay plainly distinct** — a harness leg now proves the visualise pictures are absent
+  under Minimal, so "gated on full" is tested, not assumed.
 
 ## OPEN — in the order to take them
 
