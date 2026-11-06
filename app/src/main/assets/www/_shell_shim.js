@@ -792,7 +792,7 @@
     "html[data-rs-ui=full][data-rs-accent=sand] .rs-app .cym #play{background-image:url(ui/knob-sand.webp)}",
     "html[data-rs-ui=full][data-rs-accent=slate] .rs-app .cym #play{background-image:url(ui/knob-slate.webp)}",
     "html[data-rs-ui=full] .rs-app .cym #play{font-size:0}",
-    ".rs-app .cym .cym-tone{max-width:34vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".rs-app .cym .cym-tone{display:none}",
     /* the top-right row: even 44px pills, one line, and it must fit 320 px too */
     ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center;",
     "  padding-right:2px;box-sizing:border-box}",
