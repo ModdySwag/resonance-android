@@ -14,7 +14,7 @@ Read this whole block before touching anything. The tree is clean; nothing is pu
 - Build: `JAVA_HOME=C:/Program Files/Microsoft/jdk-17.0.20.101-hotspot`, Gradle at
   `C:\Users\Moddy\tools\gradle-8.7`; env `KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD`
   for a signed `:app:assembleRelease`. SDK at `C:\Users\Moddy\nakamichi-remote\sdk`.
-- **GATES: `py -3.11 tools/shim_harness.py` 89/89, `py -3.11 cache/contrast.py` 0.**
+- **GATES: `py -3.11 tools/shim_harness.py` 112/112, `py -3.11 cache/contrast.py` 0.**
 
 ## WHAT THIS APP IS NOW
 
@@ -51,11 +51,21 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
   chamber's label resets it. Three harness legs cover step, carry-over and reset.
 - Studio's duplicated "Voices" heading is now "Layers" (guide text matches); the Visualise
   readout is three lines instead of one run-on.
+- **Focus view** (the old "Focus mode" was dead — it drove a `#focusBtn` that no longer existed):
+  the page's own ambient panels full screen, a bar to step and pick between the 24 visualisations,
+  remembered in `prefs.focusPreset`. Opened from Settings and from Visualise.
+- **Full / Minimal interface** (`prefs.ui`, attribute `data-rs-ui` on `<html>`, default Full):
+  Full wears eleven generated assets in `www/app/ui/` — a brass knob on Play that turns when live,
+  a chrome cap on Stop, a metal fader, artwork behind the four state tiles, a faceplate behind the
+  hero. Minimal is the plain shell. Every art rule is gated on `html[data-rs-ui=full]`.
+- **Visualise** leads with the chamber CTA card (`.rs-cta`), Focus view second, and the page's long
+  motion caption is replaced by one line in the panels card (`#vizNote` is display:none).
+- **Home**: "What you are hearing" folds into one summary row (`.rs-fold` details).
 
 ## OPEN — in the order to take them
 
-1. **Owner eye** on the map first, then the rest of the earlier list (chamber row, module rails,
-   Studio fold, five themes) — cut what does not earn its place.
+1. **Owner eye** on the map, the vintage face (Full) against Minimal, the folded hearing row, the
+   chamber-led Visualise and Focus view — cut what does not earn its place.
 2. **Play submission:** deploy `store/privacy.html` to `moddys.net/resonance/privacy/` first
    (Moddy must review a deploy), then icon/feature/screenshots/listing/data-safety.
 3. **Push** the branch and cut the tag only after his review of the release copy; bump
@@ -84,7 +94,20 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
   (`state.curves = null`) before checking the empty state.
 - **The route is text-only**: `vision_analyze` 400s on images. Grade visuals by delegating a child
   with PIL and the PNG in `images`, and give it the previous round's defect list — blind "does it
-  look good" answers are useless.
+  look good" answers are useless. **A screenshot taken seconds after an install can be the previous
+  build** — force-stop, relaunch, wait, then shoot.
+- **`adb shell input tap` works, but `uiautomator dump` is racy**: the dump often describes the
+  previous screen. Verify a tap landed by comparing screencap hashes, not by trusting a dump.
+- **The devtools socket is absent on a release install here** — drive the UI by taps found in a
+  uiautomator dump (nav tabs are exact rects), not by CDP.
+- **Overlays are z-index 95, the fullscreen layer is 100** — an overlay opened from inside focus
+  has to be lifted (`html.rs-fs .rs-ov{z-index:110}`), and closing it must not pop the history
+  entry the view is standing on (`markBack` is skipped while `FS.on`).
+- **A dark plate in both themes** means the hero's inherited ink must be forced light; the page's
+  own `.pill` and `.rs-sw span` inside the hero carry their own colours, so the parent's colour is
+  not enough — target them.
+- **Contrast probes cannot see a background image**: give any art-backed element an explicit dark
+  `background-color` or the probe (and the first paint) fails.
 
 ## FIRST THREE MOVES
 
