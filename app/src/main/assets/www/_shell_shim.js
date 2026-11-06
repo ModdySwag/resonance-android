@@ -168,6 +168,15 @@
   if (mqDark && mqDark.addEventListener) mqDark.addEventListener("change", applyTheme);
   else if (mqDark && mqDark.addListener) mqDark.addListener(applyTheme);
 
+  /* the art layer: "full" wears the vintage face, "minimal" keeps the plain controls */
+  function applyUi() {
+    var m = prefs.ui === "minimal" ? "minimal" : "full";
+    doc.documentElement.setAttribute("data-rs-ui", m);
+    $$("#rsUi button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-u") === m ? "true" : "false");
+    });
+  }
+
   /* ==================================================================== css === */
 
   var SAFE_T = "var(--rs-safe-t,env(safe-area-inset-top,0px))";
@@ -263,6 +272,29 @@
     ".rs-screen section.card > h3,.rs-screen section.card > h2{margin:0 0 12px;font-size:17px;",
     "  line-height:22px;font-weight:700;letter-spacing:-.01em;color:var(--rs-ink);display:block}",
     ".rs-screen section.card h3:empty,.rs-screen section.card h2:empty{display:none}",
+    /* the chamber is the section's hero; the ambient card is the quiet sibling */
+    ".rs-cta{position:relative;overflow:hidden;padding:18px 16px 16px !important;",
+    "  background:linear-gradient(155deg,var(--rs-s3),var(--rs-s1)) !important;border-color:var(--rs-line2) !important}",
+    ".rs-cta-top{display:flex;align-items:flex-start;margin-bottom:14px}",
+    ".rs-cta-top > * + *{margin-left:12px}",
+    ".rs-cta-art{flex:0 0 auto;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;",
+    "  justify-content:center;background:var(--rs-pri-c);color:var(--rs-on-pri-c)}",
+    ".rs-cta h3{margin:2px 0 4px !important;font-size:19px !important}",
+    ".rs-cta-sub{margin:0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    ".rs-hint{margin:0;font-size:12.5px;line-height:18px;color:var(--rs-out)}",
+    "#vizNote{display:none !important}",
+    /* folded card: a summary row, contents hidden until asked for */
+    ".rs-fold{padding:4px 14px !important}",
+    ".rs-fold summary{display:flex;align-items:center;min-height:54px;cursor:pointer;list-style:none}",
+    ".rs-fold summary::-webkit-details-marker{display:none}",
+    ".rs-fold summary .rs-fold-t{flex:1 1 auto;min-width:0;padding:8px 0}",
+    ".rs-fold summary b{display:block;font-size:14.5px;font-weight:600;color:var(--rs-ink)}",
+    ".rs-fold summary span span{display:block;font-size:12px;line-height:16px;color:var(--rs-out)}",
+    ".rs-fold summary svg{flex:0 0 auto;color:var(--rs-out);margin-left:10px}",
+    ".rs-fold[open] summary svg,.rs-fold details[open] summary svg{transform:rotate(90deg)}",
+    ".rs-fold details > section{padding:2px 0 12px}",
+    ".rs-fold h3{display:none !important}",
+    ".rs-fold #hearinfo{margin:0 0 8px}",
     ".rs-screen .hint,.rs-screen .readout{font-size:13px;line-height:19px;color:var(--rs-dim);margin:0 0 10px}",
     ".rs-hero #meta{font-size:12.5px;color:var(--rs-out);margin:0 0 10px;font-variant-numeric:tabular-nums}",
     ".rs-screen .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0}",
@@ -408,6 +440,45 @@
     "  text-transform:uppercase;color:var(--rs-out);margin-bottom:2px}",
     ".rs-transport #rsClock{font-variant-numeric:tabular-nums;font-size:13px;color:var(--rs-dim);",
     "  flex:0 0 auto}",
+
+    /* ------------------------------------------------ the vintage face (Full UI) --- */
+    /* Art only exists in the Full interface; Minimal falls back to the plain controls. */
+    "html[data-rs-ui=full] .rs-hero{background-image:url(ui/plate.webp);background-size:cover;",
+    "  background-position:center}",
+    "html[data-rs-ui=full] .rs-hero .rs-fab{width:68px;height:68px;border:0;position:relative;",
+    "  background-image:url(ui/knob-calm.webp);background-size:cover;background-position:center;",
+    "  box-shadow:0 7px 18px rgba(0,0,0,.55);transition:transform .28s ease}",
+    "html[data-rs-ui=full][data-rs-accent=dusk] .rs-hero .rs-fab{background-image:url(ui/knob-dusk.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sage] .rs-hero .rs-fab{background-image:url(ui/knob-sage.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sand] .rs-hero .rs-fab{background-image:url(ui/knob-sand.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=slate] .rs-hero .rs-fab{background-image:url(ui/knob-slate.webp)}",
+    "html[data-rs-ui=full] .rs-fab svg{display:none}",
+    "html[data-rs-ui=full].rs-playing .rs-hero .rs-fab{transform:rotate(34deg)}",
+    "html[data-rs-ui=full] .rs-fab::after{content:\"\";position:absolute;left:50%;bottom:-7px;width:8px;height:8px;",
+    "  margin-left:-4px;border-radius:50%;background:var(--rs-s4);border:1px solid rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full].rs-playing .rs-fab::after{background:var(--rs-live);box-shadow:0 0 10px var(--rs-live)}",
+    "html[data-rs-ui=full] .rs-transport #rsStop{width:46px;height:46px;border:0;border-radius:50%;",
+    "  background-image:url(ui/btn-stop.webp);background-size:cover;background-position:center;",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] #rsStop svg{display:none}",
+    "html[data-rs-ui=full] .rs-vol input[type=range]{height:44px}",
+    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;",
+    "  background:linear-gradient(180deg,#1b1814,#3a332a 45%,#100e0c);box-shadow:inset 0 1px 2px #000}",
+    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;",
+    "  height:30px;margin-top:-11px;border-radius:4px;border:1px solid #0a0908;",
+    "  background:linear-gradient(180deg,#e7dcc8,#9d8f77 52%,#5c5244)}",
+    "html[data-rs-ui=full] .rs-tile{background-size:cover;background-position:center;position:relative;",
+    "  overflow:hidden;color:#F4F7F5;border-color:rgba(0,0,0,.5);background-color:#12100F}",
+    "html[data-rs-ui=full] .rs-tile::after{content:\"\";position:absolute;top:0;right:0;bottom:0;left:0;",
+    "  background:linear-gradient(100deg,rgba(6,8,7,.9),rgba(6,8,7,.55) 62%,rgba(6,8,7,.2))}",
+    "html[data-rs-ui=full] .rs-tile > *{position:relative;z-index:1}",
+    "html[data-rs-ui=full] .rs-tile b{color:#F4F7F5}",
+    "html[data-rs-ui=full] .rs-tile span{color:#CFD8D3}",
+    "html[data-rs-ui=full] .rs-tile svg{color:#EADFC9}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=sleep]{background-image:url(ui/tile-sleep.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=focus]{background-image:url(ui/tile-focus.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=relax]{background-image:url(ui/tile-relax.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=wake]{background-image:url(ui/tile-wake.webp)}",
 
     /* --------------------------------------------------------------- tiles --- */
     ".rs-states{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}",
@@ -677,7 +748,8 @@
     down: "M12 4v11M7.5 11 12 15.5 16.5 11M5 19h14",
     wave: "M3 12h3l2-5 3 10 3-8 2 5h5",
     close: "M6 6l12 12M18 6 6 18",
-    chev: "M9 6l6 6-6 6"
+    chev: "M9 6l6 6-6 6",
+    chamber: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2zM12 9.7a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z",
   };
 /* ICONS:START */
   /* Generated by tools/make_icons.py from the Material Symbols catalog in the
@@ -1167,11 +1239,13 @@
   function wireHome() {
     var tiles = $id("rsStates");
     var used = [];
-    STATES.forEach(function (s) {
+    var TILE_IDS = ["sleep", "focus", "relax", "wake"];
+    STATES.forEach(function (s, si) {
       var hit = presetByName(s.re, used);
       if (hit) used.push(hit.i);
       var b = doc.createElement("button");
       b.className = "rs-tile";
+      b.setAttribute("data-rs-tile", TILE_IDS[si] || "sleep");
       b.type = "button";
       b.innerHTML = svg(s.icon) + "<div><b>" + s.label + "</b><span>" +
         (hit ? esc(hit.it.name) : "no match") + "</span></div>";
@@ -1409,6 +1483,16 @@
   function buildVis() {
     screenEls.vis.innerHTML =
       '<div class="rs-pad"></div>' +
+      '<section class="card rs-cta" aria-labelledby="rsCymH">' +
+      '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
+      '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
+      '    <p class="rs-cta-sub">A plate, water and bubbles, driven by the tone. The full instrument.</p></div></div>' +
+      '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
+      '</section>' +
+      '<section class="card">' +
+      '  <button class="rs-mrow" data-act="focus">' + svg("moon", 22) +
+      '    <span class="rs-mtxt"><b>Focus view</b><span>Ambient panels, gently following the tone</span></span>' + svg("chev", 18) + '</button>' +
+      '</section>' +
       '<section class="card" aria-labelledby="rsFollowH">' +
       '  <h3 id="rsFollowH">Follow the session</h3>' +
       '  <label class="rs-sw"><span class="rs-swt">' +
@@ -1422,10 +1506,10 @@
       '    <button data-k="sand" aria-pressed="true">Sand</button>' +
       '    <button data-k="lines" aria-pressed="true">Lines</button>' +
       '    <button data-k="dust" aria-pressed="true">Dust</button></div>' +
-      '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
       '<section class="card" id="rsVizCard" aria-labelledby="rsVizH">' +
-      '  <h3 id="rsVizH">Ambient panels</h3></section>' +
+      '  <h3 id="rsVizH">Ambient panels</h3>' +
+      '  <p class="rs-hint">Held under the flash threshold — a fast rate drifts slower and says so.</p></section>' +
       '<div class="rs-pad"></div>';
   }
 
@@ -1461,6 +1545,10 @@
   }
 
   function wireVis() {
+    screenEls.vis.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-act=focus]");
+      if (b) openFocus();
+    });
     SCENES.forEach(function (s) {
       var b = doc.createElement("button");
       b.type = "button";
@@ -1622,6 +1710,8 @@
       '<div class="rs-pad"></div>' +
       '<section class="card" aria-labelledby="rsApprH">' +
       '  <h3 id="rsApprH">Appearance</h3>' +
+      '  <div class="rs-seg" id="rsUi" role="group" aria-label="Interface">' +
+      '    <button data-u="full" aria-pressed="true">Full</button><button data-u="minimal" aria-pressed="false">Minimal</button></div>' +
       '  <div class="rs-seg" id="rsTheme" role="group" aria-label="Theme">' +
       '    <button data-t="system" aria-pressed="true">System</button><button data-t="dark" aria-pressed="false">Dark</button>' +
       '    <button data-t="light" aria-pressed="false">Light</button></div>' +
@@ -1629,9 +1719,8 @@
       '  <label class="rs-sw"><span class="rs-swt"><b>Accent from wallpaper</b>' +
       '    <span>Android 12 and later. Off uses the Resonance teal.</span></span>' +
       '    <input type="checkbox" id="rsAccent"><span class="rs-track" aria-hidden="true"></span></label>' +
-      '  <label class="rs-sw"><span class="rs-swt"><b>Focus mode</b>' +
-      '    <span>Hide the panels and just listen.</span></span>' +
-      '    <input type="checkbox" id="rsFocus"><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  <button class="rs-mrow" data-act="focus">' + svg("moon", 22) +
+      '    <span class="rs-mtxt"><b>Focus view</b><span id="rsFocusSub">An ambient screen, gently following the tone</span></span>' + svg("chev", 18) + '</button>' +
       '</section>' +
       '<section class="card" aria-labelledby="rsHelpH">' +
       '  <h3 id="rsHelpH">Help &amp; about</h3>' +
@@ -1666,6 +1755,12 @@
       });
     });
     paintTheme();
+    $$("#rsUi button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        prefs.ui = b.getAttribute("data-u"); savePrefs(); applyUi();
+      });
+    });
+    applyUi();
     var ACCENTS = [["calm", "#4FB3A2", "Calm"], ["dusk", "#6B72B8", "Dusk"], ["sage", "#5E936F", "Sage"],
                    ["sand", "#B0894A", "Sand"], ["slate", "#6E8B99", "Slate"]];
     var sw = $id("rsAccents");
@@ -1697,12 +1792,10 @@
       try { var pa = $id("rsAccents"); if (pa) pa.style.display = this.checked ? "none" : "flex"; } catch (e) { }
     });
     var fo = $id("rsFocus");
-    fo.checked = doc.body.classList.contains("focus");
-    fo.addEventListener("change", function () {
-      var b = $id("focusBtn");
-      if (b) b.click();
+    if (fo) {
       fo.checked = doc.body.classList.contains("focus");
-    });
+      fo.addEventListener("change", function () { openFocus(); });
+    }
     screenEls.settings.addEventListener("click", function (ev) {
       var b = ev.target.closest("[data-act]");
       if (!b) return;
@@ -1710,6 +1803,7 @@
       if (a === "guide") openGuide();
       else if (a === "check") openCheck();
       else if (a === "about") openAbout();
+      else if (a === "focus") openFocus();
       else if (a === "upd") { toast("Checking for updates…"); native("checkUpdate", []); }
     });
   }
@@ -1819,6 +1913,9 @@
       ".rs-ov{position:fixed;top:0;right:0;bottom:0;left:0;z-index:95;display:none;flex-direction:column;",
       "  background:var(--rs-bg);color:var(--rs-ink);font:15px/1.55 inherit}",
       ".rs-ov.rs-ov-on{display:flex}",
+      /* the fullscreen layer (100) is above a normal overlay, so an overlay opened
+         from inside it has to climb over it */
+      "html.rs-fs .rs-ov{z-index:110}",
       ".rs-ov .rs-ov-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;",
       "  padding:calc(8px + " + SAFE_T + ") 10px 8px 18px;border-bottom:1px solid var(--rs-line)}",
       ".rs-ov .rs-ov-head b{flex:1 1 auto;font-size:18px}",
@@ -1869,14 +1966,16 @@
   function showOverlay(ov) {
     ov.classList.add("rs-ov-on");
     doc.documentElement.classList.add("rs-locked");
-    markBack();
+    /* inside fullscreen the layer is already on the history stack; pushing again
+       would make closing the overlay pop the whole view away */
+    if (!FS.on) markBack();
     var x = ov.querySelector("[data-ov-x]");
     if (x) { try { x.focus(); } catch (e) { } }
   }
   function closeOverlay(ov, fromPop) {
     ov.classList.remove("rs-ov-on");
     doc.documentElement.classList.toggle("rs-locked", anyOverlayOpen());
-    if (!fromPop) unmarkBackTop();
+    if (!fromPop && !FS.on) unmarkBackTop();
   }
   function anyOverlayOpen() {
     for (var i = 0; i < overlays.length; i++) if (overlays[i].classList.contains("rs-ov-on")) return true;
@@ -2096,6 +2195,17 @@
       "  background:rgba(20,17,13,.42);color:#fff;cursor:pointer}",
       "#rsFsCtl .rs-fs-play{width:58px;height:58px;font-size:20px}",
       "#rsFsCtl .rs-fs-stop{width:46px;height:46px;font-size:14px}",
+      /* focus view: the same stage, but with a way to change the visualisation */
+      "#rsFocusBar{position:absolute;left:0;right:0;bottom:calc(132px + " + SAFE_B + ");display:none;z-index:2;",
+      "  align-items:center;justify-content:center;gap:6px;padding:0 14px;pointer-events:none}",
+      "html.rs-focus #rsFocusBar{display:flex}",
+      "#rsFocusBar button{pointer-events:auto;min-width:48px;height:48px;border-radius:999px;",
+      "  border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.42);color:#F2F6F4;",
+      "  font:600 15px/1 var(--rs-sans);-webkit-appearance:none}",
+      "#rsFocusBar #rsFocusName{pointer-events:auto;min-width:0;max-width:46%;padding:0 12px;height:48px;",
+      "  display:flex;align-items:center;justify-content:center;border-radius:999px;background:rgba(0,0,0,.42);",
+      "  color:#F2F6F4;font:600 13px/1 var(--rs-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+      "#rsFocusBar #rsFocusPick{min-width:0;padding:0 16px;font-size:13px}",
       "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:1;",
       "  color:#fff !important;background:rgba(10,8,6,.72) !important;padding:4px 9px;border-radius:999px}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
@@ -2111,6 +2221,10 @@
       '<div id="rsFsStage" data-rs="fsStage"></div>' +
       '<div id="rsFsTop"><span class="rs-fs-title" id="rsFsTitle"></span>' +
       '<button data-rs="fsExit" aria-label="Close the visualiser">✕</button></div>' +
+      '<div id="rsFocusBar"><button data-rs="fPrev" aria-label="Previous visualisation">\u2039</button>' +
+      '<span id="rsFocusName">Visualisation</span>' +
+      '<button data-rs="fNext" aria-label="Next visualisation">\u203a</button>' +
+      '<button data-rs="fPick">Change</button></div>' +
       '<div id="rsFsCtl"><div class="rs-fs-meta"><span id="rsFsTime" aria-live="polite">0:00 / 0:00</span>' +
       '<input id="rsFsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>' +
       '<div class="rs-fs-btns">' +
@@ -2124,12 +2238,92 @@
       var b = ev.target.closest("[data-rs]");
       if (!b) return;
       var act = b.getAttribute("data-rs");
-      if (act === "fsExit") { exitFullscreen(false); return; }
+      if (act === "fsExit") { if (FOCUS.on) closeFocus(false); else exitFullscreen(false); return; }
       if (act === "fsPlay") { pageToggle(); pushState(true); return; }
       if (act === "fsStop") { pageStop(); pushState(true); return; }
+      if (act === "fPrev") { stepFocus(-1); return; }
+      if (act === "fNext") { stepFocus(1); return; }
+      if (act === "fPick") { openFocusPick(); return; }
       if (act === "fsStage") { doc.documentElement.classList.toggle("rs-fs-hide"); return; }
     });
     return fs;
+  }
+
+  /* ------------------------------------------------------------- focus view --- */
+  /* The gentle sibling of the chamber: the page's own ambient panels, full screen,
+     with the visualisation switchable right there. The chamber is the instrument;
+     this is for lying still and watching. */
+  var FOCUS = { on: false, preset: "" };
+  var FOCUS_DEFAULT = "quiet-tide";
+
+  function focusPresets() {
+    var P = window.GnauralVizPresets;
+    return (P && P.LIST) || [];
+  }
+
+  function focusName(id) {
+    var l = focusPresets(), i;
+    for (i = 0; i < l.length; i++) if (l[i].id === id) return l[i].name;
+    return "Visualisation";
+  }
+
+  function applyFocusPreset(id, quiet) {
+    var v = window.ResonanceViz && window.ResonanceViz.api;
+    if (!v || !id) return;
+    FOCUS.preset = id;
+    prefs.focusPreset = id; savePrefs();
+    try { v.applyPreset(id); v.enable(true); } catch (e) { }
+    var n = $id("rsFocusName");
+    if (n) n.textContent = focusName(id);
+    var s = $id("rsFocusSub");
+    if (s) s.textContent = focusName(id) + " · change it in the view";
+    if (!quiet) toast(focusName(id));
+  }
+
+  function stepFocus(dir) {
+    var l = focusPresets();
+    if (!l.length) return;
+    var i = 0, k;
+    for (k = 0; k < l.length; k++) if (l[k].id === FOCUS.preset) i = k;
+    applyFocusPreset(l[(i + dir + l.length) % l.length].id);
+  }
+
+  function openFocusPick() {
+    var ov = doc.getElementById("rsFocusPick");
+    if (!ov) {
+      ov = buildOverlay("rsFocusPick", "Visualisation", '<div class="rs-chips" id="rsFocusList"></div>');
+      var box = ov.querySelector("#rsFocusList");
+      focusPresets().forEach(function (p) {
+        var b = doc.createElement("button");
+        b.type = "button";
+        b.textContent = p.name;
+        b.title = p.blurb || "";
+        b.setAttribute("data-fp", p.id);
+        b.setAttribute("aria-pressed", "false");
+        b.addEventListener("click", function () { applyFocusPreset(p.id); closeOverlay(ov); });
+        box.appendChild(b);
+      });
+    }
+    $$("#rsFocusList button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-fp") === FOCUS.preset ? "true" : "false");
+    });
+    showOverlay(ov);
+  }
+
+  function openFocus() {
+    FOCUS.on = true;
+    enterFullscreen();
+    if (!FS.on) { FOCUS.on = false; return; }
+    doc.documentElement.classList.add("rs-focus");
+    applyFocusPreset(FOCUS.preset || prefs.focusPreset || FOCUS_DEFAULT, true);
+    pushState(true);
+  }
+
+  function closeFocus(fromPop) {
+    FOCUS.on = false;
+    doc.documentElement.classList.remove("rs-focus");
+    if (FS.on) exitFullscreen(fromPop);
+    pushState(true);
   }
 
   function enterFullscreen() {
@@ -2156,6 +2350,8 @@
   function exitFullscreen(fromPop) {
     if (!FS.on) return;
     FS.on = false;
+    if (FOCUS.on) { FOCUS.on = false; }
+    doc.documentElement.classList.remove("rs-focus");
     var fs = doc.getElementById("rsFs");
     if (FS.host && FS.home) {
       var next = (FS.homeNext && FS.homeNext.parentNode === FS.home) ? FS.homeNext : null;
@@ -2450,6 +2646,7 @@
       }
     } catch (e) { }
     applyTheme();
+    applyUi();
   }
 
   /* Move the page's real cards into the screens. The nodes are the page's own; its
@@ -2473,7 +2670,16 @@
       try { drawSched(); } catch (e) { }
     }
     var hear = cardOf("#hearinfo");
-    if (hear) screenEls.home.appendChild(hear);
+    if (hear) {
+      var fold = doc.createElement("section");
+      fold.className = "card rs-fold";
+      fold.innerHTML = '<details><summary><span class="rs-fold-t"><b>What you are hearing</b>' +
+        '<span>Layers, rate and level — folded away until you want it</span></span>' + svg("chev", 18) + '</summary></details>';
+      hear.classList.remove("card", "rs-screen");
+      $id("hearinfo").classList.remove("readout");
+      fold.querySelector("details").appendChild(hear);
+      screenEls.home.appendChild(fold);
+    }
 
     var search = $id("search");
     var srow = $(".rs-searchrow");

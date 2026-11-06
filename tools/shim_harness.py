@@ -329,6 +329,18 @@ def main():
         suite.check("the playhead follows the position (half, then near the end)",
                     0.42 < seek["mid"] < 0.58 and seek["late"] > 0.8, seek)
 
+        # ---- "what you are hearing" is folded to a single row ----------------------
+        suite.check("the hearing card is folded away by default",
+                    page.evaluate("(() => { const d = document.querySelector('.rs-fold details');"
+                                  " return !!d && !d.open; })()"))
+        suite.check("its summary names it",
+                    page.evaluate("document.querySelector('.rs-fold summary b').textContent") == "What you are hearing")
+        page.click(".rs-fold summary")
+        suite.check("opening it reveals the layer detail",
+                    page.evaluate("document.querySelector('.rs-fold details').open && "
+                                  "document.getElementById('hearinfo').getBoundingClientRect().height > 10"))
+        page.click(".rs-fold summary")
+
         # volume drives the page's own master gain
         page.evaluate("(() => { const v = document.getElementById('rsVol'); v.value = '0.25';"
                       " v.dispatchEvent(new Event('input', { bubbles: true })); })()")
@@ -398,6 +410,45 @@ def main():
         suite.check("follow keeps the chamber reading the session", page.evaluate(
             "window.ResonanceCymatics.api.getPrefs().src === 'session'"))
 
+        # ---- visualise layout + the gentle focus view ------------------------------
+        suite.check("the chamber card leads the section",
+                    page.evaluate("document.querySelector('#scr-vis section.card') === "
+                                  "document.querySelector('#scr-vis section.card.rs-cta')"))
+        suite.check("the page's long motion caption is folded away",
+                    page.evaluate("getComputedStyle(document.getElementById('vizNote')).display") == "none")
+        suite.check("a one-line version stands in its place",
+                    page.evaluate("(() => { const h = document.querySelector('#rsVizCard .rs-hint');"
+                                  " return !!h && h.textContent.indexOf('flash threshold') > -1; })()"))
+        page.click("#scr-vis [data-act=focus]")
+        suite.check("Focus view opens full screen", suite.wait_until(
+            "document.documentElement.classList.contains('rs-focus')", 8))
+        suite.check("it brings a bar to change the visualisation",
+                    page.evaluate("getComputedStyle(document.getElementById('rsFocusBar')).display") == "flex")
+        first = page.evaluate("document.getElementById('rsFocusName').textContent")
+        suite.check("it starts on a named visualisation", bool(first) and first != "Visualisation", first)
+        suite.check("the visualiser is genuinely enabled", page.evaluate(
+            "window.ResonanceViz.api.getPrefs().on === true"))
+        page.click("[data-rs=fNext]")
+        page.wait_for_timeout(300)
+        second = page.evaluate("document.getElementById('rsFocusName').textContent")
+        suite.check("Next switches to another visualisation", bool(second) and second != first, [first, second])
+        suite.check("the switch lands in the page's own prefs", page.evaluate(
+            "window.ResonanceViz.api.getPrefs().preset") != "")
+        page.click("#rsFocusBar [data-rs=fPick]")
+        suite.check("Change opens the full list", suite.wait_until(
+            "!!document.getElementById('rsFocusPick') && "
+            "document.getElementById('rsFocusPick').classList.contains('rs-ov-on')", 5))
+        page.click("#rsFocusPick [data-fp='quiet-tide']")
+        page.wait_for_timeout(250)
+        suite.check("picking one applies it", page.evaluate(
+            "window.ResonanceViz.api.getPrefs().preset") == "quiet-tide")
+        page.click("#rsFsTop [data-rs=fsExit]")
+        suite.check("closing focus returns to the app", suite.wait_until(
+            "!document.documentElement.classList.contains('rs-focus')", 8))
+        suite.check("the panels come home with it", page.evaluate(
+            "(() => { const c = document.querySelector('[data-viz-panel]');"
+            " return !!c && !c.closest('#rsFs'); })()"))
+
         # the chamber opens as a real instrument
         page.click("#rsChamber")
         opened = suite.wait_until("!!document.getElementById('cymRoot') && "
@@ -448,6 +499,32 @@ def main():
         suite.check("wallpaper accent takes the system palette",
                     page.evaluate("document.documentElement.style.getPropertyValue('--rs-pri')") == "#8AD8C8")
         page.click("#rsAccent")
+        # ---- the Full / Minimal interface -------------------------------------------
+        suite.check("the interface starts Full, with the knob on Play",
+                    page.evaluate("document.documentElement.getAttribute('data-rs-ui')") == "full" and
+                    "knob-calm" in page.evaluate(
+                        "getComputedStyle(document.getElementById('rsPlay')).backgroundImage"))
+        suite.check("the tiles carry their own artwork",
+                    "tile-sleep" in page.evaluate(
+                        "getComputedStyle(document.querySelector('.rs-tile[data-rs-tile=sleep]')).backgroundImage"))
+        art = page.evaluate("""() => Promise.all(["knob-calm","knob-dusk","knob-sage","knob-sand",
+            "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate"]
+            .map(n => fetch("ui/" + n + ".webp").then(r => r.ok)))""")
+        suite.check("every piece of art actually loads", bool(art) and all(art), art)
+        page.click("#rsUi button[data-u=minimal]")
+        suite.check("Minimal drops the art and says so",
+                    page.evaluate("document.documentElement.getAttribute('data-rs-ui')") == "minimal" and
+                    page.evaluate("getComputedStyle(document.getElementById('rsPlay')).backgroundImage") == "none")
+        suite.check("the choice is stored",
+                    page.evaluate("JSON.parse(localStorage.getItem('resonance.app.theme.v1')).ui") == "minimal")
+        page.click("#rsUi button[data-u=full]")
+        suite.check("Full comes back",
+                    page.evaluate("document.documentElement.getAttribute('data-rs-ui')") == "full")
+        page.click("#scr-settings [data-act=focus]")
+        suite.check("the Settings row opens focus view too", suite.wait_until(
+            "document.documentElement.classList.contains('rs-focus')", 8))
+        page.click("#rsFsTop [data-rs=fsExit]")
+        suite.wait_until("!document.documentElement.classList.contains('rs-focus')", 6)
 
         # ---- the overflow sheet -----------------------------------------------------
         page.click("#rsOverflow")
