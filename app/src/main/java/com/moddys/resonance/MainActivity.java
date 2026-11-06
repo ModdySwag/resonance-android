@@ -171,6 +171,9 @@ public class MainActivity extends Activity {
         }
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
+        /* no glow or rubber-band at the edges: a swipe past the top or bottom must not
+           hand the gesture to the system or offer a pull-to-refresh the shell cannot honour */
+        web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         s.setDomStorageEnabled(true);        // imported packs + preferences live in localStorage
         s.setLoadsImagesAutomatically(true);
         /* The app leaves this off so the shell (lock screen, notification) can start a

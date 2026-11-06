@@ -801,6 +801,38 @@ def main():
                 "(() => { const c = document.querySelector('[data-viz-panel]');"
                 " return c ? !!c.closest('.viz-inline') : false; })()"))
 
+        # ---- the chamber is a layer, not a trap --------------------------------------
+        # A system Back (edge swipe) used to find no history and finish the activity; the
+        # chamber now owns an entry and Back returns to the app.
+        page.evaluate("window.__rs.chamber()")
+        suite.check("the chamber opens", suite.wait_until(
+            "document.documentElement.classList.contains('cym-open')", 8))
+        page.wait_for_timeout(700)
+        page.evaluate("history.back()")
+        suite.check("Back closes the chamber without leaving the app", suite.wait_until(
+            "!document.documentElement.classList.contains('cym-open')", 5)
+            and page.evaluate("!!document.getElementById('rsApp')"))
+        page.wait_for_timeout(400)
+
+        # ---- Ambient panels: one scene menu, no second chamber door -------------------
+        suite.tab("vis")
+        page.wait_for_timeout(700)
+        amb = page.evaluate("""(() => {
+          const p = document.getElementById('vizPrev').getBoundingClientRect();
+          const n = document.getElementById('vizNext').getBoundingClientRect();
+          const s = document.getElementById('vizPreset').getBoundingClientRect();
+          const cym = document.getElementById('cymCardBtn');
+          return { box: !!document.querySelector('#vizCard .rs-scenebox'),
+                   pw: Math.round(p.width), ph: Math.round(p.height), nw: Math.round(n.width),
+                   sw: Math.round(s.width), sh: Math.round(s.height),
+                   cym: cym ? getComputedStyle(cym).display : 'gone' };
+        })()""")
+        suite.check("the page's duplicate Cymatic Chamber button is gone", amb["cym"] == "none", amb)
+        suite.check("Scene reads as a menu: 44 px arrows against one wide picker",
+                    amb["box"] and amb["pw"] >= 44 and amb["ph"] >= 44 and amb["nw"] >= 44
+                    and abs(amb["sh"] - amb["ph"]) <= 2 and amb["sw"] >= 150, amb)
+
+
         # ---- files: .gnaural save, pack save, share link -----------------------------
         suite.tab("studio")
         page.evaluate("document.getElementById('rsFilesDet').open = true")
@@ -814,6 +846,26 @@ def main():
         start = suite.last_call("fileStart")
         suite.check("the save has a sensible name", start is not None and start["a"][0].endswith(".gnaural"),
                     start and start["a"][0])
+
+        # the card's formatting contract: two equal columns per action row, one labelled
+        # length row, a full-width share, and no second "Files" heading
+        lay = page.evaluate("""(() => {
+          const r = id => document.getElementById(id).getBoundingClientRect();
+          const card = document.getElementById('rsFiles').getBoundingClientRect();
+          const len = document.getElementById('exportMin');
+          return { open: Math.round(r('loadBtn').width), pack: Math.round(r('loadPackBtn').width),
+                   save: Math.round(r('saveGnm').width), exp: Math.round(r('exportBtn').width),
+                   share: Math.round(r('shareBtn').width),
+                   shareRow: Math.round(document.getElementById('shareBtn').closest('.row')
+                     .getBoundingClientRect().width),
+                   lenRow: !!len.closest('.rs-filelen'), lenH: Math.round(r('exportMin').height),
+                   head: getComputedStyle(document.querySelector('#rsFiles h3')).display };
+        })()""")
+        suite.check("the file rows share one two-column rhythm and one heading",
+                    abs(lay["open"] - lay["pack"]) <= 2 and abs(lay["save"] - lay["exp"]) <= 2
+                    and lay["head"] == "none", lay)
+        suite.check("the export length has its own labelled row, and share runs full width",
+                    lay["lenRow"] and lay["lenH"] >= 44 and lay["share"] >= lay["shareRow"] - 2, lay)
 
         suite.tab("sessions")
         page.evaluate("document.querySelector('#pklist a') || null")

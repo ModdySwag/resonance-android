@@ -458,6 +458,36 @@
     ".rs-tap{flex:0 0 auto;display:block;padding:10px 0;margin:-10px 0;border:0;background:none;cursor:pointer}",
     ".rs-tap .rs-pill{display:block}",
     ".rs-tap:focus-visible{outline:2px solid var(--rs-pri);outline-offset:3px;border-radius:999px}",
+    /* no rubber-band or pull-to-refresh: a swipe at the top edge must not reload the shell */
+    "html,body{overscroll-behavior:none}",
+    /* Files & export: one two-column rhythm instead of rows of ragged widths */
+    ".rs-files .row{display:flex;gap:8px}",
+    ".rs-files .row.rs-2 > *{flex:1 1 0;min-width:0}",
+    ".rs-files .row.rs-1 > *{flex:1 1 auto}",
+    ".rs-files .row > button,.rs-files .row > select{min-height:44px}",
+    ".rs-files .sep{margin:14px 0 10px}",
+    ".rs-files #packinfo{font-size:12px}",
+    ".rs-filelen{display:block;margin:4px 0 12px}",
+    ".rs-filelen > span{display:block;margin:0 0 6px;font-size:11.5px;letter-spacing:.07em;",
+    "  text-transform:uppercase;color:var(--rs-dim);font-weight:600}",
+    ".rs-filelen > select{width:100%;min-height:46px}",
+    /* Scene reads as a menu with many options, not three loose controls */
+    ".rs-scenebox{background:var(--rs-s3);border:1px solid var(--rs-line2);border-radius:14px;",
+    "  padding:10px 12px 12px;margin:4px 0 14px}",
+    ".rs-scenebox > .row{margin-bottom:8px}",
+    ".rs-scenebox .readout{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;",
+    "  color:var(--rs-ink2);font-weight:700}",
+    ".rs-scenebox .vz-scenes{display:flex;gap:8px;align-items:stretch;grid-template-columns:none}",
+    ".rs-scenebox .vz-scenes button{flex:0 0 46px;width:46px;min-width:46px;min-height:46px;",
+    "  padding:0;border-radius:12px;font-size:22px;line-height:1;display:grid;place-items:center}",
+    ".rs-scenebox .vz-scenes button#vizShuffle{flex:0 0 auto;width:auto;min-width:0;padding:0 12px;",
+    "  font-size:13px;letter-spacing:.04em;text-transform:uppercase}",
+    ".rs-scenebox .vz-scenes select{flex:1 1 auto;min-width:0;min-height:46px;border-radius:12px;",
+    "  font-weight:600}",
+    /* the page's card sat inside the shell's card, so every control paid two paddings */
+    "#rsVizCard #vizCard{padding:0;border:0;background:transparent;box-shadow:none;margin:0}",
+    ".rs-scenebox .rs-scene-shuffle{flex:0 0 auto;min-height:34px;padding:0 10px;border-radius:10px;",
+    "  font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}",
     "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
     /* the page's chart is hidden and repainted by the shell's own session map (see
        the schedule-map block in the home section) */
@@ -1770,7 +1800,7 @@
     back.className = "cym-back";
     back.innerHTML = "\u2039 Back";
     back.setAttribute("aria-label", "Back to Resonance Studio");
-    back.onclick = function () { window.ResonanceCymatics.close(); };
+    back.onclick = function () { closeChamber(false); };
     act.insertBefore(back, act.firstChild);
 
     var slower = doc.createElement("button");
@@ -1854,6 +1884,24 @@
     applyTempo(tempo, true);
   }
 
+  var CYM = { back: false };
+  function closeChamber(fromPop) {
+    if (fromPop) CYM.back = false;          /* the history entry is already consumed */
+    try { if (window.ResonanceCymatics) window.ResonanceCymatics.close(); } catch (e) { }
+  }
+
+  /* The chamber closes from its own button, Esc or the shell's Back; whichever happens, the
+     history entry it took has to come off the stack, or the next Back leaves the app. */
+  function watchChamber() {
+    if (!CYM.back) return;
+    if (!doc.documentElement.classList.contains("cym-open")) {
+      CYM.back = false;
+      unmarkBackTop();
+      return;
+    }
+    window.setTimeout(watchChamber, 300);
+  }
+
   function openChamber() {
     var c = window.ResonanceCymatics;
     if (!c) { toast("The chamber is still starting — try again."); return; }
@@ -1863,6 +1911,7 @@
       if (c.api && c.api.setPrefs) c.api.setPrefs({ src: follow ? "session" : "manual" });
     } catch (e) { }
     c.open();
+    if (!CYM.back) { CYM.back = true; markBack(); window.setTimeout(watchChamber, 400); }
     window.setTimeout(chamberChrome, 60);
   }
 
@@ -2185,6 +2234,7 @@
       if (overlays[i].classList.contains("rs-ov-on")) { top = overlays[i]; break; }
     }
     if (top) { closeOverlay(top, true); return; }
+    if (doc.documentElement.classList.contains("cym-open")) { closeChamber(true); return; }
     if (FS.on) { exitFullscreen(true); return; }
   });
 
@@ -3256,6 +3306,33 @@
         if (/^Every export is made/.test(text(n))) n.parentNode.removeChild(n);
       });
       $id("rsFiles").appendChild(files);
+      /* one rhythm for the card: the page's own heading repeats the summary, the two-button
+         rows become equal columns, and the export length gets a labelled row of its own */
+      files.classList.add("rs-files");
+      $$("h3", files).forEach(function (n) { n.style.display = "none"; });
+      function twoCols(sel) {
+        var b = files.querySelector(sel);
+        var row = b && b.closest(".row");
+        if (row) row.classList.add("rs-2");
+      }
+      twoCols("#loadBtn");
+      twoCols("#saveGnm");
+      var share = files.querySelector("#shareBtn");
+      var shareRow = share && share.closest(".row");
+      if (shareRow) shareRow.classList.add("rs-1");
+      var len = files.querySelector("#exportMin");
+      var saveRow = files.querySelector("#saveGnm").closest(".row");
+      if (len && saveRow && len.parentNode !== saveRow.parentNode) { /* keep the element */ }
+      if (len && saveRow) {
+        var lab = doc.createElement("label");
+        lab.className = "rs-filelen";
+        var sp = doc.createElement("span");
+        sp.textContent = "Export length";
+        lab.appendChild(sp);
+        lab.appendChild(len);
+        if (saveRow.nextSibling) saveRow.parentNode.insertBefore(lab, saveRow.nextSibling);
+        else saveRow.parentNode.appendChild(lab);
+      }
     }
 
     var packs = cardOf("#pklist");
@@ -3286,6 +3363,35 @@
         /* the page's paragraph described the panels' plumbing; one line is enough here */
         var vhint = vc.querySelector("p.hint");
         if (vhint) vhint.textContent = "Follows the audio itself — no microphone, no sensors.";
+        /* the shell's own chamber card is the entry to it; the page's copy of that button
+           sat three controls away and read as a second, different door */
+        var cymBtn = $id("cymCardBtn");
+        if (cymBtn) cymBtn.style.display = "none";
+        /* Scene becomes a menu: its label and the select-plus-arrows live in one raised box */
+        var scenes = vc.querySelector(".vz-scenes");
+        var sceneHead = scenes && scenes.previousElementSibling;
+        /* a scene set by hand leaves the picker with no value at all, which renders as a
+           blank menu; name that state instead */
+        var vsel = $id("vizPreset");
+        if (vsel && !vsel.value) {
+          var custom = doc.createElement("option");
+          custom.value = ""; custom.textContent = "Custom (chips below)";
+          vsel.insertBefore(custom, vsel.firstChild);
+          vsel.value = "";
+        }
+        if (scenes && sceneHead) {
+          var sbox = doc.createElement("div");
+          sbox.className = "rs-scenebox";
+          vc.insertBefore(sbox, sceneHead);
+          sbox.appendChild(sceneHead);
+          sbox.appendChild(scenes);
+          /* shuffle belongs with the label: the control row is then arrows and one wide
+             picker, which is what makes it read as a menu */
+          var shuf = $id("vizShuffle");
+          var hint = sceneHead.querySelector(".hint");
+          if (hint) hint.style.display = "none";
+          if (shuf) { shuf.classList.add("rs-scene-shuffle"); sceneHead.appendChild(shuf); }
+        }
         $id("rsVizCard").appendChild(vc);
         return;
       }
