@@ -150,6 +150,9 @@
       try { skin.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { }
     }
     native("chrome", [!dark]);
+    var chosen = prefs.theme2 || "calm";
+    if (chosen === "calm") html.removeAttribute("data-rs-accent");
+    else html.setAttribute("data-rs-accent", chosen);
     var pal = prefs.accent === "system" ? systemPalette() : null;
     var root = html.style;
     var map = { primary: "--rs-pri", onPrimary: "--rs-on-pri", container: "--rs-pri-c",
@@ -465,6 +468,12 @@
     ".rs-kv:last-child{border-bottom:0}",
     ".rs-kv b{color:var(--rs-dim);font-weight:500}",
     ".rs-kv span{font-variant-numeric:tabular-nums;text-align:right}",
+    ".rs-swatches{display:flex;gap:10px;margin:2px 0 12px;flex-wrap:wrap}",
+    ".rs-swatch{width:44px;height:44px;border-radius:50%;border:2px solid var(--rs-line2);",
+    "  background:var(--sw);cursor:pointer;padding:0;position:relative}",
+    ".rs-swatch[aria-pressed=\"true\"]{border-color:var(--rs-ink);border-width:3px}",
+    ".rs-swatch[aria-pressed=\"true\"]::after{content:'';position:absolute;top:50%;left:50%;",
+    "  width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--rs-ink)}",
     ".rs-sw{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 0}",
     ".rs-sw .rs-swt{flex:1 1 auto;min-width:0}",
     ".rs-sw b{display:block;font-size:15px;font-weight:600;margin-bottom:2px}",
@@ -552,6 +561,30 @@
     "  .rs-chips button:hover::before,.rs-screen #plist .item:hover::before{opacity:.06}}",
     "#rsNav button::before{border-radius:var(--rs-r-xl)}",
 
+    /* ------------------------------------------------------------- themes --- */
+    "html[data-rs-theme=\"dark\"][data-rs-accent=\"dusk\"]{--rs-pri:#B9BEEA;--rs-on-pri:#232748;--rs-pri-c:#3A3F73;--rs-on-pri-c:#E2E4FA}",
+    "html[data-rs-theme=\"light\"][data-rs-accent=\"dusk\"]{--rs-pri:#4A508C;--rs-on-pri:#FFFFFF;--rs-pri-c:#D6D8F4;--rs-on-pri-c:#1B1F42}",
+    "html[data-rs-theme=\"dark\"][data-rs-accent=\"sage\"]{--rs-pri:#A8CFAF;--rs-on-pri:#17351F;--rs-pri-c:#2C4A33;--rs-on-pri-c:#DCEEE0}",
+    "html[data-rs-theme=\"light\"][data-rs-accent=\"sage\"]{--rs-pri:#35664A;--rs-on-pri:#FFFFFF;--rs-pri-c:#CDE8D6;--rs-on-pri-c:#10291A}",
+    "html[data-rs-theme=\"dark\"][data-rs-accent=\"sand\"]{--rs-pri:#DCC295;--rs-on-pri:#3A2A0F;--rs-pri-c:#4E3D22;--rs-on-pri-c:#F2E5CE}",
+    "html[data-rs-theme=\"light\"][data-rs-accent=\"sand\"]{--rs-pri:#7A5B23;--rs-on-pri:#FFFFFF;--rs-pri-c:#F0E3C9;--rs-on-pri-c:#2C2008}",
+    "html[data-rs-theme=\"dark\"][data-rs-accent=\"slate\"]{--rs-pri:#AEC0CC;--rs-on-pri:#1B2A33;--rs-pri-c:#2E3F49;--rs-on-pri-c:#DCE9EF}",
+    "html[data-rs-theme=\"light\"][data-rs-accent=\"slate\"]{--rs-pri:#405C6B;--rs-on-pri:#FFFFFF;--rs-pri-c:#D3E3EA;--rs-on-pri-c:#16262E}",
+    /* ------------------------------------------------------------- chamber --- */
+    /* the chamber's own header sat under the status bar (env() is 0 here) */
+    ".rs-app .cym .cym-top{padding-top:calc(10px + " + SAFE_T + ") !important;",
+    "  align-items:center !important}",
+    ".rs-app .cym .cym-dock{bottom:calc(12px + " + SAFE_B + ") !important}",
+    ".rs-app .cym .cym-actions{gap:8px !important;flex-wrap:wrap;justify-content:flex-end}",
+    ".rs-app .cym .cym-actions > button{min-height:44px;min-width:44px;border-radius:12px;",
+    "  font-size:13px;padding:0 12px}",
+    ".rs-app .cym .cym-back{order:-1;display:inline-flex;align-items:center;gap:6px;",
+    "  background:rgba(20,17,13,.55) !important;color:#fff !important;border-color:rgba(255,255,255,.3) !important}",
+    ".rs-app .cym .cym-tempo{min-width:44px;font-size:16px !important;line-height:1}",
+    ".rs-app .cym .cym-tone{max-width:56vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    /* oval chips: the label sat high in the pill */
+    ".rs-app #vizCard .viz-chips button,.rs-app #vizCard .chip{display:inline-flex;",
+    "  align-items:center;justify-content:center;line-height:1;padding:0 14px}",
     /* ------------------------------------------------------- reduced motion --- */
     "@media (prefers-reduced-motion: reduce){",
     "  .rs-screen{animation:none} #rsSheet{transition:none}",
@@ -1057,6 +1090,49 @@
     syncVis();
   }
 
+  var cymHooked = false;
+  function chamberChrome() {
+    if (cymHooked) return;
+    var root = doc.getElementById("cymRoot");
+    if (!root) return;
+    var act = root.querySelector(".cym-actions");
+    if (!act) return;
+    cymHooked = true;
+    var back = doc.createElement("button");
+    back.id = "rsCymBack";
+    back.className = "cym-back";
+    back.innerHTML = "\u2039 Back";
+    back.setAttribute("aria-label", "Back to Resonance Studio");
+    back.onclick = function () { window.ResonanceCymatics.close(); };
+    act.insertBefore(back, act.firstChild);
+
+    var slower = doc.createElement("button");
+    slower.className = "cym-tempo"; slower.textContent = "\u2212";
+    slower.setAttribute("aria-label", "Slower");
+    slower.onclick = function () { bumpSpeed(-0.15); };
+    var faster = doc.createElement("button");
+    faster.className = "cym-tempo"; faster.textContent = "+";
+    faster.setAttribute("aria-label", "Faster");
+    faster.onclick = function () { bumpSpeed(0.15); };
+    var stop = doc.createElement("button");
+    stop.textContent = "Stop";
+    stop.setAttribute("aria-label", "Stop and rewind the session");
+    stop.onclick = function () { pageStop(); pushState(true); };
+    act.insertBefore(stop, act.querySelector("#cymPlay"));
+    act.insertBefore(faster, stop);
+    act.insertBefore(slower, faster);
+  }
+
+  function bumpSpeed(d) {
+    var c = cymApi(); if (!c) return;
+    try {
+      var cur = (c.getPrefs && c.getPrefs().speed) || 1;
+      var next = Math.max(0.2, Math.min(3, Math.round((cur + d) * 100) / 100));
+      c.setPrefs({ speed: next });
+      toast("Chamber speed " + next.toFixed(2) + "x");
+    } catch (e) { }
+  }
+
   function openChamber() {
     var c = window.ResonanceCymatics;
     if (!c) { toast("The chamber is still starting — try again."); return; }
@@ -1066,6 +1142,7 @@
       if (c.api && c.api.setPrefs) c.api.setPrefs({ src: follow ? "session" : "manual" });
     } catch (e) { }
     c.open();
+    window.setTimeout(chamberChrome, 60);
   }
 
   /* =============================================================== settings === */
@@ -1078,6 +1155,7 @@
       '  <div class="rs-seg" id="rsTheme" role="group" aria-label="Theme">' +
       '    <button data-t="system" aria-pressed="true">System</button><button data-t="dark" aria-pressed="false">Dark</button>' +
       '    <button data-t="light" aria-pressed="false">Light</button></div>' +
+      '  <div class="rs-swatches" id="rsAccents" role="group" aria-label="Theme colour"></div>' +
       '  <label class="rs-sw"><span class="rs-swt"><b>Accent from wallpaper</b>' +
       '    <span>Android 12 and later. Off uses the Resonance teal.</span></span>' +
       '    <input type="checkbox" id="rsAccent"><span class="rs-track" aria-hidden="true"></span></label>' +
@@ -1118,10 +1196,35 @@
       });
     });
     paintTheme();
+    var ACCENTS = [["calm", "#4FB3A2", "Calm"], ["dusk", "#6B72B8", "Dusk"], ["sage", "#5E936F", "Sage"],
+                   ["sand", "#B0894A", "Sand"], ["slate", "#6E8B99", "Slate"]];
+    var sw = $id("rsAccents");
+    ACCENTS.forEach(function (a) {
+      var b = doc.createElement("button");
+      b.className = "rs-swatch";
+      b.type = "button";
+      b.style.setProperty("--sw", a[1]);
+      b.setAttribute("data-accent", a[0]);
+      b.setAttribute("aria-label", a[2] + " theme");
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        prefs.theme2 = a[0]; savePrefs(); applyTheme(); paintAccents();
+      });
+      sw.appendChild(b);
+    });
+    function paintAccents() {
+      var cur = prefs.theme2 || "calm";
+      $$("#rsAccents .rs-swatch").forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-accent") === cur ? "true" : "false");
+      });
+    }
+    paintAccents();
+
     var acc = $id("rsAccent");
     acc.checked = prefs.accent === "system";
     acc.addEventListener("change", function () {
       prefs.accent = this.checked ? "system" : "brand"; savePrefs(); applyTheme();
+      try { var pa = $id("rsAccents"); if (pa) pa.style.display = this.checked ? "none" : "flex"; } catch (e) { }
     });
     var fo = $id("rsFocus");
     fo.checked = doc.body.classList.contains("focus");
@@ -1930,7 +2033,12 @@
     var live = cardOf("#barL");
     if (live) $id("rsLive").appendChild(live);
     var files = cardOf("#loadBtn");
-    if (files) $id("rsFiles").appendChild(files);
+    if (files) {
+      $$("p.hint", files).forEach(function (n) {
+        if (/^Every export is made/.test(text(n))) n.parentNode.removeChild(n);
+      });
+      $id("rsFiles").appendChild(files);
+    }
 
     var packs = cardOf("#pklist");
     if (packs) {
