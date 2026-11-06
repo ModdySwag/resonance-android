@@ -444,7 +444,15 @@
     /* ------------------------------------------------ the vintage face (Full UI) --- */
     /* Art only exists in the Full interface; Minimal falls back to the plain controls. */
     "html[data-rs-ui=full] .rs-hero{background-image:url(ui/plate.webp);background-size:cover;",
-    "  background-position:center;background-color:#141210;color:#F2F6F4}",
+    "  background-position:center;background-color:#141210;color:#F2F6F4;position:relative;overflow:hidden}",
+    /* real brushing: a fine anisotropic sheen over the plate, so it is metal and not a flat band */
+    "html[data-rs-ui=full] .rs-hero::before{content:\"\";position:absolute;top:0;right:0;bottom:0;left:0;",
+    "  pointer-events:none;background:repeating-linear-gradient(180deg,rgba(255,244,224,.055) 0 1px,",
+    "  rgba(0,0,0,.055) 1px 2px,rgba(255,255,255,0) 2px 5px);opacity:.9}",
+    "html[data-rs-ui=full] .rs-hero > *{position:relative;z-index:1}",
+    "html[data-rs-ui=full] .rs-sched{margin-bottom:6px}",
+    "html[data-rs-ui=full] .rs-hero #meta{margin:2px 0 12px}",
+    "html[data-rs-ui=full] .rs-hero .rs-transport{margin-top:0}",
     "html[data-rs-ui=full] .rs-hero h1{color:#F7FBF8}",
     "html[data-rs-ui=full] .rs-hero p,html[data-rs-ui=full] .rs-hero #meta,",
     "html[data-rs-ui=full] .rs-hero #rsClock{color:#D2DBD6}",
@@ -2207,6 +2215,10 @@
       "html.rs-fs .rs-fs-host h3{display:none !important}",
       "html.rs-fs .rs-fs-host .viz-canvas{width:100% !important;height:100% !important;",
       "  max-width:none !important;border-radius:0 !important}",
+      /* the panel's own wrappers must stretch too, or the canvas keeps its inline height */
+      "html.rs-fs .rs-fs-host .viz-inline,html.rs-fs .rs-fs-host .viz-frame,html.rs-fs .rs-fs-host > div{",
+      "  height:100% !important;max-height:none !important;display:block !important}",
+      "#rsFsCtl .rs-fs-meta{gap:18px}",
       "#rsFsTop{position:absolute;top:calc(10px + " + SAFE_T + ");left:14px;right:12px;display:flex;",
       "  align-items:center;gap:10px;color:rgba(255,255,255,.75);font:13px/1.3 inherit;",
       "  pointer-events:none;transition:opacity .25s;z-index:2}",
