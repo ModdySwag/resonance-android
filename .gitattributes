@@ -14,3 +14,5 @@ app/src/main/assets/www/**/*.jpg binary
 *.xml text
 *.yml text
 *.md text
+app/src/main/assets/www/**/*.webp binary
+app/src/main/assets/www/**/*.jpeg binary
