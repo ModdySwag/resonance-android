@@ -333,7 +333,7 @@
     ".rs-screen .chip{min-height:48px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
-    ".rs-rail{margin:0 0 16px}",
+    ".rs-rail{margin:0 16px 16px}",
     ".rs-rail h4{margin:0 0 8px;font-size:15px;font-weight:700;letter-spacing:-.01em}",
     ".rs-rail .rs-track{display:flex;overflow-x:auto;gap:10px;padding:0 16px 4px;",
     "  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}",
@@ -357,7 +357,7 @@
     ".rs-chipbtn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);flex:0 0 auto}",
     ".rs-screen .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}",
-    ".rs-screen .rs-searchrow{display:flex;align-items:center;margin:0 0 6px}",
+    ".rs-screen .rs-searchrow{display:flex;align-items:center;margin:0 16px 6px}",
     "#scr-sessions .rs-pad{height:0}",
     "#rsBrowse{padding-top:2px}",
     "#rsBrowse #search{min-height:44px}",
@@ -2875,6 +2875,8 @@
     if (browse) $id("rsBrowse").appendChild(browse);
     var quick = cardOf("#quickpick");
     if (quick) $id("rsQuick").appendChild(quick);
+    var qsec = $id("rsQuick");
+    if (qsec && $id("rsVoices")) $id("rsVoices").parentNode.insertBefore(qsec, $id("rsVoices"));
 
     var voices = cardOf("#voicelist");
     if (voices) $id("rsVoices").appendChild(voices);
