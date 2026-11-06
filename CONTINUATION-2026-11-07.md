@@ -1,8 +1,96 @@
 # RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (session 2)
 
-Read this whole block before touching anything. The tree is clean; nothing is pushed anywhere.
+## SESSION 3 (later the same day) — read this first
 
-## STATE
+### STATE
+
+- `C:/Users/Moddy/resonance-android`, branch `main`, HEAD `9304872`, **tree clean**, 41 commits
+  ahead of `origin/main`, **nothing pushed**.
+- Version unchanged: `2.0.5-beta`, `versionCode 12`. Installed on `ZY22LGC75T` as a signed
+  release from commit `9304872`'s build; emulator `emulator-5554` still has an older debug build.
+- **GATES: `py -3.11 tools/shim_harness.py` 177/177** (was 129), `py -3.11 cache/contrast.py` 0,
+  `py -3.11 tools/apk_identity.py …` 32/32.
+
+### WHAT THIS PASS FOUND AND FIXED
+
+He reported "clicking About Resonance Studio does nothing". Three separate faults were behind
+that class of symptom:
+
+1. **The More sheet's rows were dead.** The sheet popped its own history entry and the overlay
+   it opened pushed a new one; the deferred popstate then arrived with the new panel on top and
+   closed it. About, Quick guide and Check device all opened and vanished. The sheet now hands
+   its history entry to the overlay (`showOverlay(ov, keepBack)`, `tourEnd`-style ownership), so
+   closing pops exactly one entry. It worked from Settings all along — the harness only ever
+   opened the panels via `window.__rs.guide()/check()`, so no test touched a row.
+2. **Toasts never appeared anywhere in the shell.** `toast()` called `window.__gnauralAPI.toast`,
+   a method the page has never had, so every message (share copied, saved, checking for updates)
+   fell through to a logcat line. The Android bridge now has a real `toast` (Toast.makeText on
+   the UI thread) and the helper targets it, with the page's own toast element as the fallback.
+3. **Check for updates was silent** when up to date and on failure. `UPD.manual` now records a
+   person-asked check and `none()`/`failed()` answer it; Java calls `__rsUpdate.failed(error)`
+   when the feed cannot be reached. The launch check stays quiet. `compat.json` also shipped
+   `appVersion 1.1.4-beta` — the identity gate was red; fixed and now guarded by a suite check
+   against `app/build.gradle`.
+
+**Back was handled twice on Android 13+** — the `OnBackInvokedCallback` and `onKeyDown` both acted,
+the second found no history and finished the activity, so one Back closed a panel *and* left the
+app. `onKeyDown` now only serves pre-33 (`Build.VERSION.SDK_INT < 33`). Verified on the phone: the
+More sheet closes on Back and the app stays.
+
+### SHIPPED THIS PASS (all in the shim unless said)
+
+- **Welcome tour** (`window.__rs.tour`, `#rsTour`): nine stops — welcome, nav, player, eight
+  sessions, build a tone (Studio), library, engine room, chamber, the replay row. One bubble with
+  a spotlight cut-out + teal ring, caret on the bubble edge, glide between stops, `N of 9`,
+  Back/Skip/Next, a **tick that ends it at any point**, `aria-modal` dialog, focus to the bubble,
+  `prefers-reduced-motion` honoured. Runs once at first launch (1.6 s after boot, `prefs.tour`),
+  replayed from **Settings → Help & about → Replay the welcome tour** (`#rsTourRow`,
+  `data-act="tour"`). Back closes it (markBack/popstate). Targets are chosen after `mountCards`,
+  so build-a-tone is in Studio, quick picks beside it, the library in Sessions.
+- **Surprise me moved into the player**: a pill beside `#rsMode` in the hero, same `.rs-pill`
+  skin, 44 px tap target via a wrapping `.rs-tap` button (the visible chip stays 25 px). It drives
+  the page's own `#randomBtn` (which also scrambles the visualiser), then starts playback. The
+  page's library button is hidden but kept in the DOM — both the page and viz.js bind to it.
+- **Page's duplicate "idle" pill** in the hero hidden (`#modePill`) — the shell's live pill is
+  the status.
+- **Copy trims**: Quick picks hint one line; Ambient panels hint one line ("Follows the audio
+  itself — no microphone, no sensors."); the Data section's "Everything is synthesised…" note
+  removed; Quick guide copy rewritten to the shipped layout.
+- **Overlays**: `aria-modal`, reopen at the top, focus returns to the opener (or the More button
+  when the opener was a sheet row).
+
+### STILL OPEN, in order
+
+1. **His eye** on the tour (all nine stops), the Surprise pill beside LIVE, and the three trimmed
+   copy blocks.
+2. **The update feed is stale and blocks the update path.** `https://moddys.net/updates.json`'s
+   `resonance-android` entry is still `1.1.4-beta` / `versionCode 6`, so the app (12) can only ever
+   answer "you are on the newest build". The download → sha256 → installer path is therefore
+   **untested end to end**. Publishing 2.0.5 with a bumped versionCode and fresh feed entry is a
+   deploy he must review (queue items 4/5).
+3. **Tour Back on the phone by his thumb** — I verified the sheet's Back on the device and the
+   tour's popstate in the harness; clearing app data is the only way I can re-trigger the first
+   run without him, so I left his data alone.
+4. Then the older queue: systemic type/radius pass, re-cut `tile-drift`/`tile-focus`, Play
+   submission (privacy page first), versionCode bump + push + tag.
+
+### NEW TRAPS
+
+- **A sheet that hands off to an overlay must transfer its history entry** — popping on the way in
+  and pushing on the way out races the deferred popstate, which closes the new panel.
+- **`toast()` looked wired but wasn't**: `api()` is the *page's* API. Anything calling a method the
+  page does not implement fails silently. The bridge is `host`/`native()`.
+- **Back on API 33+**: with the dispatcher callback registered, also handling `onKeyDown` runs the
+  pop twice.
+- **The harness hiding a bug**: opening panels through `window.__rs.*` skips the row handlers. The
+  suite now clicks the rows a person taps.
+- **Vision coordinates come back in the image space the model saw**, which is downscaled — scale by
+  `device_width / described_width` before `adb input tap`, or the tap lands elsewhere.
+
+---
+
+## STATE (before this pass)
+
 
 - `C:\Users\Moddy\resonance-android`, branch `main`.
 - Version `2.0.5-beta`, `versionCode 12`, `targetSdk 35`, `compileSdk 35`. The version is bumped
