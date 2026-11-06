@@ -1847,7 +1847,21 @@
     if (files) $id("rsFiles").appendChild(files);
 
     var packs = cardOf("#pklist");
-    if (packs) { packs.id = "rsPacks"; screenEls.settings.appendChild(packs); }
+    if (packs) {
+      packs.id = "rsPacks";
+      var pkH = packs.querySelector("h3");
+      var n = packs.querySelectorAll("a").length;
+      var det = doc.createElement("details");
+      det.className = "tool";
+      det.innerHTML = '<summary>Session packs <span class="cnt">' + n + '</span></summary>';
+      var body = doc.createElement("div");
+      body.className = "body";
+      var hint = packs.querySelector("p.hint");
+      if (hint) body.appendChild(hint);
+      body.appendChild(packs);
+      det.appendChild(body);
+      screenEls.settings.appendChild(det);
+    }
 
     var kb = $$("section.card").filter(function (c) { return /Keyboard/.test(text(c.querySelector("h3"))); })[0];
     if (kb && kb.parentNode) kb.parentNode.removeChild(kb);
