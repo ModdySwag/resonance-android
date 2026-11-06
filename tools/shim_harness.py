@@ -214,8 +214,9 @@ def main():
             "document.getElementById('rsTitle').textContent") == "Sessions")
         suite.check("the library is really here (the page's own list, moved)",
                     page.evaluate("document.querySelectorAll('#rsBrowse #plist .item').length > 50"))
-        suite.check("the first session row is above the fold with the filters closed",
-                    page.evaluate("(() => { const r = document.querySelector('#plist .item');"
+        suite.check("sessions are reachable above the fold with the filters closed",
+                    page.evaluate("(() => { const r = document.querySelector('#rsModules .rs-card')"
+                                  " || document.querySelector('#plist .item');"
                                   " return !!r && r.getBoundingClientRect().top < innerHeight; })()"))
         suite.shot("2-sessions.png")
         suite.tab("studio")

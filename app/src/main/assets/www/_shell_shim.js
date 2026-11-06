@@ -291,6 +291,27 @@
     ".rs-screen .chip{min-height:48px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
+    ".rs-rail{margin:0 0 16px}",
+    ".rs-rail h4{margin:0 0 8px;font-size:15px;font-weight:700;letter-spacing:-.01em}",
+    ".rs-rail .rs-track{display:flex;overflow-x:auto;gap:10px;padding:0 16px 4px;",
+    "  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}",
+    ".rs-rail .rs-track::-webkit-scrollbar{display:none}",
+    ".rs-card{flex:0 0 auto;width:150px;min-height:92px;scroll-snap-align:start;text-align:left;",
+    "  border-radius:14px;border:1px solid var(--rs-line);background:var(--rs-s2);color:var(--rs-ink);",
+    "  padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;",
+    "  font:inherit;cursor:pointer}",
+    ".rs-card b{font-size:14px;font-weight:600;line-height:17px;display:-webkit-box;",
+    "  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
+    ".rs-card span{font-size:11.5px;line-height:15px;color:var(--rs-dim);display:flex;gap:6px;",
+    "  align-items:center;flex-wrap:wrap}",
+    ".rs-card .rs-tag{font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:9.5px;",
+    "  padding:2px 6px;border-radius:999px;background:var(--rs-s4);color:var(--rs-ink2)}",
+    ".rs-card .rs-tag.spk{background:var(--rs-pri-c);color:var(--rs-on-pri-c)}",
+    ".rs-card:active{background:var(--rs-s3)}",
+    ".rs-modhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;",
+    "  padding:0 16px}",
+    ".rs-modhead button{background:none;border:0;color:var(--rs-pri);font:600 13px/1 var(--rs-sans);",
+    "  padding:6px 0;cursor:pointer}",
     ".rs-chipbtn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);flex:0 0 auto}",
     ".rs-screen .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}",
@@ -784,6 +805,8 @@
   function loadPresetAt(i, it) {
     var a = api(); if (!a) return;
     try { a.loadPreset(i); } catch (e) { }
+    prefs.last = i; savePrefs();
+    try { buildModules(); } catch (e) { }
     var sel = $id("presets");
     if (sel) sel.value = String(i);
     var pl = $id("plist");
@@ -893,6 +916,14 @@
       });
     });
 
+    $id("rsModules").addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-more]");
+      if (!b) return;
+      $id("rsFilterBtn").setAttribute("aria-expanded", "true");
+      $id("rsFilterWrap").classList.add("rs-on");
+      $id("rsBrowse").scrollIntoView({ block: "start" });
+    });
+
     var fb = $id("rsFilterBtn");
     if (fb) fb.addEventListener("click", function () {
       var on = fb.getAttribute("aria-expanded") !== "true";
@@ -922,11 +953,75 @@
 
   /* =============================================================== sessions === */
 
+  function rsMinutes(it) {
+    var m = /(\d+)\s*minutes?/i.exec(it.blurb || "");
+    return m ? parseInt(m[1], 10) : null;
+  }
+  function rsFavs() {
+    try { return JSON.parse(localStorage.getItem("resonance.favourites.v1") || "[]") || []; } catch (e) { return []; }
+  }
+
+  function rail(title, items, opts) {
+    if (!items.length) return null;
+    opts = opts || {};
+    var wrap = doc.createElement("section");
+    wrap.className = "rs-rail";
+    wrap.innerHTML = '<div class="rs-modhead"><h4>' + title + '</h4>' +
+      (opts.more ? '<button type="button" data-more="' + opts.more + '">See all</button>' : '') + '</div>';
+    var track = doc.createElement("div");
+    track.className = "rs-track";
+    items.slice(0, 12).forEach(function (hit) {
+      var b = doc.createElement("button");
+      b.className = "rs-card";
+      b.type = "button";
+      var mins = rsMinutes(hit.it);
+      b.innerHTML = "<b>" + esc(hit.it.name) + "</b><span>" +
+        (mins ? mins + " min" : "session") +
+        (/speaker/i.test(hit.it.packName) ? " <i class='rs-tag spk'>speakers</i>"
+          : (/pair|binaural/i.test(hit.it.blurb || "") ? " <i class='rs-tag'>headphones</i>" : "")) +
+        "</span>";
+      b.addEventListener("click", function () { loadPresetAt(hit.i, hit.it); });
+      track.appendChild(b);
+    });
+    wrap.appendChild(track);
+    return wrap;
+  }
+
+  function buildModules() {
+    var host = $id("rsModules");
+    if (!host) return;
+    var list = (pState() && pState().presetList) || [];
+    var all = list.map(function (it, i) { return { it: it, i: i }; });
+    var favs = rsFavs();
+    host.innerHTML = "";
+
+    var last = prefs.last;
+    var cont = last !== undefined && list[last] ? [{ it: list[last], i: last }] : [];
+    var modules = [
+      rail("Continue", cont),
+      rail("Your favourites", all.filter(function (r) { return favs.indexOf(r.it.name) !== -1; })),
+      rail("Under 15 minutes", all.filter(function (r) { var m = rsMinutes(r.it); return m && m <= 15; })),
+      rail("Sleep", byBand(/sleep|delta/i, all)),
+      rail("Focus", byBand(/focus|study|alpha|concentrat/i, all)),
+      rail("Speaker-friendly", all.filter(function (r) {
+        return /speaker|iso|pulse/i.test(r.it.packName + " " + (r.it.blurb || ""));
+      }))
+    ];
+    var shown = 0;
+    modules.forEach(function (m) { if (m) { host.appendChild(m); shown++; } });
+    if (!shown) host.innerHTML = "";
+  }
+
+  function byBand(re, all) {
+    return all.filter(function (r) { return re.test(r.it.name + " " + (r.it.packName || "")); }).slice(0, 12);
+  }
+
   function buildSessions() {
     screenEls.sessions.innerHTML =
       '<div class="rs-pad"></div>' +
       '<section class="card" id="rsBrowse" aria-labelledby="rsBrowseH">' +
       '  <h3 id="rsBrowseH" class="sr-only">Sessions</h3>' +
+      '  <div id="rsModules"></div>' +
       '  <div class="rs-searchrow"><button class="rs-chipbtn" id="rsFilterBtn" aria-expanded="false" ' +
       '    aria-controls="rsFilterWrap">Filters</button></div>' +
       '  <div id="rsFilterWrap"></div></section>' +
@@ -2115,6 +2210,7 @@
     mountCards();
     wireHome(); wireVis(); wireSettings();
     wireSearchKeyboard();
+    buildModules();
     deviceFacts();
     var ver = $id("rsVer");
     if (ver) ver.textContent = "v" + (deviceFacts().app || "?");
