@@ -772,6 +772,12 @@
     /* ------------------------------------------------------------- chamber --- */
     /* the chamber's own header sat under the status bar (env() is 0 here) */
     ".rs-app .cym .cym-top{padding-top:calc(10px + " + SAFE_T + ") !important;",
+    /* the header is a faceplate: title and controls sit inside one panel */
+    "html[data-rs-ui=full] .rs-app .cym .cym-top{background-image:url(ui/strip.webp);",
+    "  background-size:cover;background-position:center;border-bottom:1px solid #4A3D2B;",
+    "  box-shadow:0 4px 14px rgba(0,0,0,.5);padding:calc(8px + " + SAFE_T + ") 10px 8px !important}",
+    "html[data-rs-ui=full] .rs-app .cym .cym-top h2,html[data-rs-ui=full] .rs-app .cym .cym-top b{",
+    "  color:#F6EFE0;letter-spacing:.06em;text-transform:uppercase;font-size:12px}",
     "  align-items:center !important}",
     ".rs-app .cym .cym-dock{bottom:calc(12px + " + SAFE_B + ") !important}",
     ".rs-app .cym .cym-actions{gap:8px !important;flex-wrap:wrap;justify-content:flex-end}",
@@ -794,8 +800,8 @@
     "html[data-rs-ui=full] .rs-app .cym #play{font-size:0}",
     ".rs-app .cym .cym-tone{display:none}",
     /* the top-right row: even 44px pills, one line, and it must fit 320 px too */
-    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center;",
-    "  padding-right:2px;box-sizing:border-box}",
+    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:wrap !important;justify-content:flex-end;",
+    "  max-width:100%;padding-right:2px;box-sizing:border-box}",
     ".rs-app .cym .cym-actions > button{min-height:44px;height:44px;min-width:44px;padding:0 9px;",
     "  box-sizing:border-box;flex:0 0 auto;",
     "  border-radius:999px;font:600 12.5px/1 var(--rs-sans);background:rgba(18,14,10,.55) !important;",
