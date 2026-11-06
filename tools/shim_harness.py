@@ -197,6 +197,32 @@ def main():
                     page.evaluate("!!document.documentElement.getAttribute('data-rs-theme')"))
         suite.shot("1-home.png")
 
+        # ---- the session map (the shell's own chart, not the page's) ---------------
+        suite.check("the page's own chart canvas is hidden",
+                    page.evaluate("getComputedStyle(document.getElementById('graph')).display === 'none'"))
+        suite.check("the shell's session map takes its place, at height",
+                    page.evaluate("(() => { const c = document.getElementById('rsSched');"
+                                  " if (!c) return 0; const r = c.getBoundingClientRect();"
+                                  " return getComputedStyle(c).display === 'block' ? r.height : 0; })()") >= 110)
+        suite.check("the map's backing store follows the device pixel ratio",
+                    page.evaluate("(() => { const c = document.getElementById('rsSched');"
+                                  " return c.width === Math.floor(c.clientWidth * devicePixelRatio) &&"
+                                  " c.height === Math.floor(c.clientHeight * devicePixelRatio); })()"))
+        page.evaluate("(() => { const st = window.__gnauralAPI.state;"
+                      " window.__keepCurves = st.curves; st.curves = null; window.__rs.sched(); })()")
+        suite.check("with no session the map draws its empty state",
+                    page.evaluate("document.getElementById('rsSched').getAttribute('aria-label')")
+                    == "Session map, no session loaded")
+        suite.check("the empty state actually paints (not a blank field)",
+                    page.evaluate("(() => { const c = document.getElementById('rsSched');"
+                                  " const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;"
+                                  " let n = 0; for (let i = 0; i < d.length; i += 4)"
+                                  " if (d[i] > 60) n++; return n; })()") > 60)
+        page.evaluate("(() => { window.__gnauralAPI.state.curves = window.__keepCurves; window.__rs.sched(); })()")
+        suite.check("restoring the session brings the ridges back",
+                    page.evaluate("document.getElementById('rsSched').getAttribute('aria-label')")
+                    != "Session map, no session loaded")
+
         # ---- navigation ------------------------------------------------------------
         suite.check("the nav is a real tablist",
                     page.evaluate("document.getElementById('rsNav').getAttribute('role') === 'tablist' && "
@@ -268,6 +294,40 @@ def main():
         page.click("#rsStop")
         suite.check("Stop stops and rewinds",
                     suite.wait_until("document.getElementById('clock').textContent.indexOf('0:00') === 0", 8))
+
+        # ---- the map reads the loaded session --------------------------------------
+        label = page.evaluate("document.getElementById('rsSched').getAttribute('aria-label')")
+        suite.check("the map's label names the layer count and total",
+                    label.startswith("Session map, ") and " total, at " in label, label)
+        suite.check("the map paints the session's ridges",
+                    page.evaluate("(() => { const c = document.getElementById('rsSched');"
+                                  " const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;"
+                                  " let n = 0; for (let i = 0; i < d.length; i += 4)"
+                                  " if (d[i] > 40) n++; return n; })()") > 400)
+        seek = page.evaluate("""(() => {
+          const st = window.__gnauralAPI.state, c = document.getElementById('rsSched');
+          const g = c.getContext('2d'), W = c.width, H = c.height;
+          const scan = () => {
+            const d = g.getImageData(0, 0, W, H).data, out = new Float64Array(W);
+            for (let x = 0; x < W; x++) { let s = 0;
+              for (let y = 24; y < H - 60; y++) { const i = (y * W + x) * 4; s += d[i] * 0.3 + d[i + 1] * 0.6 + d[i + 2]; }
+              out[x] = s; }
+            return out; };
+          const at = (f) => { st.live = { sample: Math.round(st.curves.total * 44100 * f), total: 0,
+                                          completed: false, peakL: 0, peakR: 0, voices: [] }; window.__rs.sched(); };
+          const head = (a, b) => { let best = -1e9, bx = -1;
+            for (let x = 0; x < W; x++) { const d = b[x] - a[x]; if (d > best) { best = d; bx = x; } }
+            return bx; };
+          at(0); const at0 = scan();
+          at(0.5); const mid = head(at0, scan());
+          at(0.9); const late = head(at0, scan());
+          at(0);
+          return { still: head(at0, scan()), mid: mid / W, late: late / W, w: W };
+        })()""")
+        suite.check("the playhead sits at the left edge when rewound",
+                    seek["still"] / seek["w"] < 0.2, seek)
+        suite.check("the playhead follows the position (half, then near the end)",
+                    0.42 < seek["mid"] < 0.58 and seek["late"] > 0.8, seek)
 
         # volume drives the page's own master gain
         page.evaluate("(() => { const v = document.getElementById('rsVol'); v.value = '0.25';"
@@ -349,8 +409,31 @@ def main():
                                       " return r.width > 200 && r.height > 200; })()"))
             suite.check("the chamber follows the session carrier",
                         page.evaluate("window.ResonanceCymatics.debugState().src === 'session'"))
+            # tempo: steps the label, scales the schedule, and survives a session change
+            page.click("button[aria-label='Faster tone']")
+            page.click("button[aria-label='Faster tone']")
+            suite.check("the chamber tempo steps to 1.20x",
+                        page.evaluate("document.getElementById('rsCymTempo').textContent") == "1.20\u00d7")
+            ratio = ("(() => { const st = window.__gnauralAPI.state;"
+                     " const v = st.schedule.voices.filter(v => v.type === 0 || v.type === 3)[0];"
+                     " return v ? [v.entries[0].beat, v.entries[0].__b0] : null; })()")
+            pair = page.evaluate(ratio)
+            suite.check("tempo really scales that schedule's beat",
+                        bool(pair) and abs(pair[0] / pair[1] - 1.2) < 0.001, pair)
+            suite.check("tempo is stored as a preference",
+                        abs(page.evaluate("JSON.parse(localStorage.getItem('resonance.app.theme.v1')).tempo") - 1.2) < 0.001)
         page.evaluate("window.ResonanceCymatics.close()")
         page.wait_for_timeout(300)
+        suite.tab("home")
+        page.evaluate("Array.from(document.querySelectorAll('#rsStates .rs-tile')).filter(b => !b.disabled)[1].click()")
+        suite.wait_until("document.getElementById('rsPlay').getAttribute('aria-label') === 'Pause'", 8)
+        page.wait_for_timeout(1300)     # tempoGuard rides the 1 Hz shell tick
+        carried = page.evaluate(ratio)
+        suite.check("tempo carries onto the next session", bool(carried) and abs(carried[0] / carried[1] - 1.2) < 0.02, carried)
+        page.evaluate("window.__rs.tempo(1)")
+        back = page.evaluate(ratio)
+        suite.check("resetting tempo restores the session's own beat",
+                    bool(back) and abs(back[0] / back[1] - 1) < 0.001, back)
 
         # ---- settings ---------------------------------------------------------------
         suite.tab("settings")

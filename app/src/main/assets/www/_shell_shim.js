@@ -394,9 +394,13 @@
     ".rs-pill{flex:0 0 auto;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
     "  padding:7px 11px;border-radius:999px;background:var(--rs-s3);color:var(--rs-ink2)}",
     "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
-    ".rs-hero canvas#graph{width:100%;height:132px;display:block;border-radius:var(--rs-r-sm);",
-    "  background:#131109;border:1px solid var(--rs-line);margin-bottom:14px;",
-    "  --ink:#F2E6D8;--ink-dim:#B9A48C;--ink-faint:#B9A48C;--line:#3A2C20;--line2:#5A452C;--acc:#E0B96F}",
+    /* the page's chart is hidden and repainted by the shell's own session map (see
+       the schedule-map block in the home section) */
+    ".rs-hero > section.card{background:transparent;border:0;padding:0;margin:0}",
+    ".rs-hero #graph{display:none}",
+    ".rs-sched{margin:0 0 12px}",
+    ".rs-hero canvas#rsSched{width:100%;height:128px;display:block;border-radius:var(--rs-r-sm);",
+    "  background:#12100F;border:1px solid #2E2519}",
     ".rs-hero .stage{background:transparent;border:0;padding:0;margin:0}",
     ".rs-transport{display:flex;align-items:center;gap:14px}",
     ".rs-transport .rs-vol{flex:1 1 auto;min-width:0}",
@@ -899,6 +903,267 @@
     return ["Gamma", "bright, alert — headphones"];
   }
 
+  /* ---------------------------------------------------------- schedule map --- */
+  /* The page's own chart — three bands with 10 px monospace labels, drawn into a
+     web-looking canvas — is the last thing on Home that reads as a web page. It
+     keeps drawing into its (now hidden) canvas; this map is the shell's own. Same
+     data (the page's `state.curves`), laid out like an audio app: time runs left to
+     right, one ridge per layer for the carrier shaded by its level, the rate as a
+     heat strip along the bottom, and a playhead you can read at a glance. */
+
+  var SCHED = { last: 0, raf: 0 };
+  var SCHED_INK = "#B7AC97", SCHED_FIELD = "#12100F", SCHED_GRID = "#2A2318",
+      SCHED_HEAD = "#F6F1E8", SCHED_RATE = "#E0B96F", SCHED_AXIS = "#8A7250",
+      SCHED_CHIP = "#5A4C36", SCHED_CHIP_LINE = "#8A7250";
+  var SCHED_COLS = ["#E0B96F", "#82B3D8", "#45D6FF", "#93C793", "#E0604F", "#D9A066", "#B48EAD", "#7FD0C0"];
+
+  function schedEl() { return $id("rsSched"); }
+
+  function schedRate() {
+    var GE = window.GnauralEngine;
+    return (GE && GE.SAMPLE_RATE) || 44100;
+  }
+
+  function schedStep(total) {
+    var raw = total / 5, steps = [30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+    for (var i = 0; i < steps.length; i++) if (steps[i] >= raw) return steps[i];
+    return 7200;
+  }
+
+  function schedClock(s) {
+    s = Math.max(0, Math.round(s));
+    var m = Math.floor(s / 60), r = s % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+
+  /* one pass over a curve's flat point list: ramps are drawn as a step at each
+     entry boundary (the schedule's own semantics — each entry glides to the next).
+     `start` false means "line to the first point" instead of moving to it, so a
+     caller can already have a subpath open (the fill closes onto its baseline). */
+  function schedTrace(g, pts, total, plotW, plotH, x0, base, vmax, start) {
+    var begun = !!start;
+    for (var j = 0; j + 3 < pts.length; j += 4) {
+      var ax = x0 + (pts[j] / total) * plotW, ay = base - (pts[j + 1] / vmax) * plotH;
+      var bx = x0 + (pts[j + 2] / total) * plotW, by = base - (pts[j + 3] / vmax) * plotH;
+      if (!begun) { g.moveTo(ax, ay); begun = true; }
+      g.lineTo(bx, ay);
+      g.lineTo(bx, by);
+    }
+  }
+
+  /* an instrument-style label: field-coloured plate, then the text, so a ridge
+     passing underneath can never eat it */
+  function schedPlate(g, x, y, txt, ink, font) {
+    g.font = font || "600 9.5px system-ui, sans-serif";
+    g.textAlign = "left";
+    var w = g.measureText(txt).width;
+    g.fillStyle = SCHED_FIELD; g.globalAlpha = 1;
+    g.fillRect(x - 1, y - 1, w + 2, 13);
+    g.fillStyle = ink;
+    g.fillText(txt, x, y + 10);
+  }
+
+  function drawSched() {
+    var cv = schedEl();
+    if (!cv || !cv.isConnected || !cv.clientWidth) return;
+    var W = cv.clientWidth, H = cv.clientHeight;
+    var dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.floor(W * dpr) || cv.height !== Math.floor(H * dpr)) {
+      cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
+    }
+    var g = cv.getContext("2d");
+    if (!g) return;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = SCHED_FIELD; g.fillRect(0, 0, W, H);
+    g.textBaseline = "alphabetic";
+
+    var st = pState();
+    var c = st && st.curves;
+    var total = (c && c.total) || 0;
+    var voices = (c && c.voices) || [];
+    var x0 = 8, x1 = W - 8, plotW = Math.max(10, x1 - x0);
+    var pitchT = 32, pitchB = H - 52, plotH = Math.max(12, pitchB - pitchT);
+    var rateT = pitchB + 4, rateH = 16, ruleY = rateT + rateH + 4;
+
+    if (!voices.length || !total) {
+      g.globalAlpha = 0.85;
+      g.strokeStyle = SCHED_GRID; g.lineWidth = 1; g.setLineDash([3, 4]);
+      g.beginPath(); g.moveTo(x0, pitchT + plotH / 2); g.lineTo(x1, pitchT + plotH / 2); g.stroke();
+      g.setLineDash([]);
+      g.font = "500 12px system-ui, sans-serif"; g.textAlign = "center";
+      g.fillStyle = SCHED_INK;
+      g.fillText("Pick a session to see its shape", W / 2, pitchT + plotH / 2 - 10);
+      g.textAlign = "left"; g.globalAlpha = 1;
+      cv.setAttribute("aria-label", "Session map, no session loaded");
+      return;
+    }
+
+    var maxBase = c.maxBase || 1, maxBeat = c.maxBeat || 1;
+    var sel = st.selected | 0, many = voices.length > 1;
+    var i, j, v, col, isNoise, avg, nh;
+
+    function volAvg(vv) {
+      var s = 0;
+      for (var k = 1; k < vv.vol.length; k += 4) s += vv.vol[k];
+      return Math.min(1, s / Math.max(1, vv.vol.length / 4));
+    }
+
+    /* time grid, faint, behind everything */
+    var step = schedStep(total);
+    g.strokeStyle = "rgba(183,172,151,.13)"; g.lineWidth = 1;
+    for (var t = step; t < total - step * 0.4; t += step) {
+      var gx = Math.round(x0 + (t / total) * plotW) + 0.5;
+      g.beginPath(); g.moveTo(gx, pitchT); g.lineTo(gx, rateT + rateH); g.stroke();
+    }
+
+    /* the selected layer's own entry boundaries, a touch brighter than the grid */
+    var sv = voices[sel] || voices[0];
+    if (sv) {
+      g.strokeStyle = "rgba(183,172,151,.26)";
+      for (j = 0; j + 3 < sv.base.length; j += 4) {
+        var ex = Math.round(x0 + (sv.base[j] / total) * plotW) + 0.5;
+        g.beginPath(); g.moveTo(ex, pitchT); g.lineTo(ex, pitchB); g.stroke();
+      }
+    }
+
+    /* filled ridges — the level shades the fill, the colour names the layer.
+       A noise bed has no pitch, so it is hatched along the floor instead. */
+    for (i = 0; i < voices.length; i++) {
+      v = voices[i]; col = SCHED_COLS[i % SCHED_COLS.length];
+      if (v.mute || !v.base.length) continue;
+      isNoise = (v.type === 1 || v.type === 7 || v.type === 8);
+      avg = volAvg(v);
+      g.fillStyle = col;
+      if (isNoise) {
+        nh = 7 + 22 * avg;
+        g.globalAlpha = 0.18; g.fillRect(x0, pitchB - nh, plotW, nh);
+        g.save();
+        g.beginPath(); g.rect(x0, pitchB - nh, plotW, nh); g.clip();
+        g.globalAlpha = 0.5; g.strokeStyle = col; g.lineWidth = 1;
+        for (var hx = x0 - nh; hx < x1 + nh; hx += 5) {
+          g.beginPath(); g.moveTo(hx, pitchB); g.lineTo(hx + nh, pitchB - nh); g.stroke();
+        }
+        g.restore();
+        continue;
+      }
+      g.globalAlpha = 0.22 + 0.38 * avg;
+      g.beginPath(); g.moveTo(x0, pitchB);
+      if (v.base.length > 1) g.lineTo(x0, pitchB - (v.base[1] / maxBase) * plotH);
+      schedTrace(g, v.base, total, plotW, plotH, x0, pitchB, maxBase, true);
+      g.lineTo(x1, pitchB); g.closePath(); g.fill();
+    }
+
+    /* outlines: selected solid, the rest lighter, muted dashed */
+    for (i = 0; i < voices.length; i++) {
+      v = voices[i]; col = SCHED_COLS[i % SCHED_COLS.length];
+      if (!v.base.length) continue;
+      isNoise = (v.type === 1 || v.type === 7 || v.type === 8);
+      var dim = v.mute || (many && i !== sel);
+      g.globalAlpha = v.mute ? 0.35 : dim ? 0.6 : 1;
+      g.strokeStyle = col; g.lineWidth = isNoise ? 1.6 : (dim ? 1.2 : 1.8);
+      if (v.mute) g.setLineDash([3, 3]);
+      g.beginPath();
+      if (isNoise) {
+        g.moveTo(x0, pitchB - (7 + 22 * volAvg(v))); g.lineTo(x1, pitchB - (7 + 22 * volAvg(v)));
+      } else {
+        schedTrace(g, v.base, total, plotW, plotH, x0, pitchB, maxBase);
+      }
+      g.stroke();
+      g.setLineDash([]);
+    }
+
+    /* beat lane: its own floor rule, then the traces inside the lane's own inset */
+    g.globalAlpha = 1;
+    g.strokeStyle = "rgba(183,172,151,.16)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, rateT + rateH - 0.5); g.lineTo(x1, rateT + rateH - 0.5); g.stroke();
+    g.strokeStyle = SCHED_RATE; g.lineWidth = 1.3;
+    for (i = 0; i < voices.length; i++) {
+      v = voices[i];
+      if (v.mute || !v.beat.length || v.type === 1 || v.type === 7 || v.type === 8) continue;
+      g.globalAlpha = i === sel ? 1 : 0.6;
+      g.beginPath(); schedTrace(g, v.beat, total, plotW, rateH - 8, x0, rateT + rateH - 4, maxBeat); g.stroke();
+    }
+    g.globalAlpha = 1;
+
+    /* axis + ruler with ticks; the end of the session always gets a label */
+    g.strokeStyle = SCHED_AXIS; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x0, ruleY + 0.5); g.lineTo(x1, ruleY + 0.5); g.stroke();
+    var marks = [];
+    for (t = 0; t <= total + 0.5; t += step) marks.push(t);
+    var endX = x0 + (total / total) * plotW;
+    var lastX = x0 + (marks[marks.length - 1] / total) * plotW;
+    if (marks[marks.length - 1] < total - 1) {
+      if (endX - lastX < 46 && marks.length > 1) marks.pop();
+      marks.push(total);
+    }
+    g.font = "500 10px system-ui, sans-serif";
+    for (i = 0; i < marks.length; i++) {
+      var tx = x0 + (marks[i] / total) * plotW;
+      var edge = i === 0 ? "left" : (i === marks.length - 1 ? "right" : "center");
+      g.strokeStyle = SCHED_AXIS;
+      g.beginPath(); g.moveTo(Math.round(tx) + 0.5, ruleY); g.lineTo(Math.round(tx) + 0.5, ruleY + 4); g.stroke();
+      g.fillStyle = SCHED_INK; g.textAlign = edge;
+      g.fillText(schedClock(marks[i]), tx, ruleY + 15);
+    }
+    g.textAlign = "left";
+
+    /* legend */
+    g.globalAlpha = 0.8;
+    g.font = "500 9.5px system-ui, sans-serif";
+    g.fillText("shade = level · amber = beat", x0, H - 3);
+    g.globalAlpha = 1;
+
+    /* zone header: names AND the scale each lane is drawn against */
+    schedPlate(g, x0, 0, "carrier Hz \u2264" + Math.round(maxBase), SCHED_INK);
+    var bTxt = "beat Hz \u2264" + (maxBeat < 10 ? maxBeat.toFixed(1) : Math.round(maxBeat));
+    g.font = "600 9.5px system-ui, sans-serif";
+    var bw = g.measureText(bTxt).width;
+    schedPlate(g, x1 - bw, 0, bTxt, SCHED_INK);
+
+    /* playhead last, so labels and lanes can never eat it; the chip rides under
+       the head rather than over it */
+    var pos = Math.min(total, ((st.live && st.live.sample) || 0) / schedRate());
+    var px = Math.round(x0 + (pos / total) * plotW) + 0.5;
+    var lab = schedClock(pos);
+    g.font = "700 10px system-ui, sans-serif";
+    var lw = g.measureText(lab).width + 12;
+    var lx = Math.min(W - lw - 3, Math.max(x0, px - lw / 2));
+    g.fillStyle = SCHED_CHIP; g.fillRect(lx, 15, lw, 15);
+    g.strokeStyle = SCHED_CHIP_LINE; g.lineWidth = 1;
+    g.strokeRect(lx + 0.5, 15.5, lw - 1, 14);
+    g.fillStyle = SCHED_HEAD; g.textAlign = "center";
+    g.fillText(lab, lx + lw / 2, 26);
+    g.textAlign = "left";
+    g.strokeStyle = SCHED_HEAD; g.lineWidth = 1.6; g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(px, 33); g.lineTo(px, ruleY); g.stroke();
+    g.fillStyle = SCHED_HEAD;
+    g.beginPath(); g.arc(px, 36, 2.8, 0, Math.PI * 2); g.fill();
+
+    cv.setAttribute("aria-label",
+      "Session map, " + voices.length + (voices.length === 1 ? " layer" : " layers") +
+      ", " + schedClock(total) + " total, at " + schedClock(pos));
+  }
+
+  function schedLoop(ts) {
+    SCHED.raf = window.requestAnimationFrame(schedLoop);
+    if (CUR !== "home" || doc.hidden) return;
+    if (ts - SCHED.last < 66) return;
+    SCHED.last = ts;
+    try { drawSched(); } catch (e) { report("sched: " + (e && e.message)); }
+  }
+
+  function buildSched() {
+    var cv = doc.createElement("canvas");
+    cv.id = "rsSched";
+    cv.setAttribute("role", "img");
+    cv.setAttribute("aria-label", "Session map");
+    var box = doc.createElement("div");
+    box.className = "rs-sched";
+    box.appendChild(cv);
+    return box;
+  }
+
   function wireHome() {
     var tiles = $id("rsStates");
     var used = [];
@@ -1183,9 +1448,10 @@
         if (s && s.nearest !== undefined) mode = s.nearest;
       }
     } catch (e) { }
+    var why = plan.why.charAt(0).toUpperCase() + plan.why.slice(1);
     map.innerHTML = "carrier <b>" + shape.carrier.toFixed(1) + " Hz</b> · rate <b>" +
-      shape.beat.toFixed(1) + " Hz</b> " + plan.band + "<br>" + plan.why +
-      " · plate mode <b>" + mode + "</b>";
+      shape.beat.toFixed(1) + " Hz</b> · " + plan.band + "<br>" + why +
+      "<br>plate mode <b>" + mode + "</b>";
     $$("#rsScenes button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-scene") === plan.scene ? "true" : "false");
     });
@@ -1304,12 +1570,17 @@
   }
 
   /* Tempo scales every binaural/iso entry's beat rate. The untouched beat is kept on the
-     entry (`__b0`) so repeated steps compound from the original, not from the last step. */
-  var tempo = 1;
-  function applyTempo(next) {
+     entry (`__b0`) so repeated steps compound from the original, not from the last step.
+     Tempo is a listening preference, so it survives a session change: a new schedule is
+     picked up by tempoGuard and the stored tempo re-applied to it. */
+  var tempo = Math.max(0.5, Math.min(2, Number(prefs.tempo) || 1));
+  var tempoOn = null;
+  function applyTempo(next, quiet) {
     var a = api(), st = pState();
     if (!a || !st) return;
     tempo = Math.max(0.5, Math.min(2, Math.round(next * 100) / 100));
+    tempoOn = st.schedule;
+    prefs.tempo = tempo; savePrefs();
     (st.schedule.voices || []).forEach(function (v) {
       if (v.type !== 0 && v.type !== 3 && v.type !== 4) return;
       (v.entries || []).forEach(function (e) {
@@ -1320,8 +1591,16 @@
     try { a.rebuildEngine(); a.syncToWorklet(); if (a.refresh) a.refresh(); } catch (e) { }
     var lbl = $id("rsCymTempo");
     if (lbl) lbl.textContent = tempo.toFixed(2) + "\u00d7";
-    toast("Tone " + tempo.toFixed(2) + "\u00d7");
+    if (!quiet) toast("Tone " + tempo.toFixed(2) + "\u00d7");
     syncVis();
+  }
+
+  /* a new session arrived: bring the stored tempo onto it once (see applyTempo) */
+  function tempoGuard() {
+    var st = pState();
+    if (!st || !st.schedule || st.schedule === tempoOn) return;
+    if (tempo === 1) { tempoOn = st.schedule; return; }
+    applyTempo(tempo, true);
   }
 
   function openChamber() {
@@ -1648,7 +1927,7 @@
         '<h4>Make it yours</h4>' +
         '<ul>' +
         '<li><b>Quick picks</b> adds one layer to the current sound.</li>' +
-        '<li><b>Voices &amp; entries</b> edits each layer’s schedule: every entry ramps into the ' +
+        '<li><b>Layers &amp; entries</b> edits each layer’s schedule: every entry ramps into the ' +
         'next one’s values, and the last wraps around to the first.</li>' +
         '<li><b>Files &amp; export</b> saves .gnaural files, exports WAV audio and copies a share ' +
         'link that opens the same schedule on moddys.net.</li>' +
@@ -2127,6 +2406,7 @@
     if (vol) { var v = masterNow(); if (Math.abs(parseFloat(vol.value) - v) > 0.005) vol.value = String(v); }
     var lp = $id("rsLoop"), lel = $id("loop");
     if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
+    try { tempoGuard(); } catch (e) { }
   }
 
   function syncMini() {
@@ -2183,10 +2463,14 @@
     var stage = cardOf("#graph");
     if (stage) {
       var hero = $(".rs-hero");
+      var gcv = $id("graph");
+      var sched = buildSched();
+      if (gcv && gcv.parentNode) gcv.parentNode.insertBefore(sched, gcv);
       hero.insertBefore(stage, hero.querySelector(".rs-transport"));
       $$("h2,h3,.hint", stage).forEach(function (n) { n.style.display = "none"; });
       stage.classList.remove("stage");
-      stage.style.margin = "0 0 14px";
+      stage.style.margin = "0";
+      try { drawSched(); } catch (e) { }
     }
     var hear = cardOf("#hearinfo");
     if (hear) screenEls.home.appendChild(hear);
@@ -2206,7 +2490,7 @@
     var vh = voices && voices.querySelector("h3");
     if (vh) {
       var cnt = vh.querySelector(".cnt");
-      vh.textContent = "Voices";
+      vh.textContent = "Layers";
       if (cnt) { vh.appendChild(document.createTextNode(" \u00b7 ")); vh.appendChild(cnt); }
     }
     var hs = ["duration s", "base Hz", "beat Hz", "vol L", "vol R"];
@@ -2294,6 +2578,7 @@
     syncStats();
     window.setInterval(tick, 1000);
     tick();
+    try { schedLoop(0); } catch (e) { }
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });
     window.addEventListener("beforeunload", function () { native("state", [false, "", ""]); });
     report("shim ready | session=" + (sessionTitle() || "none"));
@@ -2328,6 +2613,8 @@
     about: function () { openAbout(); },
     compat: function () { openCheck(); },
     chamber: openChamber,
+    sched: drawSched,
+    tempo: function (v) { applyTempo(v); },
     update: window.__rsUpdate,
     viz: function () { enterFullscreen(); }
   };
