@@ -444,7 +444,15 @@
     /* ------------------------------------------------ the vintage face (Full UI) --- */
     /* Art only exists in the Full interface; Minimal falls back to the plain controls. */
     "html[data-rs-ui=full] .rs-hero{background-image:url(ui/plate.webp);background-size:cover;",
-    "  background-position:center}",
+    "  background-position:center;background-color:#141210;color:#F2F6F4}",
+    "html[data-rs-ui=full] .rs-hero h1{color:#F7FBF8}",
+    "html[data-rs-ui=full] .rs-hero p,html[data-rs-ui=full] .rs-hero #meta,",
+    "html[data-rs-ui=full] .rs-hero #rsClock{color:#D2DBD6}",
+    "html[data-rs-ui=full] .rs-hero .rs-vol small{color:#C7D2CC}",
+    "html[data-rs-ui=full] .rs-hero .rs-sw{color:#D2DBD6}",
+    "html[data-rs-ui=full] .rs-hero .rs-sw span{color:#D2DBD6}",
+    "html[data-rs-ui=full] .rs-hero .pill{background:#3A332A;color:#F0E7D7}",
+    "html[data-rs-ui=full] .rs-hero .rs-pill{background:#3A332A;color:#F0E7D7}",
     "html[data-rs-ui=full] .rs-hero .rs-fab{width:68px;height:68px;border:0;position:relative;",
     "  background-image:url(ui/knob-calm.webp);background-size:cover;background-position:center;",
     "  box-shadow:0 7px 18px rgba(0,0,0,.55);transition:transform .28s ease}",
