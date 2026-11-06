@@ -792,10 +792,12 @@
     "html[data-rs-ui=full][data-rs-accent=sand] .rs-app .cym #play{background-image:url(ui/knob-sand.webp)}",
     "html[data-rs-ui=full][data-rs-accent=slate] .rs-app .cym #play{background-image:url(ui/knob-slate.webp)}",
     "html[data-rs-ui=full] .rs-app .cym #play{font-size:0}",
-    ".rs-app .cym .cym-tone{max-width:56vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-    /* the top-right row: even 44px pills, one line, no stray digits */
-    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center}",
-    ".rs-app .cym .cym-actions > button{min-height:44px;height:44px;min-width:44px;padding:0 13px;",
+    ".rs-app .cym .cym-tone{max-width:34vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    /* the top-right row: even 44px pills, one line, and it must fit 320 px too */
+    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center;",
+    "  padding-right:2px;box-sizing:border-box}",
+    ".rs-app .cym .cym-actions > button{min-height:44px;height:44px;min-width:44px;padding:0 9px;",
+    "  box-sizing:border-box;flex:0 0 auto;",
     "  border-radius:999px;font:600 12.5px/1 var(--rs-sans);background:rgba(18,14,10,.55) !important;",
     "  color:#F2E6D8 !important;border:1px solid rgba(255,255,255,.22) !important}",
     ".rs-app .cym .cym-live{display:none}",
