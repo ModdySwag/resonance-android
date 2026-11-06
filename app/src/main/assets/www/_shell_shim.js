@@ -859,9 +859,9 @@
 
   var SCREENS = [
     { id: "home", label: "Home", icon: "home", title: "Resonance", large: true,
-      sub: function () { return sessionTitle() || "Binaural, tones and noise — on this device"; } },
+      sub: function () { return ""; } },
     { id: "sessions", label: "Sessions", icon: "list", title: "Sessions",
-      sub: function () { return "The built-in library"; } },
+      sub: function () { return ""; } },
     { id: "studio", label: "Studio", icon: "sliders", title: "Studio",
       sub: function () { return "Shape the schedule"; } },
     { id: "vis", label: "Visualise", icon: "vis", title: "Visualise",
