@@ -484,6 +484,20 @@
 
     /* -------------------------------------------------------------- generic --- */
     ".rs-pad{height:8px}",
+    ".rs-stats{display:flex;gap:8px;margin:0 16px 12px;flex-wrap:wrap}",
+    ".rs-stat{flex:1 1 0;min-width:0;border-radius:12px;background:var(--rs-s1);",
+    "  border:1px solid var(--rs-line);padding:9px 10px}",
+    ".rs-stat b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}",
+    ".rs-stat span{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;",
+    "  color:var(--rs-out);margin-top:2px}",
+    ".rs-mod{margin:0 16px 12px !important}",
+    ".rs-mod > summary{min-height:56px;display:flex;align-items:center;justify-content:space-between;",
+    "  font-size:15px;font-weight:700}",
+    ".rs-mod > summary::after{content:'\u2039';transform:rotate(-90deg);color:var(--rs-out);",
+    "  transition:transform .18s var(--rs-ease)}",
+    ".rs-mod[open] > summary::after{transform:rotate(90deg)}",
+    ".rs-mod .body > section.card{margin:0 !important;padding:6px 0 14px;background:transparent;",
+    "  border:0;box-shadow:none}",
     ".rs-note{font-size:12.5px;line-height:18px;color:var(--rs-out);margin:10px 0 0}",
     ".rs-kv{display:flex;justify-content:space-between;gap:12px;padding:10px 0;",
     "  border-bottom:1px solid var(--rs-line);font-size:14px}",
@@ -1032,15 +1046,31 @@
 
   /* ================================================================= studio === */
 
+  function syncStats() {
+    var box = $id("rsStats");
+    if (!box) return;
+    var st = pState(); if (!st) { box.innerHTML = ""; return; }
+    var vs = (st.schedule && st.schedule.voices) || [];
+    var entries = vs.reduce(function (a, v) { return a + (v.entries ? v.entries.length : 0); }, 0);
+    var mode = st.playing ? "playing" : (st.mode || "idle");
+    var html = '<div class="rs-stat"><b>' + vs.length + '</b><span>voices</span></div>' +
+      '<div class="rs-stat"><b>' + entries + '</b><span>entries</span></div>' +
+      '<div class="rs-stat"><b>' + esc(mode) + '</b><span>state</span></div>';
+    if (box.dataset.k !== html) { box.dataset.k = html; box.innerHTML = html; }
+  }
+
   function buildStudio() {
     screenEls.studio.innerHTML =
       '<div class="rs-pad"></div>' +
+      '<div class="rs-stats" id="rsStats" aria-live="polite"></div>' +
       '<section class="card" id="rsVoices" aria-labelledby="rsVoicesH">' +
-      '  <h3 id="rsVoicesH">Voices &amp; entries</h3></section>' +
-      '<section class="card" id="rsLive" aria-labelledby="rsLiveH">' +
-      '  <h3 id="rsLiveH">Live tools</h3></section>' +
-      '<section class="card" id="rsFiles" aria-labelledby="rsFilesH">' +
-      '  <h3 id="rsFilesH">Files &amp; export</h3></section>' +
+      '  <h3 id="rsVoicesH">The sound</h3></section>' +
+      '<details class="tool rs-mod" id="rsLiveDet"><summary>Live tools</summary>' +
+      '  <div class="body"><section class="card" id="rsLive" aria-label="Live tools"></section></div>' +
+      '</details>' +
+      '<details class="tool rs-mod" id="rsFilesDet"><summary>Files &amp; export</summary>' +
+      '  <div class="body"><section class="card" id="rsFiles" aria-label="Files and export"></section></div>' +
+      '</details>' +
       '<div class="rs-pad"></div>';
   }
 
@@ -2075,6 +2105,7 @@
 
   function tick() {
     applyInsets();
+    if (CUR === "studio") syncStats();
     syncHero();
     syncMini();
     renderTop();
@@ -2215,6 +2246,7 @@
     var ver = $id("rsVer");
     if (ver) ver.textContent = "v" + (deviceFacts().app || "?");
     go("home", { scroll: false });
+    syncStats();
     window.setInterval(tick, 1000);
     tick();
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });

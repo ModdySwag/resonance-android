@@ -226,6 +226,9 @@ def main():
         suite.check("live tools and files travelled with it",
                     page.evaluate("!!document.querySelector('#rsLive #barL') && "
                                   "!!document.querySelector('#rsFiles #saveGnm')"))
+        suite.check("the secondary studio modules are folded by default",
+                    page.evaluate("!document.getElementById('rsFilesDet').open && "
+                                  "!document.getElementById('rsLiveDet').open"))
         suite.shot("3-studio.png")
         suite.tab("vis")
         suite.shot("4-vis.png")
@@ -427,6 +430,8 @@ def main():
 
         # ---- files: .gnaural save, pack save, share link -----------------------------
         suite.tab("studio")
+        page.evaluate("document.getElementById('rsFilesDet').open = true")
+        page.wait_for_timeout(250)
         expected = page.evaluate("window.__gnauralAPI.toGnauralText().length")
         page.evaluate("document.getElementById('saveGnm').scrollIntoView({ block: 'center' })")
         page.click("#saveGnm")
