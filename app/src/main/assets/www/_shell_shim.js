@@ -1111,12 +1111,18 @@
 
     var slower = doc.createElement("button");
     slower.className = "cym-tempo"; slower.textContent = "\u2212";
-    slower.setAttribute("aria-label", "Slower");
-    slower.onclick = function () { bumpSpeed(-0.15); };
+    slower.setAttribute("aria-label", "Slower tone");
+    slower.onclick = function () { applyTempo(tempo - 0.1); };
     var faster = doc.createElement("button");
     faster.className = "cym-tempo"; faster.textContent = "+";
-    faster.setAttribute("aria-label", "Faster");
-    faster.onclick = function () { bumpSpeed(0.15); };
+    faster.setAttribute("aria-label", "Faster tone");
+    faster.onclick = function () { applyTempo(tempo + 0.1); };
+    var lbl = doc.createElement("span");
+    lbl.id = "rsCymTempo";
+    lbl.style.cssText = "font-size:12px;opacity:.75;min-width:38px;text-align:center";
+    lbl.textContent = tempo.toFixed(2) + "\u00d7";
+    lbl.title = "tap to reset to 1x";
+    lbl.onclick = function () { applyTempo(1); };
     var stop = doc.createElement("button");
     stop.textContent = "Stop";
     stop.setAttribute("aria-label", "Stop and rewind the session");
@@ -1124,16 +1130,28 @@
     act.insertBefore(stop, act.querySelector("#cymPlay"));
     act.insertBefore(faster, stop);
     act.insertBefore(slower, faster);
+    act.insertBefore(lbl, faster);
   }
 
-  function bumpSpeed(d) {
-    var c = cymApi(); if (!c) return;
-    try {
-      var cur = (c.getPrefs && c.getPrefs().speed) || 1;
-      var next = Math.max(0.2, Math.min(3, Math.round((cur + d) * 100) / 100));
-      c.setPrefs({ speed: next });
-      toast("Chamber speed " + next.toFixed(2) + "x");
-    } catch (e) { }
+  /* Tempo scales every binaural/iso entry's beat rate. The untouched beat is kept on the
+     entry (`__b0`) so repeated steps compound from the original, not from the last step. */
+  var tempo = 1;
+  function applyTempo(next) {
+    var a = api(), st = pState();
+    if (!a || !st) return;
+    tempo = Math.max(0.5, Math.min(2, Math.round(next * 100) / 100));
+    (st.schedule.voices || []).forEach(function (v) {
+      if (v.type !== 0 && v.type !== 3 && v.type !== 4) return;
+      (v.entries || []).forEach(function (e) {
+        if (e.__b0 === undefined) e.__b0 = e.beat || 0;
+        e.beat = Math.round(e.__b0 * tempo * 10000) / 10000;
+      });
+    });
+    try { a.rebuildEngine(); a.syncToWorklet(); if (a.refresh) a.refresh(); } catch (e) { }
+    var lbl = $id("rsCymTempo");
+    if (lbl) lbl.textContent = tempo.toFixed(2) + "\u00d7";
+    toast("Tone " + tempo.toFixed(2) + "\u00d7");
+    syncVis();
   }
 
   function openChamber() {
