@@ -144,6 +144,9 @@
     var k;
     for (k in map) root.removeProperty(map[k]);
     if (pal) for (k in map) if (pal[k]) root.setProperty(map[k], pal[k]);
+    /* the graph canvas is drawn by the page with skin tokens; a theme swap leaves the
+       old palette baked in until the next edit, so redraw it */
+    try { var A = api(); if (A && A.drawGraph) window.setTimeout(A.drawGraph, 60); } catch (e) { }
   }
 
   if (mqDark && mqDark.addEventListener) mqDark.addEventListener("change", applyTheme);
@@ -165,7 +168,7 @@
     "  --rs-live:#E9B972; --rs-on-live:#3A2405;",
     "  --rs-good:#8FD6A8; --rs-bad:#FFB4AB;",
     "  --rs-r-card:16px; --rs-r-hero:24px; --rs-r-sheet:28px;",
-    "  --rs-ease:cubic-bezier(.2,0,0,1)",
+    "  --rs-ease:cubic-bezier(.2,0,0,1); --rs-sans:-apple-system,Roboto,'Segoe UI',system-ui,sans-serif",
     "}",
     "html[data-rs-theme=\"light\"]{",
     "  --rs-bg:#F5FAF8; --rs-surface:#FFFFFF; --rs-s1:#EEF5F2; --rs-s2:#E6EFEB;",
@@ -212,7 +215,7 @@
     ".rs-ico:active{background:var(--rs-s2)}",
     ".rs-ico svg{width:24px;height:24px;display:block}",
     "button.rs-btn{min-height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--rs-line2);",
-    "  background:transparent;color:var(--rs-ink);font:600 15px/1 inherit;cursor:pointer}",
+    "  background:transparent;color:var(--rs-ink);font:600 15px/1 var(--rs-sans);cursor:pointer}",
     "button.rs-btn.rs-filled{background:var(--rs-pri);border-color:var(--rs-pri);color:var(--rs-on-pri)}",
     "button.rs-btn.rs-tonal{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
     "button.rs-btn:active{transform:scale(.98)}",
@@ -227,7 +230,8 @@
     "@keyframes rsRing{0%{opacity:.55;transform:scale(.92)}70%{opacity:0;transform:scale(1.18)}100%{opacity:0}}",
 
     /* ---------------------------------------------------------------- cards --- */
-    ".rs-screen section.card{display:block;margin:0 16px 12px;padding:16px;border-radius:var(--rs-r-card);",
+    ".rs-screen section.card{display:block;margin:0 16px 12px;padding:16px;" +
+    "  border-radius:16px !important;",
     "  background:var(--rs-s1);border:1px solid var(--rs-line);color:var(--rs-ink);",
     "  box-shadow:none;max-width:none;width:auto;float:none}",
     ".rs-screen section.card h3,.rs-screen section.card h2{margin:0 0 10px;font-size:15px;line-height:20px;",
@@ -239,13 +243,13 @@
     ".rs-screen .sep{display:none}",
     ".rs-screen section.card .row > button,.rs-screen section.card > button{min-height:44px;",
     "  border-radius:12px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
-    "  font:600 14px/1 inherit;padding:0 14px;cursor:pointer}",
+    "  font:600 14px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen section.card .row > button:active,.rs-screen section.card > button:active{background:var(--rs-s3)}",
     ".rs-screen select{min-height:44px;border-radius:12px;border:1px solid var(--rs-line2);",
-    "  background:var(--rs-s2);color:var(--rs-ink);font:14px/1 inherit;padding:0 10px;max-width:100%}",
+    "  background:var(--rs-s2);color:var(--rs-ink);font:14px/1 var(--rs-sans);padding:0 10px;max-width:100%}",
     ".rs-screen input[type=search],.rs-screen input[type=text]{min-height:48px;width:100%;",
     "  border-radius:999px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
-    "  font:15px/1 inherit;padding:0 18px;min-width:0}",
+    "  font:15px/1 var(--rs-sans);padding:0 18px;min-width:0}",
     ".rs-screen input[type=search]::placeholder{color:var(--rs-out)}",
     ".rs-screen input[type=range]{-webkit-appearance:none;appearance:none;height:44px;width:100%;",
     "  background:transparent;margin:0}",
@@ -256,10 +260,21 @@
     ".rs-screen kbd{display:none}",
     ".rs-screen .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}",
     ".rs-screen .chip{min-height:36px;border-radius:999px;border:1px solid var(--rs-line2);",
-    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;padding:0 14px;cursor:pointer}",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
+    ".rs-chipbtn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);flex:0 0 auto}",
+    ".rs-screen .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}",
+    ".rs-screen .rs-searchrow{display:flex;align-items:center;margin:0 0 8px}",
+    "#scr-sessions .rs-pad{height:0}",
+    "#rsBrowse{padding-top:10px}",
+    "#rsBrowse #search{min-height:44px}",
+    ".rs-screen .rs-searchrow #search{flex:1 1 auto;margin:0}",
+    ".rs-screen .rs-searchrow > * + *{margin-left:8px}",
+    "#rsFilterWrap{display:none}",
+    "#rsFilterWrap.rs-on{display:block}",
     ".rs-screen .cnt{color:var(--rs-dim);font-weight:400}",
-    ".rs-screen .grp{font:600 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;",
+    ".rs-screen .grp{font:600 12px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
     "  color:var(--rs-out);padding:14px 4px 6px}",
     ".rs-screen #plist{max-height:none;overflow:visible;margin:0;display:flex;flex-direction:column;gap:8px}",
     ".rs-screen #plist .item{display:flex;gap:10px;align-items:flex-start;padding:12px 10px;",
@@ -272,38 +287,43 @@
     "  font-size:19px;cursor:pointer;padding:0;flex:0 0 auto}",
     ".rs-screen #plist .star.on{color:var(--rs-live)}",
     ".rs-screen .scrollbox{max-height:none;overflow:visible}",
+    ".rs-screen canvas#spec,.rs-screen canvas#phase{background:var(--rs-bg);border:1px solid var(--rs-line);",
+    "  border-radius:10px;display:block;width:100%}",
+    ".rs-screen .meter h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--rs-dim);",
+    "  margin:0 0 6px}",
+    ".rs-screen .meter + .meter{margin-top:14px}",
 
     /* the entries table is a 7-col grid on desktop; on a phone it wraps into a card */
     ".rs-screen .ehead{display:none}",
-    ".rs-screen .erow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 34px;",
+    ".rs-screen .erow{display:grid;grid-template-columns:1fr 1fr 40px;",
     "  gap:6px;padding:10px;border-radius:12px;border:1px solid var(--rs-line);",
     "  background:var(--rs-s2);margin:0 0 8px;align-items:center}",
-    ".rs-screen .erow .idx{grid-column:1 / -1;font:600 11px/1 inherit;letter-spacing:.06em;",
+    ".rs-screen .erow .idx{grid-column:1 / -1;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;",
     "  text-transform:uppercase;color:var(--rs-out)}",
     ".rs-screen .erow input{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
     "  background:var(--rs-bg);color:var(--rs-ink);font:14px/1 ui-monospace,monospace;",
     "  padding:0 8px;width:100%;min-width:0}",
     ".rs-screen .erow .mini{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
-    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 8px;font:600 13px/1 inherit}",
+    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 8px;font:600 13px/1 var(--rs-sans)}",
     ".rs-screen .erow .etools{grid-column:1 / -1}",
     ".rs-screen #voicelist .vrow{min-height:48px;border-radius:12px;background:var(--rs-s2);",
     "  border:1px solid var(--rs-line);margin:0 0 8px;padding:6px 10px}",
     ".rs-screen #voicelist .vrow.sel{border-color:var(--rs-pri);background:var(--rs-pri-c)}",
     ".rs-screen #voicelist .vrow button{min-height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
-    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 10px;font:600 12px/1 inherit}",
+    "  background:var(--rs-s3);color:var(--rs-ink);padding:0 10px;font:600 12px/1 var(--rs-sans)}",
     ".rs-screen #voicelist .vrow .vname{font-size:14px}",
     ".rs-screen .etools{padding:0}",
     ".rs-screen #quickpick .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}",
     ".rs-screen #quickpick input,.rs-screen #quickpick select{width:100%;min-width:0;min-height:42px;",
     "  border-radius:10px;border:1px solid var(--rs-line2);background:var(--rs-bg);",
-    "  color:var(--rs-ink);font:14px/1 inherit;padding:0 10px}",
+    "  color:var(--rs-ink);font:14px/1 var(--rs-sans);padding:0 10px}",
     ".rs-screen #quickpick label.small,.rs-screen label.small{font-size:11px;letter-spacing:.06em;",
     "  text-transform:uppercase;color:var(--rs-dim);margin:0 0 3px;display:block}",
     ".rs-screen #quickpick button.chip{width:100%}",
     ".rs-screen .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}",
     ".rs-screen .grid2 input,.rs-screen .grid2 select{width:100%;min-width:0;min-height:42px;",
     "  border-radius:10px;border:1px solid var(--rs-line2);background:var(--rs-bg);",
-    "  color:var(--rs-ink);font:14px/1 inherit;padding:0 10px}",
+    "  color:var(--rs-ink);font:14px/1 var(--rs-sans);padding:0 10px}",
     ".rs-screen details.tool{border:1px solid var(--rs-line);border-radius:12px;margin:0 0 8px;",
     "  padding:0 12px;background:var(--rs-s2)}",
     ".rs-screen details.tool > summary{min-height:48px;display:flex;align-items:center;",
@@ -317,14 +337,14 @@
     ".rs-hero-top .rs-tt{flex:1 1 auto;min-width:0}",
     ".rs-hero h1{margin:0;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.015em}",
     ".rs-hero p{margin:3px 0 0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
-    ".rs-pill{flex:0 0 auto;font:600 11px/1 inherit;letter-spacing:.06em;text-transform:uppercase;",
+    ".rs-pill{flex:0 0 auto;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
     "  padding:7px 11px;border-radius:999px;background:var(--rs-s3);color:var(--rs-ink2)}",
     "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
     ".rs-hero canvas#graph{width:100%;height:132px;display:block;border-radius:12px;",
     "  background:var(--rs-bg);border:1px solid var(--rs-line);margin-bottom:14px}",
     ".rs-transport{display:flex;align-items:center;gap:14px}",
     ".rs-transport .rs-vol{flex:1 1 auto;min-width:0}",
-    ".rs-transport .rs-vol small{display:block;font:600 11px/1 inherit;letter-spacing:.07em;",
+    ".rs-transport .rs-vol small{display:block;font:600 11px/1 var(--rs-sans);letter-spacing:.07em;",
     "  text-transform:uppercase;color:var(--rs-out);margin-bottom:2px}",
     ".rs-transport #rsClock{font-variant-numeric:tabular-nums;font-size:13px;color:var(--rs-dim);",
     "  flex:0 0 auto}",
@@ -348,7 +368,7 @@
     ".rs-build .rs-field .rs-sub{font-size:12px;color:var(--rs-out);margin-top:-2px;display:block}",
     ".rs-seg{display:flex;gap:6px;margin:0 0 14px}",
     ".rs-seg button{flex:1 1 0;min-height:44px;border-radius:12px;border:1px solid var(--rs-line2);",
-    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;cursor:pointer}",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);cursor:pointer}",
     ".rs-seg button[aria-pressed=\"true\"]{background:var(--rs-pri-c);border-color:transparent;",
     "  color:var(--rs-on-pri-c)}",
 
@@ -357,7 +377,7 @@
     "  padding:6px 4px calc(6px + " + SAFE_B + ")}",
     "#rsNav button{flex:1 1 0;min-height:56px;border:0;background:transparent;color:var(--rs-dim);",
     "  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;",
-    "  cursor:pointer;padding:0;position:relative;font:600 11px/1 inherit}",
+    "  cursor:pointer;padding:0;position:relative;font:600 11px/1 var(--rs-sans)}",
     "#rsNav button svg{width:24px;height:24px}",
     "#rsNav button .rs-npill{position:absolute;top:3px;width:60px;height:32px;border-radius:999px;",
     "  background:transparent;transition:background .18s var(--rs-ease)}",
@@ -380,6 +400,9 @@
     "#rsMini button svg{width:22px;height:22px}",
 
     /* --------------------------------------------------------------- sheet --- */
+    "#rsScrim{position:fixed;top:0;right:0;bottom:0;left:0;z-index:85;background:rgba(6,9,8,.55);" +
+    "  opacity:0;pointer-events:none;transition:opacity .22s var(--rs-ease)}" +
+    "html.rs-sheet #rsScrim{opacity:1;pointer-events:auto}" +
     "#rsSheet{position:fixed;left:0;right:0;bottom:0;z-index:86;display:flex;flex-direction:column;",
     "  background:var(--rs-s2);color:var(--rs-ink);border-radius:var(--rs-r-sheet) var(--rs-r-sheet) 0 0;",
     "  border-top:1px solid var(--rs-line);box-shadow:0 -18px 44px rgba(0,0,0,.45);",
@@ -435,13 +458,18 @@
     ".rs-map b{color:var(--rs-pri)}",
     ".rs-chips{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;-webkit-overflow-scrolling:touch}",
     ".rs-chips button{flex:0 0 auto;min-height:40px;border-radius:999px;border:1px solid var(--rs-line2);",
-    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 inherit;padding:0 15px;cursor:pointer}",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);padding:0 15px;cursor:pointer}",
     ".rs-chips button[aria-pressed=\"true\"]{background:var(--rs-pri-c);border-color:transparent;",
     "  color:var(--rs-on-pri-c)}",
     "#vizCard .viz-inline{margin:0}",
     "#vizCard canvas.viz-canvas{width:100% !important;height:190px !important;border-radius:12px;",
     "  border:1px solid var(--rs-line)}",
     "#vizCard .viz-badge{font-size:11px}",
+    ".rs-screen #pklist{grid-template-columns:1fr;gap:8px}",
+    ".rs-screen #pklist > div{padding:0 14px;border-radius:12px;background:var(--rs-s2)}",
+    ".rs-screen #pklist a{display:flex;align-items:center;min-height:56px;font-size:15px;",
+    "  color:var(--rs-ink);text-decoration:none}",
+    ".rs-screen #pklist .pk-n{padding-bottom:10px;margin-top:-8px;color:var(--rs-dim)}",
     "#vizCard button,#vizCard .ghost{color:var(--rs-ink2) !important}",
     ".rs-screen #vizCard button{min-height:40px;border-radius:10px;",
     "  border:1px solid var(--rs-line2) !important;background-color:var(--rs-s2) !important}",
@@ -450,6 +478,21 @@
     "#vizCard select,#vizCard input{color:var(--rs-ink) !important}",
     "#vizCard .viz-scenes button{min-width:40px}",
 
+    /* ------------------------------------------------- old-WebView fallbacks --- */
+    /* The system WebView on older devices predates flex `gap`. Every row that relies on
+       gap for structure also gets a sibling margin, so spacing survives either way. */
+    ".rs-transport{gap:0}.rs-transport > * + *{margin-left:14px}",
+    ".rs-hero-top{gap:0}.rs-hero-top > * + *{margin-left:10px}",
+    ".rs-seg{gap:0}.rs-seg > * + *{margin-left:6px}",
+    ".rs-chips{display:flex;flex-wrap:wrap;overflow:visible;gap:0}",
+    ".rs-chips > * + *{margin-left:8px}",,
+    ".rs-mrow{gap:0}.rs-mrow > * + *{margin-left:14px}",
+    ".rs-sw{gap:0}.rs-sw > * + *{margin-left:14px}",
+    "#rsMini{gap:0}#rsMini > * + *{margin-left:10px}",
+    "#rsTop{gap:0}#rsTop > * + *{margin-left:4px}",
+    ".rs-screen .row{gap:0}.rs-screen .row > * + *{margin-left:8px}",
+    "#rsNav button{min-width:0}",
+    ".rs-screen .card h3 + .chips,.rs-screen .card h3 + .row{margin-top:2px}",
     /* ------------------------------------------------------- reduced motion --- */
     "@media (prefers-reduced-motion: reduce){",
     "  .rs-screen{animation:none} #rsSheet{transition:none}",
@@ -482,12 +525,45 @@
     close: "M6 6l12 12M18 6 6 18",
     chev: "M9 6l6 6-6 6"
   };
+/* ICONS:START */
+  /* Generated by tools/make_icons.py from the Material Symbols catalog in the
+     local Iconset library. Filled glyphs, 24x24, inherited colour. */
+  var IC = {
+    "book": "<path d=\"M13 17.05q1.1-.525 2.213-.788T17.5 16q.9 0 1.763.15T21 16.6V6.7q-.825-.35-1.713-.525T17.5 6q-1.175 0-2.325.3T13 7.2zm-1.662 2.338q-.313-.088-.588-.238q-.975-.575-2.05-.862T6.5 18q-1.05 0-2.062.275T2.5 19.05q-.525.275-1.012-.025T1 18.15V6.1q0-.275.138-.525T1.55 5.2q1.175-.575 2.413-.888T6.5 4q1.45 0 2.838.375T12 5.5q1.275-.75 2.663-1.125T17.5 4q1.3 0 2.538.313t2.412.887q.275.125.413.375T23 6.1v12.05q0 .575-.487.875t-1.013.025q-.925-.5-1.937-.775T17.5 18q-1.125 0-2.2.288t-2.05.862q-.275.15-.587.238t-.663.087t-.663-.088M14 8.776q0-.225.163-.462T14.525 8q.725-.25 1.45-.375T17.5 7.5q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112T17.5 9q-.65 0-1.275.125t-1.2.325q-.45.175-.737-.025T14 8.775m0 5.5q0-.225.163-.462t.362-.313q.725-.25 1.45-.375T17.5 13q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112T17.5 14.5q-.65 0-1.275.113t-1.2.312q-.45.175-.737-.012T14 14.275m0-2.75q0-.225.163-.462t.362-.313q.725-.25 1.45-.375t1.525-.125q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112t-.788-.038q-.65 0-1.275.125t-1.2.325q-.45.175-.737-.025t-.288-.65\"/>",
+    "chev": "<path d=\"M12.6 12L8.7 8.1q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7z\"/>",
+    "close": "<path d=\"m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z\"/>",
+    "down": "<path d=\"M11.625 15.513q-.175-.063-.325-.213l-3.6-3.6q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L11 12.15V5q0-.425.288-.712T12 4t.713.288T13 5v7.15l1.875-1.875q.3-.3.713-.288t.712.313q.275.3.288.7t-.288.7l-3.6 3.6q-.15.15-.325.213t-.375.062t-.375-.062M6 20q-.825 0-1.412-.587T4 18v-2q0-.425.288-.712T5 15t.713.288T6 16v2h12v-2q0-.425.288-.712T19 15t.713.288T20 16v2q0 .825-.587 1.413T18 20z\"/>",
+    "focus": "<path d=\"M8.463 15.538Q7 14.075 7 12t1.463-3.537T12 7t3.538 1.463T17 12t-1.463 3.538T12 17t-3.537-1.463M5 21q-.825 0-1.412-.587T3 19v-3q0-.425.288-.712T4 15t.713.288T5 16v3h3q.425 0 .713.288T9 20t-.288.713T8 21zm14 0h-3q-.425 0-.712-.288T15 20t.288-.712T16 19h3v-3q0-.425.288-.712T20 15t.713.288T21 16v3q0 .825-.587 1.413T19 21M3 8V5q0-.825.588-1.412T5 3h3q.425 0 .713.288T9 4t-.288.713T8 5H5v3q0 .425-.288.713T4 9t-.712-.288T3 8m16 0V5h-3q-.425 0-.712-.288T15 4t.288-.712T16 3h3q.825 0 1.413.588T21 5v3q0 .425-.288.713T20 9t-.712-.288T19 8\"/>",
+    "gear": "<path d=\"M10.825 22q-.675 0-1.162-.45t-.588-1.1L8.85 18.8q-.325-.125-.612-.3t-.563-.375l-1.55.65q-.625.275-1.25.05t-.975-.8l-1.175-2.05q-.35-.575-.2-1.225t.675-1.075l1.325-1Q4.5 12.5 4.5 12.337v-.675q0-.162.025-.337l-1.325-1Q2.675 9.9 2.525 9.25t.2-1.225L3.9 5.975q.35-.575.975-.8t1.25.05l1.55.65q.275-.2.575-.375t.6-.3l.225-1.65q.1-.65.588-1.1T10.825 2h2.35q.675 0 1.163.45t.587 1.1l.225 1.65q.325.125.613.3t.562.375l1.55-.65q.625-.275 1.25-.05t.975.8l1.175 2.05q.35.575.2 1.225t-.675 1.075l-1.325 1q.025.175.025.338v.674q0 .163-.05.338l1.325 1q.525.425.675 1.075t-.2 1.225l-1.2 2.05q-.35.575-.975.8t-1.25-.05l-1.5-.65q-.275.2-.575.375t-.6.3l-.225 1.65q-.1.65-.587 1.1t-1.163.45zm1.225-6.5q1.45 0 2.475-1.025T15.55 12t-1.025-2.475T12.05 8.5q-1.475 0-2.488 1.025T8.55 12t1.013 2.475T12.05 15.5\"/>",
+    "home": "<path d=\"M4 19v-9q0-.475.213-.9t.587-.7l6-4.5q.525-.4 1.2-.4t1.2.4l6 4.5q.375.275.588.7T20 10v9q0 .825-.588 1.413T18 21h-3q-.425 0-.712-.288T14 20v-5q0-.425-.288-.712T13 14h-2q-.425 0-.712.288T10 15v5q0 .425-.288.713T9 21H6q-.825 0-1.412-.587T4 19\"/>",
+    "info": "<path d=\"M12.713 16.713Q13 16.425 13 16v-4q0-.425-.288-.712T12 11t-.712.288T11 12v4q0 .425.288.713T12 17t.713-.288m0-8Q13 8.425 13 8t-.288-.712T12 7t-.712.288T11 8t.288.713T12 9t.713-.288M12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22\"/>",
+    "list": "<path d=\"M16 20q-1.25 0-2.125-.875T13 17t.875-2.125T16 14q.275 0 .525.038T17 14.2V7q0-.425.288-.712T18 6h3q.425 0 .713.288T22 7t-.288.713T21 8h-2v9q0 1.25-.875 2.125T16 20M4 16q-.425 0-.712-.288T3 15t.288-.712T4 14h6q.425 0 .713.288T11 15t-.288.713T10 16zm0-4q-.425 0-.712-.288T3 11t.288-.712T4 10h10q.425 0 .713.288T15 11t-.288.713T14 12zm0-4q-.425 0-.712-.288T3 7t.288-.712T4 6h10q.425 0 .713.288T15 7t-.288.713T14 8z\"/>",
+    "moon": "<path d=\"M12.1 22q-2.1 0-3.937-.8t-3.2-2.162t-2.163-3.2T2 11.9q0-3.2 1.8-5.8t4.825-3.65q.55-.2 1.025.138t.45.912q-.075 2.125.675 4.05t2.25 3.425t3.425 2.25t4.05.675q.65-.025.963.438t.112 1.037q-1.1 3-3.687 4.813T12.1 22\"/>",
+    "more": "<path d=\"M12 20q-.825 0-1.412-.587T10 18t.588-1.412T12 16t1.413.588T14 18t-.587 1.413T12 20m0-6q-.825 0-1.412-.587T10 12t.588-1.412T12 10t1.413.588T14 12t-.587 1.413T12 14m0-6q-.825 0-1.412-.587T10 6t.588-1.412T12 4t1.413.588T14 6t-.587 1.413T12 8\"/>",
+    "pause": "<path d=\"M16 19q-.825 0-1.412-.587T14 17V7q0-.825.588-1.412T16 5t1.413.588T18 7v10q0 .825-.587 1.413T16 19m-8 0q-.825 0-1.412-.587T6 17V7q0-.825.588-1.412T8 5t1.413.588T10 7v10q0 .825-.587 1.413T8 19\"/>",
+    "play": "<path d=\"M8 17.175V6.825q0-.425.3-.713t.7-.287q.125 0 .263.037t.262.113l8.15 5.175q.225.15.338.375t.112.475t-.112.475t-.338.375l-8.15 5.175q-.125.075-.262.113T9 18.175q-.4 0-.7-.288t-.3-.712\"/>",
+    "relax": "<path d=\"M11.85 21.925q-4.35-.65-6.9-3.363t-2.9-7.387q-.025-.275.063-.488t.237-.362t.363-.225t.462-.025q4.575.625 7.05 3.525t2.75 7.25q.025.225-.062.438t-.263.362q-.15.15-.363.238t-.437.037m.15-9.3q-.35-.55-1.612-1.612T8.25 9.6q.2-1.25 1.013-3.162T11.2 2.975q.15-.2.363-.3t.437-.1t.425.1t.35.325q1.125 1.575 1.963 3.45T15.75 9.6q-.975.45-2.175 1.463T12 12.625m2.95 8.575q-.05-1.525-.462-3.462T13.2 14.4q1.075-1.65 3.188-2.85t4.462-1.475q.25-.05.45.038t.35.237t.238.35t.062.45q-.2 4.025-2.187 6.538T14.95 21.2\"/>",
+    "shield": "<path d=\"m10.95 12.7l-1.4-1.4q-.3-.3-.7-.3t-.7.3t-.3.713t.3.712l2.1 2.125q.3.3.7.3t.7-.3l4.25-4.25q.3-.3.3-.712t-.3-.713t-.712-.3t-.713.3zm.725 9.175q-.15-.025-.3-.075Q8 20.675 6 17.637T4 11.1V6.375q0-.625.363-1.125t.937-.725l6-2.25q.35-.125.7-.125t.7.125l6 2.25q.575.225.938.725T20 6.375V11.1q0 3.5-2 6.538T12.625 21.8q-.15.05-.3.075T12 21.9t-.325-.025\"/>",
+    "sliders": "<path d=\"M11.288 20.713Q11 20.425 11 20v-4q0-.425.288-.712T12 15t.713.288T13 16v1h7q.425 0 .713.288T21 18t-.288.713T20 19h-7v1q0 .425-.288.713T12 21t-.712-.288M4 19q-.425 0-.712-.288T3 18t.288-.712T4 17h4q.425 0 .713.288T9 18t-.288.713T8 19zm3.288-4.288Q7 14.425 7 14v-1H4q-.425 0-.712-.288T3 12t.288-.712T4 11h3v-1q0-.425.288-.712T8 9t.713.288T9 10v4q0 .425-.288.713T8 15t-.712-.288M12 13q-.425 0-.712-.288T11 12t.288-.712T12 11h8q.425 0 .713.288T21 12t-.288.713T20 13zm3.288-4.288Q15 8.425 15 8V4q0-.425.288-.712T16 3t.713.288T17 4v1h3q.425 0 .713.288T21 6t-.288.713T20 7h-3v1q0 .425-.288.713T16 9t-.712-.288M4 7q-.425 0-.712-.288T3 6t.288-.712T4 5h8q.425 0 .713.288T13 6t-.288.713T12 7z\"/>",
+    "stop": "<path d=\"M6 16V8q0-.825.588-1.412T8 6h8q.825 0 1.413.588T18 8v8q0 .825-.587 1.413T16 18H8q-.825 0-1.412-.587T6 16\"/>",
+    "sun": "<path d=\"M11.288 4.713Q11 4.425 11 4V2q0-.425.288-.712T12 1t.713.288T13 2v2q0 .425-.288.713T12 5t-.712-.288M16.95 7.05q-.275-.275-.275-.687t.275-.713l1.4-1.425q.3-.3.712-.3t.713.3q.275.275.275.7t-.275.7L18.35 7.05q-.275.275-.7.275t-.7-.275M20 13q-.425 0-.713-.288T19 12t.288-.712T20 11h2q.425 0 .713.288T23 12t-.288.713T22 13zm-8.712 9.713Q11 22.425 11 22v-2q0-.425.288-.712T12 19t.713.288T13 20v2q0 .425-.288.713T12 23t-.712-.288M5.65 7.05l-1.425-1.4q-.3-.3-.3-.725t.3-.7q.275-.275.7-.275t.7.275L7.05 5.65q.275.275.275.7t-.275.7q-.3.275-.7.275t-.7-.275m12.7 12.725l-1.4-1.425q-.275-.3-.275-.712t.275-.688t.688-.275t.712.275l1.425 1.4q.3.275.288.7t-.288.725q-.3.3-.725.3t-.7-.3M2 13q-.425 0-.712-.288T1 12t.288-.712T2 11h2q.425 0 .713.288T5 12t-.288.713T4 13zm2.225 6.775q-.275-.275-.275-.7t.275-.7L5.65 16.95q.275-.275.687-.275t.713.275q.3.3.3.713t-.3.712l-1.4 1.4q-.3.3-.725.3t-.7-.3M7.75 16.25Q6 14.5 6 12t1.75-4.25T12 6t4.25 1.75T18 12t-1.75 4.25T12 18t-4.25-1.75\"/>",
+    "theme": "<path d=\"M12 21q-3.775 0-6.387-2.613T3 12q0-3.45 2.25-5.988T11 3.05q.325-.05.575.088t.4.362t.163.525t-.188.575q-.425.65-.638 1.375T11.1 7.5q0 2.25 1.575 3.825T16.5 12.9q.775 0 1.538-.225t1.362-.625q.275-.175.563-.162t.512.137q.25.125.388.375t.087.6q-.35 3.45-2.937 5.725T12 21\"/>",
+    "vis": "<path d=\"M7 17V7q0-.425.288-.712T8 6t.713.288T9 7v10q0 .425-.288.713T8 18t-.712-.288T7 17m4 4V3q0-.425.288-.712T12 2t.713.288T13 3v18q0 .425-.288.713T12 22t-.712-.288T11 21m-8-8v-2q0-.425.288-.712T4 10t.713.288T5 11v2q0 .425-.288.713T4 14t-.712-.288T3 13m12 4V7q0-.425.288-.712T16 6t.713.288T17 7v10q0 .425-.288.713T16 18t-.712-.288T15 17m4-4v-2q0-.425.288-.712T20 10t.713.288T21 11v2q0 .425-.288.713T20 14t-.712-.288T19 13\"/>",
+    "wave": "<path d=\"M7 18.95q-1.225 0-1.95.55t-2.025.775q-.425.075-.725-.2t-.3-.7t.287-.712T3 18.25q.9-.275 1.7-.763T7 17q.95 0 1.563.213t1.137.474t1.05.488T12 18.4t1.25-.225t1.05-.488t1.15-.475T17 17q1.5 0 2.3.488t1.7.762q.425.125.713.413t.287.712t-.3.7t-.725.2q-1.3-.225-2.025-.775T17 18.95q-.7 0-1.213.213t-1.025.474t-1.15.488T12 20.35t-1.613-.225t-1.15-.488t-1.012-.475T7 18.95m0-4.45q-1.225 0-1.95.55t-2.025.775q-.425.075-.725-.2t-.3-.7t.287-.712T3 13.8q.9-.275 1.7-.763T7 12.55q.95 0 1.563.213t1.137.475t1.05.487t1.25.225t1.25-.225t1.05-.487t1.15-.475T17 12.55q1.5 0 2.3.488t1.7.762q.425.125.713.413t.287.712t-.3.7t-.725.2q-1.3-.225-2.025-.775T17 14.5q-.725 0-1.237.212t-1.026.475t-1.137.488t-1.6.225t-1.612-.225t-1.15-.488t-1.013-.474T7 14.5m0-4.45q-1.225 0-1.95.55t-2.025.775q-.425.075-.725-.2t-.3-.7t.288-.712T3 9.35q.9-.275 1.7-.763T7 8.1q.95 0 1.563.213t1.137.474t1.05.488T12 9.5t1.25-.225t1.05-.488t1.15-.475T17 8.1q1.5 0 2.3.488t1.7.762q.425.125.713.413t.287.712t-.3.7t-.725.2q-1.3-.225-2.025-.775T17 10.05q-.7 0-1.213.212t-1.025.475t-1.15.488T12 11.45t-1.613-.225t-1.15-.488t-1.012-.475T7 10.05M7 5.6q-1.225 0-1.95.55t-2.025.775Q2.6 7 2.3 6.725t-.3-.7t.287-.713T3 4.9q.9-.275 1.7-.763T7 3.65q.95 0 1.563.213t1.137.475t1.05.487T12 5.05t1.25-.225t1.05-.488t1.15-.474T17 3.65q1.5 0 2.3.488T21 4.9q.425.125.713.413t.287.712t-.3.7t-.725.2q-1.3-.225-2.025-.775T17 5.6q-.7 0-1.213.213t-1.025.475t-1.15.487T12 7t-1.613-.225t-1.15-.488t-1.012-.474T7 5.6\"/>"
+  };
+/* ICONS:END */
+
   function svg(name, size) {
+    if (IC[name]) {
+      return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"' +
+        (size ? ' width="' + size + '" height="' + size + '"' : "") + '>' + IC[name] + '</svg>';
+    }
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' +
       (size ? ' width="' + size + '" height="' + size + '"' : "") + '><path d="' + I[name] + '"/></svg>';
   }
   function svgFill(name) {
+    if (IC[name]) return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' + IC[name] + '</svg>';
     return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + I[name] + '"/></svg>';
   }
 
@@ -591,7 +667,7 @@
   var STATES = [
     { label: "Sleep", re: /sleep|delta|drift off|deep/i, icon: "moon" },
     { label: "Focus", re: /focus|study|alpha|work|concentrat/i, icon: "focus" },
-    { label: "Relax", re: /relax|calm|theta|meditat|unwind/i, icon: "wave" },
+    { label: "Relax", re: /relax|calm|theta|meditat|unwind/i, icon: "relax" },
     { label: "Wake", re: /wake|alert|gamma|beta|morning|energis/i, icon: "sun" }
   ];
 
@@ -713,6 +789,13 @@
       });
     });
 
+    var fb = $id("rsFilterBtn");
+    if (fb) fb.addEventListener("click", function () {
+      var on = fb.getAttribute("aria-expanded") !== "true";
+      fb.setAttribute("aria-expanded", on ? "true" : "false");
+      $id("rsFilterWrap").classList.toggle("rs-on", on);
+    });
+
     $id("rsBuildGo").addEventListener("click", function () {
       var a = api(); if (!a) return;
       var GE = window.GnauralEngine || {};
@@ -739,7 +822,10 @@
     screenEls.sessions.innerHTML =
       '<div class="rs-pad"></div>' +
       '<section class="card" id="rsBrowse" aria-labelledby="rsBrowseH">' +
-      '  <h3 id="rsBrowseH">Library</h3></section>' +
+      '  <h3 id="rsBrowseH" class="sr-only">Library</h3>' +
+      '  <div class="rs-searchrow"><button class="rs-chipbtn" id="rsFilterBtn" aria-expanded="false" ' +
+      '    aria-controls="rsFilterWrap">Filters</button></div>' +
+      '  <div id="rsFilterWrap"></div></section>' +
       '<section class="card" id="rsQuick" aria-labelledby="rsQuickH">' +
       '  <h3 id="rsQuickH">Quick picks</h3></section>' +
       '<div class="rs-pad"></div>';
@@ -1012,6 +1098,14 @@
     });
     html += '</div>';
     sheetEl.innerHTML = html;
+    var scrim = doc.createElement("div");
+    scrim.id = "rsScrim";
+    doc.body.appendChild(scrim);
+    scrim.addEventListener("click", function () {
+      if (!SHEET.open) return;
+      setOpen(false);
+      unmarkBackTop();
+    });
     doc.body.appendChild(sheetEl);
 
     var y = 0, dragging = false, startY = 0, startOff = 0;
@@ -1024,6 +1118,7 @@
     function setOpen(open) {
       SHEET.open = !!open;
       sheetEl.classList.toggle("rs-open", SHEET.open);
+      doc.documentElement.classList.toggle("rs-sheet", SHEET.open);
       apply(SHEET.open ? 0 : height(), true);
       doc.documentElement.classList.toggle("rs-locked", SHEET.open);
       var ov = $id("rsOverflow");
@@ -1106,7 +1201,7 @@
       ".rs-ov .rs-crow.warn i{color:var(--rs-bad)}",
       ".rs-ov button.rs-cta{width:100%;min-height:48px;border-radius:14px;margin:8px 0;",
       "  border:1px solid var(--rs-pri);background:transparent;color:var(--rs-pri);",
-      "  font:600 15px/1 inherit;cursor:pointer}",
+      "  font:600 15px/1 var(--rs-sans);cursor:pointer}",
       ".rs-ov a{color:var(--rs-pri)}"
     ].join("\n"), "rsOvCss");
   }
@@ -1712,6 +1807,11 @@
     var hear = cardOf("#hearinfo");
     if (hear) screenEls.home.appendChild(hear);
 
+    var search = $id("search");
+    var srow = $(".rs-searchrow");
+    if (search && srow) srow.insertBefore(search, srow.firstChild);
+    var filters = cardOf("#filters");
+    if (filters && filters !== $id("plist")) $id("rsFilterWrap").appendChild(filters);
     var browse = cardOf("#plist");
     if (browse) $id("rsBrowse").appendChild(browse);
     var quick = cardOf("#quickpick");

@@ -305,6 +305,9 @@ def main():
         page.click("#plist .item .star")
         suite.check("the favourite star is a real toggle",
                     page.evaluate("!!document.querySelector('#plist .item .star.on')"))
+        page.click("#rsFilterBtn")
+        suite.check("the Filters button reveals the chip block",
+                    suite.wait_until("document.getElementById('rsFilterBtn').getAttribute('aria-expanded') === 'true'"))
         page.click("#filters .chip:nth-child(2)")
         suite.check("the Favourites chip filters to the starred session",
                     page.evaluate("document.querySelectorAll('#plist .item').length") == 1)
