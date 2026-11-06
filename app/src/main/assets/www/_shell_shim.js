@@ -281,6 +281,16 @@
     "  justify-content:center;background:var(--rs-pri-c);color:var(--rs-on-pri-c)}",
     ".rs-cta h3{margin:2px 0 4px !important;font-size:19px !important}",
     ".rs-cta-sub{margin:0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    /* a quiet picture bleeds in at the head of each way in, and fades into the card */
+    "html[data-rs-ui=full] .rs-cta{position:relative;overflow:hidden}",
+    "html[data-rs-ui=full] .rs-cta::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
+    "  background-size:cover;background-position:center;pointer-events:none;",
+    "  background-image:linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94))}",
+    "html[data-rs-ui=full] .rs-cta[data-art=chamber]::before{background-image:",
+    "  linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-chamber.webp)}",
+    "html[data-rs-ui=full] .rs-cta[data-art=focus]::before{background-image:",
+    "  linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-focus.webp)}",
+    "html[data-rs-ui=full] .rs-cta > *{position:relative;z-index:1}",
     ".rs-hint{margin:0;font-size:12.5px;line-height:18px;color:var(--rs-out)}",
     "#vizNote{display:none !important}",
     /* folded card: a summary row, contents hidden until asked for */
@@ -770,6 +780,18 @@
     ".rs-app .cym .cym-back{order:-1;display:inline-flex;align-items:center;gap:6px;",
     "  background:rgba(20,17,13,.55) !important;color:#fff !important;border-color:rgba(255,255,255,.3) !important}",
     ".rs-app .cym .cym-tempo{min-width:44px;font-size:16px !important;line-height:1}",
+    /* the chamber's own controls wear the same faceplate metal as the player */
+    "html[data-rs-ui=full] .rs-app .cym .cym-actions > button{background-image:url(ui/strip.webp);",
+    "  background-size:cover;background-position:center;border:1px solid #4A3D2B;color:#F2E9D8;",
+    "  box-shadow:0 3px 9px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] .rs-app .cym .cym-actions > button:active{background-color:#2A2318}",
+    "html[data-rs-ui=full] .rs-app .cym #play{background-image:url(ui/knob-calm.webp);",
+    "  background-size:cover;background-position:center;border:0;box-shadow:0 5px 14px rgba(0,0,0,.55)}",
+    "html[data-rs-ui=full][data-rs-accent=dusk] .rs-app .cym #play{background-image:url(ui/knob-dusk.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sage] .rs-app .cym #play{background-image:url(ui/knob-sage.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sand] .rs-app .cym #play{background-image:url(ui/knob-sand.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=slate] .rs-app .cym #play{background-image:url(ui/knob-slate.webp)}",
+    "html[data-rs-ui=full] .rs-app .cym #play{font-size:0}",
     ".rs-app .cym .cym-tone{max-width:56vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     /* the top-right row: even 44px pills, one line, no stray digits */
     ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center}",
@@ -1584,25 +1606,23 @@
   function buildVis() {
     screenEls.vis.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<section class="card rs-cta" aria-labelledby="rsCymH">' +
+      '<section class="card rs-cta" data-art="chamber" aria-labelledby="rsCymH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
       '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
       '    <p class="rs-cta-sub">Full visual experience</p></div></div>' +
       '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
-      '<section class="card rs-cta" aria-labelledby="rsFocusH">' +
+      '<section class="card rs-cta" data-art="focus" aria-labelledby="rsFocusH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("moon", 26) + '</span>' +
       '    <div><h3 id="rsFocusH">Focus view</h3>' +
       '    <p class="rs-cta-sub">Gentle visuals</p></div></div>' +
       '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
       '</section>' +
       '<section class="card" aria-labelledby="rsFollowH">' +
-      '  <h3 id="rsFollowH">Follow the session</h3>' +
       '  <label class="rs-sw"><span class="rs-swt">' +
-      '    <b>Bind the chamber to what plays</b>' +
-      '    <span>The carrier picks the plate mode, the beat sets the pace.</span></span>' +
+      '    <b id="rsFollowH">Follow the tone</b></span>' +
       '    <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
-      '  <div class="rs-map" id="rsMap" aria-live="polite">No session loaded.</div>' +
+      '  <div class="rs-map" id="rsMap" aria-live="polite">No session.</div>' +
       '  <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
       '  <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
       '  <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
@@ -1612,7 +1632,7 @@
       '</section>' +
       '<section class="card" id="rsVizCard" aria-labelledby="rsVizH">' +
       '  <h3 id="rsVizH">Ambient panels</h3>' +
-      '  <p class="rs-hint">Held under the flash threshold — a fast rate drifts slower and says so.</p></section>' +
+      '  <p class="rs-hint">Under the flash threshold.</p></section>' +
       '<div class="rs-pad"></div>';
   }
 
@@ -1626,7 +1646,7 @@
     if (!map) return;
     var shape = sessionShape();
     var plan = planFor(shape);
-    if (!plan) { map.textContent = "No session loaded — pick one on Home and the chamber will follow it."; return; }
+    if (!plan) { map.textContent = "No session."; return; }
     var mode = "—";
     var c = cymApi();
     try {
@@ -1635,10 +1655,8 @@
         if (s && s.nearest !== undefined) mode = s.nearest;
       }
     } catch (e) { }
-    var why = plan.why.charAt(0).toUpperCase() + plan.why.slice(1);
-    map.innerHTML = "carrier <b>" + shape.carrier.toFixed(1) + " Hz</b> · rate <b>" +
-      shape.beat.toFixed(1) + " Hz</b> · " + plan.band + "<br>" + why +
-      "<br>plate mode <b>" + mode + "</b>";
+    map.innerHTML = "carrier <b>" + shape.carrier.toFixed(0) + " Hz</b> · rate <b>" +
+      shape.beat.toFixed(1) + " Hz</b> · " + plan.band + " on " + plan.medium + " · mode " + mode;
     $$("#rsScenes button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-scene") === plan.scene ? "true" : "false");
     });
