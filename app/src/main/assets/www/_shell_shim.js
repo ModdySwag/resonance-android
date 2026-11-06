@@ -479,6 +479,7 @@
     ".rs-screen #pklist a{display:flex;align-items:center;min-height:56px;font-size:15px;",
     "  color:var(--rs-ink);text-decoration:none}",
     ".rs-screen #pklist .pk-n{padding-bottom:10px;margin-top:-8px;color:var(--rs-dim)}",
+    "#vizCard .cym-entry,#vizCard button[data-cym]{display:none}",
     "#vizCard button,#vizCard .ghost{color:var(--rs-ink2) !important}",
     ".rs-screen #vizCard button{min-height:40px;border-radius:10px;",
     "  border:1px solid var(--rs-line2) !important;background-color:var(--rs-s2) !important}",
@@ -1828,6 +1829,18 @@
 
     var voices = cardOf("#voicelist");
     if (voices) $id("rsVoices").appendChild(voices);
+    var vh = voices && voices.querySelector("h3");
+    if (vh) {
+      var cnt = vh.querySelector(".cnt");
+      vh.textContent = "Voices";
+      if (cnt) { vh.appendChild(document.createTextNode(" \u00b7 ")); vh.appendChild(cnt); }
+    }
+    var eh = voices && voices.querySelector("#entriesHead");
+    if (eh) {
+      var ecnt = eh.querySelector(".cnt");
+      eh.textContent = "Entries";
+      if (ecnt) { eh.appendChild(document.createTextNode(" \u00b7 ")); eh.appendChild(ecnt); }
+    }
     var live = cardOf("#barL");
     if (live) $id("rsLive").appendChild(live);
     var files = cardOf("#loadBtn");
