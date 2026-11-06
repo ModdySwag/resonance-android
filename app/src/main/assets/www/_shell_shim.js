@@ -335,7 +335,7 @@
     ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
     ".rs-rail{margin:0 16px 16px}",
     ".rs-rail h4{margin:0 0 8px;font-size:15px;font-weight:700;letter-spacing:-.01em}",
-    ".rs-rail .rs-track{display:flex;overflow-x:auto;gap:10px;padding:0 16px 4px;",
+    ".rs-rail .rs-track{display:flex;overflow-x:auto;gap:10px;padding:0 0 4px;",
     "  -webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}",
     ".rs-rail .rs-track::-webkit-scrollbar{display:none}",
     ".rs-card{flex:0 0 auto;width:150px;min-height:92px;scroll-snap-align:start;text-align:left;",
