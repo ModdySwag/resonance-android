@@ -407,6 +407,9 @@ def main():
             "r => /sleep|delta/i.test(r.textContent) && r.getAttribute('data-band') === 'sleep')"))
         suite.check("the band shows as a tinted edge", page.evaluate(
             "getComputedStyle(document.querySelector('#plist .item')).backgroundImage.indexOf('gradient') > -1"))
+        suite.check("the rail cards carry their band too", page.evaluate(
+            "(() => { const c = document.querySelector('#scr-sessions .rs-card[data-band=sleep]');"
+            " if (!c) return false; return getComputedStyle(c).backgroundImage.indexOf('gradient') > -1; })()"))
         page.click("#filters .chip:nth-child(2)")
         suite.check("the Favourites chip filters to the starred session",
                     page.evaluate("document.querySelectorAll('#plist .item').length") == 1)

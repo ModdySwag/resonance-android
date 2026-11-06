@@ -513,6 +513,14 @@
     "  background-image:linear-gradient(92deg,rgba(216,180,92,.18),rgba(216,180,92,0) 52%)}",
     "html[data-rs-ui=full] #plist .item[data-band=other]{box-shadow:inset 3px 0 0 #5FBFAE;",
     "  background-image:linear-gradient(92deg,rgba(95,191,174,.12),rgba(95,191,174,0) 52%)}",
+    /* the same banding on the rail cards, a touch lighter because they are small */
+    "html[data-rs-ui=full] .rs-card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE);",
+    "  background-image:linear-gradient(100deg,var(--rs-band-wash,transparent),transparent 70%)}",
+    "html[data-rs-ui=full] .rs-card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash:rgba(108,129,190,.18)}",
+    "html[data-rs-ui=full] .rs-card[data-band=focus]{--rs-band:#D2A659;--rs-band-wash:rgba(210,166,89,.16)}",
+    "html[data-rs-ui=full] .rs-card[data-band=relax]{--rs-band:#6FA678;--rs-band-wash:rgba(111,166,120,.16)}",
+    "html[data-rs-ui=full] .rs-card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash:rgba(216,180,92,.16)}",
+    "html[data-rs-ui=full] .rs-card[data-band=other]{--rs-band:#5FBFAE;--rs-band-wash:rgba(95,191,174,.12)}",
     /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
     "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
     "  background-position:center;background-color:#141210;border:1px solid #2A2318;border-radius:14px;",
@@ -1411,10 +1419,16 @@
       (opts.more ? '<button type="button" data-more="' + opts.more + '">See all</button>' : '') + '</div>';
     var track = doc.createElement("div");
     track.className = "rs-track";
+    var band = /sleep|delta|drift/i.test(title) ? "sleep"
+      : /focus|study|alpha|work/i.test(title) ? "focus"
+      : /relax|calm|theta|medit|breath/i.test(title) ? "relax"
+      : /wake|morning|gamma|beta|energ/i.test(title) ? "wake"
+      : /short|under/i.test(title) ? "other" : "";
     items.slice(0, 12).forEach(function (hit) {
       var b = doc.createElement("button");
       b.className = "rs-card";
       b.type = "button";
+      if (band) b.setAttribute("data-band", band);
       var mins = rsMinutes(hit.it);
       b.innerHTML = "<b>" + esc(hit.it.name) + "</b><span>" +
         (mins ? mins + " min" : "session") +
