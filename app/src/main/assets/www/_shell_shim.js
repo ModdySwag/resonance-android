@@ -521,6 +521,11 @@
     "html[data-rs-ui=full] .rs-card[data-band=relax]{--rs-band:#6FA678;--rs-band-wash:rgba(111,166,120,.16)}",
     "html[data-rs-ui=full] .rs-card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash:rgba(216,180,92,.16)}",
     "html[data-rs-ui=full] .rs-card[data-band=other]{--rs-band:#5FBFAE;--rs-band-wash:rgba(95,191,174,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=sleep]{--rs-band:#6C81BE}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=focus]{--rs-band:#D2A659}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=relax]{--rs-band:#6FA678}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=wake]{--rs-band:#D8B45C}",
     /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
     "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
     "  background-position:center;background-color:#141210;border:1px solid #2A2318;border-radius:14px;",
@@ -575,7 +580,10 @@
 
     /* ------------------------------------------------------------------ nav --- */
     "#rsNav{flex:0 0 auto;display:flex;background:var(--rs-s1);border-top:1px solid var(--rs-line);",
-    "  padding:6px 4px calc(6px + " + SAFE_B + ")}",
+    "  padding:6px 4px calc(6px + " + SAFE_B + ");",
+    "  transition:transform .3s ease,opacity .3s ease;will-change:transform}",
+    /* the bar leaves once the glass is quiet and comes back on the next touch */
+    "html.rs-navhide #rsNav{transform:translateY(112%);opacity:0;pointer-events:none}",
     "#rsNav button{flex:1 1 0;min-height:56px;border:0;background:transparent;color:var(--rs-dim);",
     "  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;",
     "  cursor:pointer;padding:0;position:relative;font:600 11px/1 var(--rs-sans)}",
@@ -930,8 +938,21 @@
     return app;
   }
 
+  /* the bar leaves once the glass is quiet, and any touch brings it straight back */
+  var NAVIDLE = 0;
+  function armNav() {
+    doc.documentElement.classList.remove("rs-navhide");
+    if (NAVIDLE) window.clearTimeout(NAVIDLE);
+    NAVIDLE = window.setTimeout(function () {
+      if (doc.hidden) return;
+      if (anyOverlayOpen() || (sheetEl && sheetEl.classList.contains("rs-open"))) return;
+      doc.documentElement.classList.add("rs-navhide");
+    }, 6000);
+  }
+
   function go(id, opts) {
     if (!screenEls[id]) return;
+    armNav();
     CUR = id;
     SCREENS.forEach(function (s) {
       var on = s.id === id;
@@ -2733,16 +2754,23 @@
   }
 
   function paintItems() {
-    var box = $id("plist");
-    if (!box) return;
-    $$(".item", box).forEach(function (row) {
-      if (row.getAttribute("data-band")) return;
-      var t = text(row).toLowerCase();
-      var b = /sleep|delta|drift/.test(t) ? "sleep"
+    function bandOfText(t) {
+      t = t.toLowerCase();
+      return /sleep|delta|drift/.test(t) ? "sleep"
         : /focus|study|alpha|concentrat/.test(t) ? "focus"
         : /relax|calm|theta|meditat|breath/.test(t) ? "relax"
         : /wake|morning|energis|gamma|beta|alert/.test(t) ? "wake" : "other";
-      row.setAttribute("data-band", b);
+    }
+    var box = $id("plist");
+    if (box) $$(".item", box).forEach(function (row) {
+      if (row.getAttribute("data-band")) return;
+      row.setAttribute("data-band", bandOfText(text(row)));
+    });
+    var qp = $id("quickpick");
+    if (qp) $$("button.chip, button", qp).forEach(function (row) {
+      if (row.getAttribute("data-band")) return;
+      var t = text(row);
+      if (t) row.setAttribute("data-band", bandOfText(t));
     });
   }
 
@@ -2912,6 +2940,11 @@
     go("home", { scroll: false });
     syncStats();
     window.setInterval(tick, 1000);
+    doc.addEventListener("pointerdown", armNav, true);
+    doc.addEventListener("keydown", armNav, true);
+    doc.addEventListener("wheel", armNav, { passive: true });
+    doc.addEventListener("visibilitychange", function () { if (!doc.hidden) armNav(); });
+    armNav();
     /* the library re-renders on every keystroke and filter; band the rows promptly */
     window.setInterval(function () { if (CUR === "sessions") paintItems(); }, 300);
     tick();

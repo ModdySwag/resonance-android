@@ -146,6 +146,8 @@ class Suite:
         print("  shot  %s" % name)
 
     def tab(self, name):
+        # the bar auto-hides; reveal it before aiming at it
+        self.page.evaluate("document.documentElement.classList.remove('rs-navhide')")
         self.page.click("#nav-%s" % name)
         self.page.wait_for_timeout(260)
 
@@ -525,6 +527,17 @@ def main():
         back = page.evaluate(ratio)
         suite.check("resetting tempo restores the session's own beat",
                     bool(back) and abs(back[0] / back[1] - 1) < 0.001, back)
+
+        # ---- the nav leaves when the glass is quiet --------------------------------
+        page.wait_for_timeout(6300)
+        suite.check("six quiet seconds put the nav away",
+                    page.evaluate("document.documentElement.classList.contains('rs-navhide')"))
+        page.mouse.click(200, 600)
+        suite.check("a touch brings the nav back",
+                    suite.wait_until("!document.documentElement.classList.contains('rs-navhide')", 3))
+        suite.check("the bar has a transition, not a jump", page.evaluate(
+            "getComputedStyle(document.getElementById('rsNav')).transitionProperty.indexOf('transform') > -1"))
+        page.evaluate("document.documentElement.classList.remove('rs-navhide')")
 
         # ---- settings ---------------------------------------------------------------
         suite.tab("settings")
