@@ -433,6 +433,7 @@
     "  background:var(--rs-pri);color:var(--rs-on-pri);display:flex;align-items:center;",
     "  justify-content:center;cursor:pointer;padding:0}",
     "#rsMini button svg{width:22px;height:22px}",
+    "#rsMini .rs-mini-stop{background:var(--rs-s3);color:var(--rs-ink);border:1px solid var(--rs-line2)}",
 
     /* --------------------------------------------------------------- sheet --- */
     "#rsScrim{position:fixed;top:0;right:0;bottom:0;left:0;z-index:85;background:rgba(6,9,8,.55);" +
@@ -689,7 +690,8 @@
       '</header>' +
       '<main id="rsBody" tabindex="-1"></main>' +
       '<div id="rsMini"><div class="rs-mt"><b id="rsMiniTitle"></b><span id="rsMiniTime"></span></div>' +
-      '  <button id="rsMiniPlay" aria-label="Play or pause"></button></div>' +
+      '  <button id="rsMiniPlay" aria-label="Play or pause"></button>' +
+      '  <button id="rsMiniStop" class="rs-mini-stop" aria-label="Stop and rewind">' + svg("stop") + '</button></div>' +
       '<nav id="rsNav" role="tablist" aria-label="Sections"></nav>';
     doc.body.appendChild(app);
 
@@ -720,6 +722,7 @@
 
     $id("rsOverflow").addEventListener("click", function () { openSheet(true); });
     $id("rsMiniPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
+    $id("rsMiniStop").addEventListener("click", function () { pageStop(); pushState(true); });
 
     return app;
   }
