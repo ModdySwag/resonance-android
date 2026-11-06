@@ -93,6 +93,19 @@
 
   function pageReady() { return !!(api() && $id("plist")); }
 
+  /* Window insets come from the shell (env() is 0 on older WebViews). */
+  var lastInsets = "";
+  function applyInsets() {
+    var ins = window.__rsInsets;
+    if (!ins || (ins.t + "|" + ins.b) === lastInsets) return;
+    lastInsets = ins.t + "|" + ins.b;
+    var root = doc.documentElement.style;
+    root.setProperty("--rs-safe-t", (ins.t || 0) + "px");
+    root.setProperty("--rs-safe-b", (ins.b || 0) + "px");
+    try { window.dispatchEvent(new Event("resize")); } catch (e) { }
+  }
+  window.__rsApplyInsets = applyInsets;
+
   function injectCss(css, id) {
     if (id && doc.getElementById(id)) return;
     var s = doc.createElement("style");
@@ -154,8 +167,8 @@
 
   /* ==================================================================== css === */
 
-  var SAFE_T = "env(safe-area-inset-top,0px)";
-  var SAFE_B = "env(safe-area-inset-bottom,0px)";
+  var SAFE_T = "var(--rs-safe-t,env(safe-area-inset-top,0px))";
+  var SAFE_B = "var(--rs-safe-b,env(safe-area-inset-bottom,0px))";
 
   var CSS = [
     /* ---------------------------------------------------------------- tokens --- */
@@ -234,6 +247,8 @@
     "@keyframes rsRing{0%{opacity:.55;transform:scale(.92)}70%{opacity:0;transform:scale(1.18)}100%{opacity:0}}",
 
     /* ---------------------------------------------------------------- cards --- */
+    "#rsBrowse,#rsVoices{background:transparent !important;border:0 !important;padding:6px 0 0 !important;}",
+    "#rsBrowse > section.card,#rsVoices > section.card{margin:0 16px 12px;}",
     ".rs-screen section.card{display:block;margin:0 16px 12px;padding:16px;" +
     "  border-radius:16px !important;",
     "  background:var(--rs-s1);border:1px solid var(--rs-line);color:var(--rs-ink);",
@@ -307,7 +322,7 @@
     "  background:var(--rs-s2);margin:0 0 8px;align-items:center}",
     ".rs-screen .erow .idx{grid-column:1 / -1;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;",
     "  text-transform:uppercase;color:var(--rs-out)}",
-    ".rs-screen .erow input{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
+    ".rs-screen .erow input{height:46px;border-radius:9px;border:1px solid var(--rs-line2);",
     "  background:var(--rs-bg);color:var(--rs-ink);font:14px/1 ui-monospace,monospace;",
     "  padding:0 8px;width:100%;min-width:0}",
     ".rs-screen .erow .mini{height:40px;border-radius:9px;border:1px solid var(--rs-line2);",
@@ -425,7 +440,7 @@
     "#rsSheet .rs-shead{display:flex;align-items:center;gap:8px;padding:0 20px 10px}",
     "#rsSheet .rs-shead b{flex:1 1 auto;font-size:16px}",
     "#rsSheet .rs-sbody{overflow-y:auto;padding:0 10px 10px}",
-    ".rs-mrow{width:100%;display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 12px;",
+    ".rs-mrow{width:100%;display:flex;align-items:center;gap:0;min-height:56px !important;padding:8px 12px;",
     "  border:0;border-radius:14px;background:transparent;color:var(--rs-ink);text-align:left;",
     "  cursor:pointer;font:inherit}",
     ".rs-mrow:active{background:var(--rs-s3)}",
@@ -444,8 +459,8 @@
     ".rs-kv span{font-variant-numeric:tabular-nums;text-align:right}",
     ".rs-sw{display:flex;align-items:center;gap:14px;min-height:56px;padding:6px 0}",
     ".rs-sw .rs-swt{flex:1 1 auto;min-width:0}",
-    ".rs-sw b{display:block;font-size:15px;font-weight:600}",
-    ".rs-sw span{display:block;font-size:12.5px;color:var(--rs-dim)}",
+    ".rs-sw b{display:block;font-size:15px;font-weight:600;margin-bottom:2px}",
+    ".rs-sw span{display:block;font-size:12.5px;line-height:17px;color:var(--rs-dim)}",
     ".rs-sw input{position:absolute;opacity:0;width:1px;height:1px}",
     ".rs-sw .rs-track{flex:0 0 auto;width:52px;height:32px;border-radius:16px;background:var(--rs-s4);",
     "  border:2px solid var(--rs-out);position:relative;transition:background .16s,border-color .16s}",
@@ -486,7 +501,7 @@
     ".rs-screen #vizCard .ghost{background-color:transparent !important}",
     ".rs-screen #vizCard .vz-scenes button{min-width:40px;padding:0 6px;background-color:transparent !important}",
     "#vizCard select,#vizCard input{color:var(--rs-ink) !important}",
-    "#vizCard .viz-scenes button{min-width:40px}",
+    "#vizCard .viz-scenes button{min-width:0 !important}",
 
     /* ------------------------------------------------- old-WebView fallbacks --- */
     /* The system WebView on older devices predates flex `gap`. Every row that relies on
@@ -495,7 +510,15 @@
     ".rs-hero-top{gap:0}.rs-hero-top > * + *{margin-left:10px}",
     ".rs-seg{gap:0}.rs-seg > * + *{margin-left:6px}",
     ".rs-chips{display:flex;flex-wrap:wrap;overflow:visible;gap:0}",
-    ".rs-chips > * + *{margin-left:8px}",,
+    ".rs-chips > *{margin:0 8px 0 0}",
+    ".rs-screen .chips{display:flex;flex-wrap:wrap;gap:0}",
+    ".rs-screen .chips > *{margin:0 8px 8px 0}",
+    ".rs-screen #plist .item{gap:0}",
+    ".rs-screen #plist .item .star{margin-right:8px}",
+    ".rs-screen #voicelist .vrow{gap:0}",
+    ".rs-screen #voicelist .vrow > * + *{margin-left:8px}",
+    ".rs-tile{gap:0}",
+    ".rs-tile > * + *{margin-top:8px}",,
     ".rs-mrow{gap:0}.rs-mrow > * + *{margin-left:14px}",
     ".rs-sw{gap:0}.rs-sw > * + *{margin-left:14px}",
     "#rsMini{gap:0}#rsMini > * + *{margin-left:10px}",
@@ -1777,6 +1800,7 @@
   }
 
   function tick() {
+    applyInsets();
     syncHero();
     syncMini();
     renderTop();

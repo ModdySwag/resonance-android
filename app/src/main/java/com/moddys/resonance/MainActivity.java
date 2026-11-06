@@ -23,6 +23,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
@@ -84,6 +85,7 @@ public class MainActivity extends Activity {
     private String shim;
     private ViewGroup root;
     private ValueCallback<Uri[]> fileCallback;
+    private int insetTop, insetBottom;
     private SaveSession save;              // one file being written at a time, by design
 
     @Override
@@ -116,8 +118,13 @@ public class MainActivity extends Activity {
             Window w = getWindow();
             if (Build.VERSION.SDK_INT >= 30) {
                 w.setDecorFitsSystemWindows(false);
+                boolean night0 = (getResources().getConfiguration().uiMode
+                        & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
                 w.setStatusBarColor(Color.TRANSPARENT);
-                w.setNavigationBarColor(Color.TRANSPARENT);
+                /* the nav bar carries the app's own surface: the shell pads its nav by the
+                   same inset, so a transparent bar showed the system scrim as a seam. */
+                w.setNavigationBarColor(Color.parseColor(night0 ? "#171D1B" : "#EEF5F2"));
                 if (Build.VERSION.SDK_INT >= 29) w.setNavigationBarContrastEnforced(false);
             } else {
                 w.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -179,6 +186,25 @@ public class MainActivity extends Activity {
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(), "ResonanceJs");
         web.setWebChromeClient(new Chrome());
+        /* env(safe-area-inset-*) is 0 in older WebViews, so the real window insets are
+           pushed in as CSS vars the shell pads with. */
+        web.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets in) {
+                try {
+                    float d = getResources().getDisplayMetrics().density;
+                    int top = Math.round(in.getSystemWindowInsetTop() / d);
+                    int bottom = Math.round(in.getSystemWindowInsetBottom() / d);
+                    insetTop = top;
+                    insetBottom = bottom;
+                    if (web != null) web.evaluateJavascript(
+                        "window.__rsInsets={t:" + top + ",b:" + bottom + "};"
+                        + "if(window.__rsApplyInsets)window.__rsApplyInsets();", null);
+                } catch (Throwable ignored) { }
+                return in;
+            }
+        });
+
         web.setWebViewClient(new WebViewClient() {
 
             /** Every asset request on the app's own origin is answered from the APK. */
@@ -217,6 +243,11 @@ public class MainActivity extends Activity {
                 try { view.getSettings().setMediaPlaybackRequiresUserGesture(false); } catch (Exception ignored) { }
                 String js = shim();
                 if (!js.isEmpty()) view.evaluateJavascript(js, null);
+                /* hand the current insets over after every load, then ask for a fresh
+                   dispatch (the first one lands before the document exists) */
+                view.evaluateJavascript("window.__rsInsets={t:" + insetTop + ",b:" + insetBottom
+                        + "};if(window.__rsApplyInsets)window.__rsApplyInsets();", null);
+                try { view.requestApplyInsets(); } catch (Throwable ignored) { }
                 Compat compat = Compat.get(MainActivity.this);
                 if (compat != null) compat.maybeWarn(MainActivity.this);
                 checkForUpdate(false);
