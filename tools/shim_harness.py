@@ -22,6 +22,7 @@ import functools
 import http.server
 import json
 import os
+import re
 import socketserver
 import sys
 import threading
@@ -45,6 +46,7 @@ BRIDGE = r"""
   window.ResonanceJs = {
     state: function (p, s, e) { rec("state", [p, s, e]); },
     log: function (m) { rec("log", [m]); },
+    toast: function (t) { rec("toast", [t]); },
     url: function (u) { rec("url", [u]); },
     dismissKeyboard: function () { rec("dismissKeyboard", []); },
     copy: function (t) { rec("copy", [t]); return true; },
@@ -178,6 +180,10 @@ def main():
 
         print("== driving %s" % url)
         page.goto(url, wait_until="load")
+        # the suite is not a first run: pre-mark the tour seen so the tests drive the app
+        # itself. The tour legs at the end clear this and reload to prove the real first run.
+        page.evaluate("try { localStorage.setItem('resonance.app.theme.v1', "
+                      "JSON.stringify({ tour: 'done' })) } catch (e) {}")
         page.add_script_tag(content=SHIM)           # exactly how the shell injects it
         suite = Suite(page, a.shots)
 
@@ -197,6 +203,14 @@ def main():
                     page.evaluate("!!(window.__gnauralAPI && window.__gnauralAPI.state)"))
         suite.check("the shell paints in the app theme, not the page skin",
                     page.evaluate("!!document.documentElement.getAttribute('data-rs-theme')"))
+
+        # what the APK carries must agree with the build it was cut from
+        cj = json.load(open(os.path.join(WWW, "compat.json"), encoding="utf-8"))
+        grade = open(os.path.join(PROJECT, "app", "build.gradle"), encoding="utf-8").read()
+        vname = re.search(r'versionName\s+"([^"]+)"', grade)
+        suite.check("compat.json names the version this build actually is",
+                    vname is not None and cj.get("appVersion") == vname.group(1),
+                    "%s vs %s" % (cj.get("appVersion"), vname and vname.group(1)))
         suite.shot("1-home.png")
 
         # ---- the session map (the shell's own chart, not the page's) ---------------
@@ -296,6 +310,31 @@ def main():
         page.click("#rsStop")
         suite.check("Stop stops and rewinds",
                     suite.wait_until("document.getElementById('clock').textContent.indexOf('0:00') === 0", 8))
+
+        # ---- Surprise me lives in the player -----------------------------------------
+        sur = page.evaluate("""(() => {
+          const s = document.getElementById('rsSurprise'),
+                m = document.getElementById('rsMode');
+          if (!s || !m) return null;
+          const a = s.getBoundingClientRect(), b = m.getBoundingClientRect();
+          return { h: Math.round(a.height), w: Math.round(a.width),
+                   beside: Math.abs(a.right - b.left) < 30 && Math.abs(a.top - b.top) < 26,
+                   inHero: !!s.closest('.rs-hero'),
+                   pill: getComputedStyle(s.querySelector('.rs-pill')).borderRadius };
+        })()""")
+        suite.check("Surprise me is a pill beside the live pill in the player",
+                    sur is not None and sur["inHero"] and sur["beside"] and sur["h"] >= 44
+                    and sur["pill"] == "999px", sur)
+        suite.check("the library no longer shows its own Surprise me button",
+                    page.evaluate("getComputedStyle(document.getElementById('randomBtn')).display") == "none")
+        page.click("#rsSurprise")
+        suite.check("Surprise me rolls a session and starts it",
+                    suite.wait_until("window.__gnauralAPI.state.playing === true", 8))
+        rolled = page.evaluate("document.getElementById('rsNowTitle').textContent")
+        suite.check("...and the player names what it rolled",
+                    bool(rolled) and rolled != "Pick a session", rolled)
+        page.click("#rsStop")
+        suite.wait_until("window.__gnauralAPI.state.playing === false", 8)
 
         # ---- the map reads the loaded session --------------------------------------
         label = page.evaluate("document.getElementById('rsSched').getAttribute('aria-label')")
@@ -597,6 +636,121 @@ def main():
                     suite.wait_until("!document.getElementById('rsSheet').classList.contains('rs-open')", 5))
         page.wait_for_timeout(500)      # let the popstate settle before touching the bar again
 
+        # ---- help & about, through the rows a person actually taps -------------------
+        # These used to be reached only through window.__rs.guide()/check(), which skipped
+        # the row handlers entirely - and the More sheet's rows were dead: the sheet popped
+        # its history entry while the overlay pushed a new one, so the deferred popstate
+        # closed the overlay it had just opened.
+        def close_shown():
+            page.evaluate("(() => { const o = document.querySelector('.rs-ov.rs-ov-on');"
+                          " if (o) o.querySelector('[data-ov-x]').click(); })()")
+            page.wait_for_timeout(450)
+
+        def shown(ov):
+            return page.evaluate("(() => { const o = document.getElementById('%s');"
+                                 " return !!o && o.classList.contains('rs-ov-on'); })()" % ov)
+
+        def open_state(ov):
+            return page.evaluate("document.getElementById('%s').classList.contains('rs-ov-on')" % ov)
+
+        suite.tab("settings")
+        for act, ov in (("about", "rsAbout"), ("guide", "rsGuide"), ("check", "rsCheck")):
+            close_shown()
+            page.evaluate("window.__rsUpdate.none('')")      # a stray answer must not toast here
+            page.click("#scr-settings [data-act=%s]" % act)
+            page.wait_for_timeout(500)
+            suite.check("Settings' %s row opens %s" % (act, ov), open_state(ov))
+            page.wait_for_timeout(700)                       # the popstate that ate it lands here
+            suite.check("%s is still open a moment later (from Settings)" % ov, open_state(ov))
+            close_shown()
+
+        for act, ov in (("about", "rsAbout"), ("guide", "rsGuide"), ("check", "rsCheck")):
+            close_shown()
+            page.click("#rsOverflow")
+            suite.wait_until("document.getElementById('rsSheet').classList.contains('rs-open')", 4)
+            page.wait_for_timeout(350)
+            page.click("#rsSheet [data-act=%s]" % act)
+            page.wait_for_timeout(600)
+            suite.check("the More sheet's %s row opens %s and shuts the sheet" % (act, ov),
+                        open_state(ov) and not page.evaluate(
+                            "document.getElementById('rsSheet').classList.contains('rs-open')"))
+            page.wait_for_timeout(700)
+            suite.check("%s survives the sheet's history pop" % ov, open_state(ov))
+            page.evaluate("history.back()")
+            suite.check("Back closes %s and leaves the screen alone" % ov,
+                        suite.wait_until(
+                            "!document.getElementById('rsCheck').classList.contains('rs-ov-on')"
+                            if ov == "rsCheck" else
+                            "!document.getElementById('%s').classList.contains('rs-ov-on')" % ov, 4)
+                        and page.evaluate(
+                            "document.getElementById('scr-settings').classList.contains('rs-on')"))
+            page.wait_for_timeout(400)
+
+        # the guide starts at the top even when it was left halfway down
+        close_shown()
+        page.click("#scr-settings [data-act=guide]")
+        page.wait_for_timeout(500)
+        page.evaluate("document.querySelector('#rsGuide .rs-ov-body').scrollTop = 640")
+        close_shown()
+        page.click("#scr-settings [data-act=guide]")
+        page.wait_for_timeout(500)
+        suite.check("the guide reopens at its top",
+                    page.evaluate("document.querySelector('#rsGuide .rs-ov-body').scrollTop") == 0)
+        close_shown()
+
+        # About names the build the shell is actually running
+        page.click("#scr-settings [data-act=about]")
+        page.wait_for_timeout(500)
+        about = page.evaluate("document.getElementById('rsAbout').textContent")
+        suite.check("About names this build", "2.0.0-beta" in about, about[:90])
+        suite.check("About carries the licence terms", "GPL-2.0" in about and "LGPL-2.1" in about)
+        before = len([x for x in suite.calls() if x["m"] == "checkUpdate"])
+        page.click("#rsAboutUpd")
+        page.wait_for_timeout(400)
+        suite.check("About's update button asks the shell",
+                    len([x for x in suite.calls() if x["m"] == "checkUpdate"]) == before + 1)
+        page.evaluate("window.__rsUpdate.none('')")
+        close_shown()
+
+        # Check device reports each metric, and a report that copies whole
+        page.click("#scr-settings [data-act=check]")
+        page.wait_for_timeout(500)
+        rows = page.evaluate("Array.from(document.querySelectorAll('#rsCheck .rs-crow b'))"
+                             ".map(e => e.textContent)")
+        suite.check("Check device lists every metric it claims",
+                    rows == ["Device", "Android", "Engine", "Audio path", "Notifications"], rows)
+        suite.check("Check device finds nothing wrong on a healthy phone",
+                    page.evaluate("document.querySelectorAll('#rsCheck .rs-crow.ok').length") == 5)
+        close_shown()
+
+        # the rows are as tappable as the rest of the app
+        page.click("#rsOverflow")
+        page.wait_for_timeout(450)
+        small = page.evaluate("""(() => {
+          const bad = [];
+          document.querySelectorAll('#rsSheet button').forEach(e => {
+            const q = e.getBoundingClientRect();
+            if (!q.width || !q.height) return;
+            if (q.height < 44) bad.push((e.dataset.act || e.tagName) + ' ' + Math.round(q.height));
+          });
+          return bad;
+        })()""")
+        suite.check("every More-sheet row is at least 44 px tall", small == [], small)
+        page.evaluate("document.querySelector('#rsSheet [data-act=guide]').click()")
+        page.wait_for_timeout(500)
+        small = page.evaluate("""(() => {
+          const bad = [];
+          document.querySelectorAll('.rs-ov.rs-ov-on button').forEach(e => {
+            const q = e.getBoundingClientRect();
+            if (!q.width || !q.height) return;
+            if (q.height < 44) bad.push((e.id || e.textContent.trim().slice(0, 12)) + ' ' + Math.round(q.height));
+          });
+          return bad;
+        })()""")
+        suite.check("every overlay control is at least 44 px tall", small == [], small)
+        close_shown()
+
+
         # dragging the grabber down closes it
         page.click("#rsOverflow")
         suite.wait_until("document.getElementById('rsSheet').classList.contains('rs-open')", 4)
@@ -702,6 +856,48 @@ def main():
         suite.check("Later hides the update strip", page.evaluate(
             "getComputedStyle(document.getElementById('rsUpd')).display === 'none'"))
 
+        # ---- Check for updates: whoever asks always gets an answer ---------------------
+        suite.tab("settings")
+
+        def toasts():
+            return len([x for x in suite.calls() if x["m"] == "toast"])
+
+        n0 = toasts()
+        page.click("#scr-settings [data-act=upd]")
+        c = suite.wait_call("checkUpdate", timeout=4)
+        suite.check("Check for updates asks the shell", c is not None)
+        page.evaluate("window.__rsUpdate.none('1.1.4-beta')")
+        suite.check("a manual check that finds nothing says so, and says what it found",
+                    toasts() == n0 + 2 and page.evaluate("window.__rsUpdate.state().state") == "current",
+                    toasts() - n0)
+        n0 = toasts()
+        page.evaluate("window.__rsUpdate.none('1.1.4-beta')")
+        suite.check("the launch check stays quiet", toasts() == n0)
+
+        page.click("#scr-settings [data-act=upd]")
+        page.wait_for_timeout(200)
+        page.evaluate("window.__rsUpdate.failed('java.net.UnknownHostException: moddys.net')")
+        suite.check("a manual check that cannot reach the site says so",
+                    toasts() == n0 + 2 and page.evaluate("window.__rsUpdate.state().state") == "failed",
+                    toasts() - n0)
+        n0 = toasts()
+        page.evaluate("window.__rsUpdate.failed('boom')")
+        suite.check("a failed launch check stays quiet", toasts() == n0)
+
+        page.click("#scr-settings [data-act=upd]")
+        page.wait_for_timeout(200)
+        page.evaluate("""window.__rsUpdate.available({version: "9.9.9",
+            url: "https://moddys.net/x.apk", sha256: "ab", notes: ""})""")
+        suite.check("a manual check with an update shows the strip instead of a toast",
+                    toasts() == n0 + 1 and page.evaluate(
+                        "getComputedStyle(document.getElementById('rsUpd')).display !== 'none'"),
+                    toasts() - n0)
+        n0 = toasts()
+        page.evaluate("window.__rsUpdate.none('1.1.4-beta')")
+        suite.check("the update answer does not leak onto the next launch check", toasts() == n0)
+        page.click("#rsUpd [data-rs-upd='later']")
+
+
         # search + keyboard dismissal (the shell's own contract)
         suite.tab("sessions")
         page.click("#search")
@@ -728,6 +924,79 @@ def main():
             over = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
             suite.check("no horizontal overflow at %d px" % w, over <= 0, over)
         page.set_viewport_size({"width": 390, "height": 844})
+
+        # ---- the welcome tour ---------------------------------------------------------
+        page.evaluate("localStorage.removeItem('resonance.app.theme.v1')")
+        page.reload(wait_until="load")
+        page.add_script_tag(content=SHIM)
+        suite.check("a first launch opens the welcome tour by itself", suite.wait_until(
+            "!!document.getElementById('rsTour') && "
+            "document.getElementById('rsTour').classList.contains('rs-t-on')", 10))
+        suite.check("it opens on step 1 and says how many there are", page.evaluate(
+            "document.getElementById('rsTourN').textContent") == "1 of 9")
+        suite.check("the bubble is a labelled modal dialog", page.evaluate(
+            "(() => { const b = document.querySelector('#rsTour .rs-t-bub');"
+            " return b.getAttribute('role') === 'dialog' && b.getAttribute('aria-modal') === 'true'"
+            " && !!document.getElementById('rsTourT').textContent; })()"))
+        tick = page.evaluate("""(() => { const t = document.querySelector('#rsTour .rs-t-x');
+            const r = t.getBoundingClientRect();
+            return { w: Math.round(r.width), h: Math.round(r.height), label: t.getAttribute('aria-label') }; })()""")
+        suite.check("a tick leaves the tour, sized and labelled for it",
+                    tick["w"] >= 44 and tick["h"] >= 44 and "End" in (tick["label"] or ""), tick)
+
+        page.click("#rsTour .rs-t-next")
+        page.wait_for_timeout(900)
+        hit = page.evaluate("""(() => {
+          const h = document.querySelector('#rsTour .rs-t-hole').getBoundingClientRect();
+          const n = document.getElementById('rsNav').getBoundingClientRect();
+          return { hx: Math.round(h.x), hw: Math.round(h.width), hy: Math.round(h.y),
+                   hh: Math.round(h.height), nx: Math.round(n.x), nw: Math.round(n.width),
+                   ny: Math.round(n.y), nh: Math.round(n.height) }; })()""")
+        suite.check("step 2 walks to the nav and spotlights it",
+                    hit["hx"] <= hit["nx"] + 8 and hit["hx"] + hit["hw"] >= hit["nx"] + hit["nw"] - 8
+                    and hit["hy"] <= hit["ny"] and hit["hy"] + hit["hh"] >= hit["ny"] + hit["nh"], hit)
+        suite.check("the step count follows the walk", page.evaluate(
+            "document.getElementById('rsTourN').textContent") == "2 of 9")
+
+        bad = []
+        for n in range(3, 10):
+            page.click("#rsTour .rs-t-next")
+            page.wait_for_timeout(850)
+            bubble = page.evaluate("""(() => { const q = document.querySelector('#rsTour .rs-t-bub')
+                .getBoundingClientRect(); return { x: Math.round(q.x), y: Math.round(q.y),
+                w: Math.round(q.width), h: Math.round(q.height), vw: innerWidth, vh: innerHeight }; })()""")
+            if (bubble["x"] < 0 or bubble["y"] < 0 or bubble["x"] + bubble["w"] > bubble["vw"]
+                    or bubble["y"] + bubble["h"] > bubble["vh"]):
+                bad.append((n, bubble))
+            count = page.evaluate("document.getElementById('rsTourN').textContent")
+            if count != "%d of 9" % n:
+                bad.append((n, count))
+        suite.check("the tour walks all nine stops with the bubble on screen", bad == [], bad[:3])
+
+        page.click("#rsTour .rs-t-next")          # Done
+        suite.check("Done ends the tour", suite.wait_until(
+            "!document.getElementById('rsTour').classList.contains('rs-t-on')", 4))
+        suite.check("the tour is remembered as seen", page.evaluate(
+            "JSON.parse(localStorage.getItem('resonance.app.theme.v1') || '{}').tour") == "done")
+
+        page.reload(wait_until="load")
+        page.add_script_tag(content=SHIM)
+        suite.check("the shell comes back after the tour", suite.wait_until(
+            "!!document.getElementById('rsApp')", 15))
+        page.wait_for_timeout(2400)
+        suite.check("a tour already seen does not open again", not page.evaluate(
+            "!!document.getElementById('rsTour') && "
+            "document.getElementById('rsTour').classList.contains('rs-t-on')"))
+
+        suite.tab("settings")
+        page.click("#scr-settings [data-act=tour]")
+        suite.check("Settings can replay it", suite.wait_until(
+            "document.getElementById('rsTour').classList.contains('rs-t-on') && "
+            "document.getElementById('rsTourN').textContent === '1 of 9'", 6))
+        page.evaluate("history.back()")
+        suite.check("Back leaves the tour without leaving the app", suite.wait_until(
+            "!document.getElementById('rsTour').classList.contains('rs-t-on')", 4)
+            and page.evaluate("!!document.getElementById('rsApp')"))
 
         # reload: the shell reinjects and the frame comes back
         page.reload(wait_until="load")
