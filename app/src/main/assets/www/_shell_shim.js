@@ -264,12 +264,14 @@
     "  border-radius:12px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
     "  font:600 14px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen section.card .row > button:active,.rs-screen section.card > button:active{background:var(--rs-s3)}",
+    ".rs-screen section.card > button.rs-btn.rs-filled,.rs-screen .row > button.rs-btn.rs-filled{",
+    "  background:var(--rs-pri) !important;border-color:var(--rs-pri) !important;color:var(--rs-on-pri) !important}",
     ".rs-screen select{min-height:44px;border-radius:12px;border:1px solid var(--rs-line2);",
     "  background:var(--rs-s2);color:var(--rs-ink);font:14px/1 var(--rs-sans);padding:0 10px;max-width:100%}",
     ".rs-screen input[type=search],.rs-screen input[type=text]{min-height:48px;width:100%;",
     "  border-radius:999px;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink);",
     "  font:15px/1 var(--rs-sans);padding:0 18px;min-width:0}",
-    ".rs-screen input[type=search]::placeholder{color:var(--rs-out)}",
+    ".rs-screen input[type=search]::placeholder{color:var(--rs-out);text-overflow:ellipsis}",
     ".rs-screen input[type=range]{-webkit-appearance:none;appearance:none;height:44px;width:100%;",
     "  background:transparent;margin:0}",
     ".rs-screen input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;",
@@ -278,16 +280,17 @@
     "  margin-top:-9px;border-radius:50%;background:var(--rs-pri);border:2px solid var(--rs-bg)}",
     ".rs-screen kbd{display:none}",
     ".rs-screen .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}",
-    ".rs-screen .chip{min-height:36px;border-radius:999px;border:1px solid var(--rs-line2);",
+    ".rs-screen .chip{min-height:44px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);padding:0 14px;cursor:pointer}",
     ".rs-screen .chip.on{background:var(--rs-pri-c);border-color:transparent;color:var(--rs-on-pri-c)}",
     ".rs-chipbtn{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--rs-line2);",
     "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);flex:0 0 auto}",
     ".rs-screen .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}",
-    ".rs-screen .rs-searchrow{display:flex;align-items:center;margin:0 0 8px}",
+    ".rs-screen .rs-searchrow{display:flex;align-items:center;margin:0 0 6px}",
     "#scr-sessions .rs-pad{height:0}",
-    "#rsBrowse{padding-top:10px}",
+    "#rsBrowse{padding-top:2px}",
     "#rsBrowse #search{min-height:44px}",
+    "#rsBrowse #rsFilterBtn{min-height:44px}",
     ".rs-screen .rs-searchrow #search{flex:1 1 auto;margin:0}",
     ".rs-screen .rs-searchrow > * + *{margin-left:8px}",
     "#rsFilterWrap{display:none}",
@@ -698,17 +701,24 @@
   /* =================================================================== home === */
 
   var STATES = [
-    { label: "Sleep", re: /sleep|delta|drift off|deep/i, icon: "moon" },
-    { label: "Focus", re: /focus|study|alpha|work|concentrat/i, icon: "focus" },
-    { label: "Relax", re: /relax|calm|theta|meditat|unwind/i, icon: "relax" },
+    { label: "Sleep", re: [/sleep/i, /delta|drift off/i], icon: "moon" },
+    { label: "Focus", re: [/focus|study|concentrat|deep work/i, /alpha/i], icon: "focus" },
+    { label: "Relax", re: [/relax|calm|meditat|unwind/i, /theta/i], icon: "relax" },
     { label: "Wake", re: /wake|alert|gamma|beta|morning|energis/i, icon: "sun" }
   ];
 
-  function presetByName(re) {
+  function presetByName(res, used) {
     var list = (pState() && pState().presetList) || [];
-    var i;
-    for (i = 0; i < list.length; i++) if (re.test(list[i].name)) return { i: i, it: list[i] };
-    for (i = 0; i < list.length; i++) if (re.test(list[i].blurb || "")) return { i: i, it: list[i] };
+    var rs = res instanceof Array ? res : [res];
+    var r, i;
+    used = used || [];
+    function free(k) { return used.indexOf(k) === -1; }
+    for (r = 0; r < rs.length; r++) {
+      for (i = 0; i < list.length; i++) if (free(i) && rs[r].test(list[i].name)) return { i: i, it: list[i] };
+    }
+    for (r = 0; r < rs.length; r++) {
+      for (i = 0; i < list.length; i++) if (free(i) && rs[r].test(list[i].blurb || "")) return { i: i, it: list[i] };
+    }
     return null;
   }
 
@@ -733,7 +743,7 @@
       '    <h1 id="rsNowTitle">Pick a session</h1><p id="rsNowSrc"></p></div>' +
       '    <span class="rs-pill rs-live" id="rsMode">idle</span></div>' +
       '  <div class="rs-transport">' +
-      '    <button class="rs-fab" id="rsPlay" aria-label="Play"></button>' +
+      '    <button class="rs-fab" id="rsPlay" aria-label="Play">' + svgFill("play") + '</button>' +
       '    <div class="rs-vol"><small>Volume</small>' +
       '      <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>' +
       '    <button class="rs-ico" id="rsStop" aria-label="Stop and rewind">' + svg("stop") + '</button>' +
@@ -773,8 +783,10 @@
 
   function wireHome() {
     var tiles = $id("rsStates");
+    var used = [];
     STATES.forEach(function (s) {
-      var hit = presetByName(s.re);
+      var hit = presetByName(s.re, used);
+      if (hit) used.push(hit.i);
       var b = doc.createElement("button");
       b.className = "rs-tile";
       b.type = "button";
@@ -855,7 +867,7 @@
     screenEls.sessions.innerHTML =
       '<div class="rs-pad"></div>' +
       '<section class="card" id="rsBrowse" aria-labelledby="rsBrowseH">' +
-      '  <h3 id="rsBrowseH" class="sr-only">Library</h3>' +
+      '  <h3 id="rsBrowseH" class="sr-only">Sessions</h3>' +
       '  <div class="rs-searchrow"><button class="rs-chipbtn" id="rsFilterBtn" aria-expanded="false" ' +
       '    aria-controls="rsFilterWrap">Filters</button></div>' +
       '  <div id="rsFilterWrap"></div></section>' +
@@ -1479,7 +1491,8 @@
       "  background:rgba(20,17,13,.42);color:#fff;cursor:pointer}",
       "#rsFsCtl .rs-fs-play{width:58px;height:58px;font-size:20px}",
       "#rsFsCtl .rs-fs-stop{width:46px;height:46px;font-size:14px}",
-      "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:.6}",
+      "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:1;",
+      "  color:#fff !important;background:rgba(10,8,6,.72) !important;padding:4px 9px;border-radius:999px}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
       "html.rs-fs-hide #rsFsCtl button,html.rs-fs-hide #rsFsTop button{pointer-events:none}"
     ].join("\n"), "rsFsCss");
@@ -1844,8 +1857,8 @@
     var search = $id("search");
     var srow = $(".rs-searchrow");
     if (search && srow) srow.insertBefore(search, srow.firstChild);
-    var filters = cardOf("#filters");
-    if (filters && filters !== $id("plist")) $id("rsFilterWrap").appendChild(filters);
+    var filters = $id("filters");          // the chips themselves, not their card
+    if (filters) $id("rsFilterWrap").appendChild(filters);
     var browse = cardOf("#plist");
     if (browse) $id("rsBrowse").appendChild(browse);
     var quick = cardOf("#quickpick");
@@ -1859,6 +1872,13 @@
       vh.textContent = "Voices";
       if (cnt) { vh.appendChild(document.createTextNode(" \u00b7 ")); vh.appendChild(cnt); }
     }
+    var hs = ["duration s", "base Hz", "beat Hz", "vol L", "vol R"];
+    var rows = $$("#entryedit .erow");
+    rows.concat($$("#entryedit .erow")).forEach(function (r) {
+      $$("input", r).forEach(function (inp, i) {
+        if (hs[i]) { inp.setAttribute("aria-label", hs[i]); inp.setAttribute("placeholder", hs[i]); }
+      });
+    });
     var eh = voices && voices.querySelector("#entriesHead");
     if (eh) {
       var ecnt = eh.querySelector(".cnt");
