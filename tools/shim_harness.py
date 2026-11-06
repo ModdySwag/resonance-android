@@ -570,6 +570,10 @@ def main():
                     page.evaluate("getComputedStyle(document.getElementById('rsPlay')).backgroundImage") == "none")
         suite.check("Minimal drops the band tint too", page.evaluate(
             "getComputedStyle(document.querySelector('#plist .item')).backgroundImage") == "none")
+        suite.check("Minimal drops the visualise pictures as well", page.evaluate(
+            "(() => { const c = document.querySelector('#scr-vis .rs-cta[data-art=chamber]');"
+            " if (!c) return false; const bg = getComputedStyle(c, '::before').backgroundImage;"
+            " return bg === 'none' || bg.indexOf('cta-chamber') === -1; })()"))
         suite.check("the choice is stored",
                     page.evaluate("JSON.parse(localStorage.getItem('resonance.app.theme.v1')).ui") == "minimal")
         page.click("#rsUi button[data-u=full]")
