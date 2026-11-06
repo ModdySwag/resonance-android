@@ -172,7 +172,10 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        web.setBackgroundColor(Color.parseColor("#0E1211"));
+        boolean night = (getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        web.setBackgroundColor(Color.parseColor(night ? "#0E1211" : "#F5FAF8"));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(), "ResonanceJs");
         web.setWebChromeClient(new Chrome());
