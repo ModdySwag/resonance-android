@@ -495,6 +495,10 @@
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=focus]{background-image:url(ui/tile-focus.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=relax]{background-image:url(ui/tile-relax.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=wake]{background-image:url(ui/tile-wake.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=drift]{background-image:url(ui/tile-drift.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=work]{background-image:url(ui/tile-work.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=meditate]{background-image:url(ui/tile-meditate.webp)}",
+    "html[data-rs-ui=full] .rs-tile[data-rs-tile=morning]{background-image:url(ui/tile-morning.webp)}",
     /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
     "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
     "  background-position:center;background-color:#141210;border:1px solid #2A2318;border-radius:14px;",
@@ -526,7 +530,7 @@
 
     /* --------------------------------------------------------------- tiles --- */
     ".rs-states{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}",
-    ".rs-tile{min-height:96px;text-align:left;border-radius:var(--rs-r-md);border:1px solid var(--rs-line);",
+    ".rs-tile{min-height:132px;text-align:left;border-radius:var(--rs-r-md);border:1px solid var(--rs-line);",
     "  background:var(--rs-s1);color:var(--rs-ink);padding:13px;display:flex;flex-direction:column;",
     "  justify-content:space-between;gap:8px;cursor:pointer;font:inherit}",
     ".rs-tile:active{background:var(--rs-s3)}",
@@ -937,10 +941,14 @@
   /* =================================================================== home === */
 
   var STATES = [
-    { label: "Sleep", re: [/sleep/i, /delta|drift off/i], icon: "moon" },
-    { label: "Focus", re: [/focus|study|concentrat|deep work/i, /alpha/i], icon: "focus" },
-    { label: "Relax", re: [/relax|calm|meditat|unwind/i, /theta/i], icon: "relax" },
-    { label: "Wake", re: /wake|alert|gamma|beta|morning|energis/i, icon: "sun" }
+    { label: "Deep sleep", t: "sleep", icon: "moon", re: [/deep sleep/i, /sleep/i, /delta/i] },
+    { label: "Drift off", t: "drift", icon: "moon", re: [/drift/i, /2\.5\s*hz/i, /delta|theta/i] },
+    { label: "Focus", t: "focus", icon: "focus", re: [/focus 40/i, /focus|study/i, /alpha/i] },
+    { label: "Deep work", t: "work", icon: "focus", re: [/deep work/i, /beta/i, /concentrat/i] },
+    { label: "Relax", t: "relax", icon: "relax", re: [/relax|calm|unwind/i, /theta/i] },
+    { label: "Meditate", t: "meditate", icon: "relax", re: [/meditat|breath/i, /theta|alpha/i] },
+    { label: "Wake", t: "wake", icon: "sun", re: [/wake|energis|alarm/i, /gamma|beta/i] },
+    { label: "Morning", t: "morning", icon: "sun", re: [/morning|sunrise/i, /gamma|beta/i] }
   ];
 
   function presetByName(res, used) {
@@ -1283,13 +1291,13 @@
   function wireHome() {
     var tiles = $id("rsStates");
     var used = [];
-    var TILE_IDS = ["sleep", "focus", "relax", "wake"];
+    var TILE_IDS = null;
     STATES.forEach(function (s, si) {
       var hit = presetByName(s.re, used);
       if (hit) used.push(hit.i);
       var b = doc.createElement("button");
       b.className = "rs-tile";
-      b.setAttribute("data-rs-tile", TILE_IDS[si] || "sleep");
+      b.setAttribute("data-rs-tile", s.t);
       b.type = "button";
       b.innerHTML = svg(s.icon) + "<div><b>" + s.label + "</b><span>" +
         (hit ? esc(hit.it.name) : "no match") + "</span></div>";
@@ -2741,6 +2749,11 @@
       stage.style.margin = "0";
       try { drawSched(); } catch (e) { }
     }
+    var build = cardOf("#rsBuild");
+    if (build) {
+      var stVoices = $id("rsVoices");
+      if (stVoices && stVoices.parentNode) stVoices.parentNode.insertBefore(build, stVoices);
+    }
     var hear = cardOf("#hearinfo");
     if (hear) {
       var fold = doc.createElement("section");
@@ -2750,7 +2763,9 @@
       hear.classList.remove("card", "rs-screen");
       $id("hearinfo").classList.remove("readout");
       fold.querySelector("details").appendChild(hear);
-      screenEls.home.appendChild(fold);
+      var inStudio = $id("rsVoices");
+      if (inStudio && inStudio.parentNode) inStudio.parentNode.insertBefore(fold, inStudio.nextSibling);
+      else screenEls.studio.appendChild(fold);
     }
 
     var search = $id("search");

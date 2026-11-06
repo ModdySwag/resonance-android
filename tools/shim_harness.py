@@ -329,13 +329,23 @@ def main():
         suite.check("the playhead follows the position (half, then near the end)",
                     0.42 < seek["mid"] < 0.58 and seek["late"] > 0.8, seek)
 
+        # ---- Build a tone and the hearing readout live on Studio now ----------------
+        suite.check("Home keeps only the player and the modules",
+                    page.evaluate("!document.querySelector('#scr-home #rsBuild') && "
+                                  "!document.querySelector('#scr-home .rs-fold') && "
+                                  "!!document.querySelector('#scr-home #rsStates')"))
+        suite.check("the module grid offers eight ways in",
+                    page.evaluate("document.querySelectorAll('#rsStates .rs-tile').length") == 8)
+        suite.tab("studio")
+        suite.check("Build a tone moved to Studio",
+                    page.evaluate("!!document.querySelector('#scr-studio #rsBuild')"))
         # ---- "what you are hearing" is folded to a single row ----------------------
         suite.check("the hearing card is folded away by default",
-                    page.evaluate("(() => { const d = document.querySelector('.rs-fold details');"
+                    page.evaluate("(() => { const d = document.querySelector('#scr-studio .rs-fold details');"
                                   " return !!d && !d.open; })()"))
         suite.check("its summary names it",
-                    page.evaluate("document.querySelector('.rs-fold summary b').textContent") == "What you are hearing")
-        page.click(".rs-fold summary")
+                    page.evaluate("document.querySelector('#scr-studio .rs-fold summary b').textContent") == "What you are hearing")
+        page.click("#scr-studio .rs-fold summary")
         suite.check("opening it reveals the layer detail",
                     page.evaluate("document.querySelector('.rs-fold details').open && "
                                   "document.getElementById('hearinfo').getBoundingClientRect().height > 10"))
