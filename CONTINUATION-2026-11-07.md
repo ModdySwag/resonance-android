@@ -4,11 +4,11 @@
 
 ### STATE
 
-- `C:/Users/Moddy/resonance-android`, branch `main`, HEAD `9304872`, **tree clean**, 41 commits
+- `C:/Users/Moddy/resonance-android`, branch `main`, HEAD `ace1348`, **tree clean**, 42 commits
   ahead of `origin/main`, **nothing pushed**.
 - Version unchanged: `2.0.5-beta`, `versionCode 12`. Installed on `ZY22LGC75T` as a signed
-  release from commit `9304872`'s build; emulator `emulator-5554` still has an older debug build.
-- **GATES: `py -3.11 tools/shim_harness.py` 177/177** (was 129), `py -3.11 cache/contrast.py` 0,
+  release from commit `ace1348`'s build; emulator `emulator-5554` still has an older debug build.
+- **GATES: `py -3.11 tools/shim_harness.py` 183/183**, `py -3.11 cache/contrast.py` 0,
   `py -3.11 tools/apk_identity.py …` 32/32.
 
 ### WHAT THIS PASS FOUND AND FIXED
@@ -58,6 +58,25 @@ More sheet closes on Back and the app stays.
   removed; Quick guide copy rewritten to the shipped layout.
 - **Overlays**: `aria-modal`, reopen at the top, focus returns to the opener (or the More button
   when the opener was a sheet row).
+
+### LATER THE SAME DAY — interaction pass (HEAD ace1348, 183/183)
+
+- **Files & export**: two equal columns per action row, the page's duplicate "Files" heading
+  hidden, the export length on its own labelled row (stacked label, full-width select), the share
+  button full width.
+- **Ambient panels**: the page's duplicate **Cymatic Chamber** button is gone (the shell's own
+  card is the door). **Scene is a raised menu** — label row with SHUFFLE, then 46 px arrows
+  flanking one wide picker; a hand-set scene now reads "Custom (chips below)" instead of a blank
+  menu. The page's card sat inside the shell card, so every control paid two paddings; removed.
+- **Swipe / Back**: the chamber took no history entry, so a system Back (edge swipe) found none
+  and finished the activity — it dropped to the launcher. It now marks Back on open, closes on
+  popstate, and a watcher returns the entry when the page's own close button or Esc closes it.
+  **Verified on the phone**: open the chamber → Back → still in the app. Over-scroll is off
+  (`overscroll-behavior:none` + `setOverScrollMode(NEVER)`) so an edge swipe cannot offer
+  pull-to-refresh.
+- The other layers already popped: sheet, help overlays, welcome tour, fullscreen visualiser,
+  focus view.
+- Still unproven: the update download → sha256 → installer path (feed is stale, see above).
 
 ### STILL OPEN, in order
 
