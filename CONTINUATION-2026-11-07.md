@@ -78,8 +78,9 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
   "Follow the tone"; the mapping is one line (carrier, rate, band, medium, mode); the empty state is
   two words; the panels hint is one line. The chamber's own Back/Stop/?/Close controls wear the strip
   metal with a brass edge and its Play is the theme knob — Full only, like everything else.
-- **Minimal must stay plainly distinct** — a harness leg now proves the visualise pictures are absent
-  under Minimal, so "gated on full" is tested, not assumed.
+- **Chamber header**: the action row is a wrapped flex row on a brushed faceplate panel
+  (`.cym-top`, with the brand block hidden for room) — never a nowrap row, or Stop and the
+  gestures ? run off a 390 px screen. The tone label is hidden there; the plate carries the space.
 
 ## OPEN — in the order to take them
 
