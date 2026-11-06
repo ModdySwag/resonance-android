@@ -618,6 +618,28 @@
     "  background:rgba(20,17,13,.55) !important;color:#fff !important;border-color:rgba(255,255,255,.3) !important}",
     ".rs-app .cym .cym-tempo{min-width:44px;font-size:16px !important;line-height:1}",
     ".rs-app .cym .cym-tone{max-width:56vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    /* the top-right row: even 44px pills, one line, no stray digits */
+    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:nowrap !important;align-items:center}",
+    ".rs-app .cym .cym-actions > button{min-height:44px;height:44px;min-width:44px;padding:0 13px;",
+    "  border-radius:999px;font:600 12.5px/1 var(--rs-sans);background:rgba(18,14,10,.55) !important;",
+    "  color:#F2E6D8 !important;border:1px solid rgba(255,255,255,.22) !important}",
+    ".rs-app .cym .cym-live{display:none}",
+    ".rs-app .cym .cym-tone{max-width:44vw}",
+    /* the gesture hint lives behind a ? */
+    ".rs-app .cym .cym-note{display:none}",
+    ".rs-cym-info{position:absolute;right:12px;top:calc(64px + " + SAFE_T + ");z-index:6;",
+    "  width:min(300px,78vw);padding:12px 14px;border-radius:14px;background:rgba(16,12,9,.94);",
+    "  border:1px solid rgba(255,255,255,.22);color:#E6DCCB;font:12.5px/1.5 var(--rs-sans);display:none}",
+    ".rs-cym-info.on{display:block}",
+    ".rs-cym-info b{display:block;color:#fff;font-size:12px;letter-spacing:.08em;text-transform:uppercase;",
+    "  margin-bottom:6px}",
+    /* tempo moves into the panel, where the other parameters live */
+    ".rs-cym-tempo{display:flex;align-items:center;gap:8px;margin:0 0 10px}",
+    ".rs-cym-tempo span{font:600 12px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
+    "  color:#B9A48C;flex:1 1 auto}",
+    ".rs-cym-tempo button{min-width:40px;min-height:40px;border-radius:10px;background:rgba(255,255,255,.06);",
+    "  border:1px solid rgba(255,255,255,.2);color:#F2E6D8;font-size:16px;line-height:1}",
+    ".rs-cym-tempo output{min-width:44px;text-align:center;font-variant-numeric:tabular-nums;color:#E0B96F}",
     /* oval chips: the label sat high in the pill */
     ".rs-app #vizCard .viz-chips button,.rs-app #vizCard .chip{display:inline-flex;",
     "  align-items:center;justify-content:center;line-height:1;padding:0 14px}",
@@ -1242,20 +1264,43 @@
     faster.className = "cym-tempo"; faster.textContent = "+";
     faster.setAttribute("aria-label", "Faster tone");
     faster.onclick = function () { applyTempo(tempo + 0.1); };
+
+    /* ? : the gesture hints, hidden but findable */
+    var info = doc.createElement("button");
+    info.textContent = "?";
+    info.setAttribute("aria-label", "Gestures");
+    info.setAttribute("aria-expanded", "false");
+    var pop = doc.createElement("div");
+    pop.className = "rs-cym-info";
+    pop.innerHTML = "<b>Gestures</b>Drag to orbit \u00b7 two fingers or wheel to zoom<br>" +
+      "Double-tap to reset the camera<br>Tap the plate to disturb the sand";
+    info.onclick = function (e) {
+      e.stopPropagation();
+      var on = !pop.classList.contains("on");
+      pop.classList.toggle("on", on);
+      info.setAttribute("aria-expanded", on ? "true" : "false");
+    };
+    root.appendChild(pop);
     var lbl = doc.createElement("span");
     lbl.id = "rsCymTempo";
     lbl.style.cssText = "font-size:12px;opacity:.75;min-width:38px;text-align:center";
     lbl.textContent = tempo.toFixed(2) + "\u00d7";
     lbl.title = "tap to reset to 1x";
     lbl.onclick = function () { applyTempo(1); };
+    var leftPanel = root.querySelector(".cym-left");
+    if (leftPanel) {
+      var row = doc.createElement("div");
+      row.className = "rs-cym-tempo";
+      row.innerHTML = "<span>Tone tempo</span>";
+      row.appendChild(slower); row.appendChild(lbl); row.appendChild(faster);
+      leftPanel.insertBefore(row, leftPanel.firstChild);
+    }
     var stop = doc.createElement("button");
     stop.textContent = "Stop";
     stop.setAttribute("aria-label", "Stop and rewind the session");
     stop.onclick = function () { pageStop(); pushState(true); };
-    act.insertBefore(stop, act.querySelector("#cymPlay"));
-    act.insertBefore(faster, stop);
-    act.insertBefore(slower, faster);
-    act.insertBefore(lbl, faster);
+    act.insertBefore(stop, act.querySelector("#cymClose"));
+    act.insertBefore(info, act.querySelector("#cymClose"));
   }
 
   /* Tempo scales every binaural/iso entry's beat rate. The untouched beat is kept on the
