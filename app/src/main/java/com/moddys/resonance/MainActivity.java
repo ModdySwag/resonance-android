@@ -14,7 +14,6 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -40,6 +39,7 @@ import android.webkit.WebViewClient;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -360,10 +360,12 @@ public class MainActivity extends Activity {
     }
 
     /** Back leaves the fullscreen visualizer first (the shim pushes a history entry for it),
-     *  then walks the app's own history. */
+     *  then walks the app's own history. From Android 13 the dispatcher's callback does this
+     *  job; handling the key as well ran the pop twice - the second found no history and
+     *  finished the activity, so one Back closed a panel and the app with it. */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && web != null && web.canGoBack()) {
+        if (Build.VERSION.SDK_INT < 33 && keyCode == KeyEvent.KEYCODE_BACK && web != null && web.canGoBack()) {
             web.goBack();
             return true;
         }
@@ -655,6 +657,19 @@ public class MainActivity extends Activity {
             Log.i(TAG, "page: " + message);
         }
 
+        /** The shell's own short messages ("Checking for updates…", "Saved to …").
+         *  Without this method every toast in the page fell back to a logcat line. */
+        @JavascriptInterface
+        public void toast(final String message) {
+            final String m = message == null ? "" : message;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, m, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
         /** A link the page wants opened properly (help pages, credits, moddys.net). */
         @JavascriptInterface
         public void url(final String address) {
@@ -826,7 +841,14 @@ public class MainActivity extends Activity {
             public void onResult(Updates.Info info, String error) {
                 if (error != null) {
                     Log.i(TAG, "update check failed: " + error);
-                    if (info == null) return;
+                    if (info == null) {
+                        /* say so when the person asked; the shell keeps the launch check quiet */
+                        if (web != null) {
+                            web.evaluateJavascript("window.__rsUpdate && window.__rsUpdate.failed("
+                                    + JSONObject.quote(error) + ")", null);
+                        }
+                        return;
+                    }
                 }
                 String js;
                 if (info != null && info.available) {

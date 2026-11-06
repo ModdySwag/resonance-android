@@ -89,7 +89,21 @@
   function masterNow()  { var m = $id("master"); return m ? parseFloat(m.value) : 0.7; }
   function setMaster(v) { var a = api(); if (a) { try { a.setMaster(v); return; } catch (e) { } }
                           var m = $id("master"); if (m) { m.value = String(v); m.dispatchEvent(new Event("input", { bubbles: true })); } }
-  function toast(t)     { var a = api(); if (a) { try { a.toast(String(t)); return; } catch (e) { } } report(t); }
+  /* Short messages go to the shell's own Toast. The page's API has no toast method, so the
+     old code threw here and every message fell through to a logcat line, invisible. Off the
+     phone, fall back to the page's own toast element, then to the log. */
+  function toast(t) {
+    var s = String(t);
+    try { if (host && typeof host.toast === "function") { host.toast(s); return; } } catch (e) { }
+    var el = $id("toast");
+    if (el) {
+      el.textContent = s; el.classList.add("show");
+      window.clearTimeout(toast._t);
+      toast._t = window.setTimeout(function () { el.classList.remove("show"); }, 2600);
+      return;
+    }
+    report(s);
+  }
 
   function pageReady() { return !!(api() && $id("plist")); }
 
@@ -435,8 +449,15 @@
     ".rs-hero p{margin:3px 0 0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
     /* the player below already names the session; the line under the title only mirrored it */
     ".rs-hero #rsNowSrc{display:none}",
+    /* the page's own status pill repeated the shell's live pill, two lines apart */
+    ".rs-hero #modePill{display:none}",
     ".rs-pill{flex:0 0 auto;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
     "  padding:7px 11px;border-radius:999px;background:var(--rs-s3);color:var(--rs-ink2)}",
+    /* a pill that is also a control: the button carries the 44 px tap target, the pill inside
+       keeps the exact shape of the LIVE chip beside it */
+    ".rs-tap{flex:0 0 auto;display:block;padding:10px 0;margin:-10px 0;border:0;background:none;cursor:pointer}",
+    ".rs-tap .rs-pill{display:block}",
+    ".rs-tap:focus-visible{outline:2px solid var(--rs-pri);outline-offset:3px;border-radius:999px}",
     "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
     /* the page's chart is hidden and repainted by the shell's own session map (see
        the schedule-map block in the home section) */
@@ -1062,6 +1083,8 @@
       '<div class="rs-hero">' +
       '  <div class="rs-hero-top"><div class="rs-tt">' +
       '    <h1 id="rsNowTitle">Pick a session</h1><p id="rsNowSrc"></p></div>' +
+      '    <button class="rs-tap" id="rsSurprise" aria-label="Surprise me — load a random session and play it">' +
+      '      <span class="rs-pill">Surprise me</span></button>' +
       '    <span class="rs-pill rs-live" id="rsMode">idle</span></div>' +
       '  <div class="rs-transport">' +
       '    <button class="rs-fab" id="rsPlay" aria-label="Play">' + svgFill("play") + '</button>' +
@@ -1388,6 +1411,17 @@
 
     $id("rsPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
     $id("rsStop").addEventListener("click", function () { pageStop(); pushState(true); });
+
+    /* The library's 🎲 button now lives beside the live pill. It keeps driving the page's
+       own handler (which also scrambles the visualiser), then makes sure it is audible. */
+    var sur = $id("rsSurprise");
+    if (sur) sur.addEventListener("click", function () {
+      var b = $id("randomBtn");
+      if (!b) { toast("The library is still loading — try again."); return; }
+      b.click();
+      if (!isPlaying()) pagePlay();
+      pushState(true);
+    });
 
     var vol = $id("rsVol");
     vol.addEventListener("input", function () { setMaster(parseFloat(vol.value)); });
@@ -1855,6 +1889,10 @@
       '  <h3 id="rsHelpH">Help &amp; about</h3>' +
       '  <button class="rs-mrow" data-act="guide">' + svg("book", 22) +
       '    <span class="rs-mtxt"><b>Quick guide</b><span>How to use all of this</span></span>' + svg("chev", 18) + '</button>' +
+      '  <button class="rs-mrow" id="rsTourRow" data-act="tour">' +
+      '    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+      '      stroke-linejoin="round" width="22" height="22" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>' +
+      '    <span class="rs-mtxt"><b>Replay the welcome tour</b><span>The bubble guide, from the start</span></span>' + svg("chev", 18) + '</button>' +
       '  <button class="rs-mrow" data-act="check">' + svg("shield", 22) +
       '    <span class="rs-mtxt"><b>Check device</b><span>What this phone reports</span></span>' + svg("chev", 18) + '</button>' +
       '  <button class="rs-mrow" data-act="about">' + svg("info", 22) +
@@ -1867,7 +1905,6 @@
       '  <div class="rs-kv"><b>Saved files</b><span>Downloads/Resonance Studio</span></div>' +
       '  <div class="rs-kv"><b>Network</b><span>update check + help pages</span></div>' +
       '  <div class="rs-kv"><b>Version</b><span id="rsVer">—</span></div>' +
-      '  <p class="rs-note">Everything is synthesised on this device. No account, no upload, no analytics.</p>' +
       '</section>' +
       '<div class="rs-pad"></div>';
   }
@@ -1932,8 +1969,9 @@
       if (a === "guide") openGuide();
       else if (a === "check") openCheck();
       else if (a === "about") openAbout();
+      else if (a === "tour") tourStart();
       else if (a === "focus") openFocus();
-      else if (a === "upd") { toast("Checking for updates…"); native("checkUpdate", []); }
+      else if (a === "upd") askUpdate();
     });
   }
 
@@ -2023,11 +2061,16 @@
       var a = b.getAttribute("data-act");
       var wasOpen = SHEET.open;
       setOpen(false);
-      if (wasOpen) unmarkBackTop();
-      if (a === "guide") openGuide();
-      else if (a === "check") openCheck();
-      else if (a === "about") openAbout();
-      else if (a === "upd") { toast("Checking for updates…"); native("checkUpdate", []); }
+      /* A row that opens an overlay inherits this sheet's history entry. Popping it here and
+         pushing a fresh one in showOverlay() races the deferred popstate: that event then
+         arrives with the new overlay on top and closes it, so the row looked dead. The
+         inherited entry is what Back (or the overlay's own close) pops afterwards. */
+      var handsOver = (a === "guide" || a === "check" || a === "about");
+      if (wasOpen && !handsOver) unmarkBackTop();
+      if (a === "guide") openGuide(wasOpen);
+      else if (a === "check") openCheck(wasOpen);
+      else if (a === "about") openAbout(wasOpen);
+      else if (a === "upd") askUpdate();
     });
     apply(height(), true);
   }
@@ -2084,6 +2127,7 @@
       '<div class="rs-ov-head"><b>' + title + '</b>' +
       '<button class="rs-ico" data-ov-x="' + id + '" aria-label="Close">' + svg("close") + '</button></div>' +
       '<div class="rs-ov-body">' + bodyHtml + '</div>';
+    ov.setAttribute("aria-modal", "true");
     doc.body.appendChild(ov);
     ov.addEventListener("click", function (ev) {
       if (ev.target.closest("[data-ov-x]")) closeOverlay(ov);
@@ -2092,12 +2136,17 @@
     return ov;
   }
 
-  function showOverlay(ov) {
+  function showOverlay(ov, keepBack) {
     ov.classList.add("rs-ov-on");
     doc.documentElement.classList.add("rs-locked");
     /* inside fullscreen the layer is already on the history stack; pushing again
        would make closing the overlay pop the whole view away */
-    if (!FS.on) markBack();
+    if (!FS.on && !keepBack) markBack();
+    /* reopening a panel starts at its top, and focus comes back to whatever opened it */
+    var body = ov.querySelector(".rs-ov-body");
+    if (body) body.scrollTop = 0;
+    var from = doc.activeElement;
+    ov.__back = (from && from !== doc.body && !ov.contains(from)) ? from : null;
     var x = ov.querySelector("[data-ov-x]");
     if (x) { try { x.focus(); } catch (e) { } }
   }
@@ -2105,6 +2154,16 @@
     ov.classList.remove("rs-ov-on");
     doc.documentElement.classList.toggle("rs-locked", anyOverlayOpen());
     if (!fromPop && !FS.on) unmarkBackTop();
+    /* return focus to the opener; a row in the now-closed More sheet hands it to the
+       button that opened the sheet instead of leaving focus on something off-screen */
+    var back = ov.__back;
+    ov.__back = null;
+    if (back && (!back.closest || !back.closest("#rsSheet") || SHEET.open)) {
+      try { back.focus({ preventScroll: true }); } catch (e) { }
+    } else if (back) {
+      var bar = $id("rsOverflow");
+      if (bar) { try { bar.focus({ preventScroll: true }); } catch (e) { } }
+    }
   }
   function anyOverlayOpen() {
     for (var i = 0; i < overlays.length; i++) if (overlays[i].classList.contains("rs-ov-on")) return true;
@@ -2119,6 +2178,7 @@
     if (history.state && history.state.rsLayer) { try { history.back(); } catch (e) { } }
   }
   window.addEventListener("popstate", function () {
+    if (TOUR.on) { tourEnd(false); return; }
     if (SHEET.open) { openSheet(false); return; }
     var top = null;
     for (var i = overlays.length - 1; i >= 0; i--) {
@@ -2128,9 +2188,253 @@
     if (FS.on) { exitFullscreen(true); return; }
   });
 
-  /* ------------------------------------------------------------- quick guide --- */
+  /* ============================================================ welcome tour === */
+  /* A coach-mark tour in the Material sense: one bubble, a spotlight on the thing it is
+     talking about, and the tour itself moves between sections. It runs once on first
+     launch, ends on the tick or Skip, and can be replayed from Settings. */
 
-  function openGuide() {
+  var TOUR = { on: false, i: 0, gen: 0, el: null, hole: null, bub: null, steps: [], timer: 0 };
+
+  var TOUR_TICK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  function tourCss() {
+    injectCss([
+      "#rsTour{position:fixed;top:0;right:0;bottom:0;left:0;z-index:118;display:none}",
+      "#rsTour.rs-t-on{display:block}",
+      "#rsTour .rs-t-hole{position:absolute;top:0;left:0;width:0;height:0;border-radius:16px;",
+      "  background:transparent;box-shadow:0 0 0 9999px rgba(7,6,5,.68);",
+      "  transition:transform .34s cubic-bezier(.2,.8,.2,1),width .34s cubic-bezier(.2,.8,.2,1),height .34s cubic-bezier(.2,.8,.2,1)}",
+      "#rsTour .rs-t-ring{position:absolute;top:0;left:0;width:0;height:0;border-radius:16px;",
+      "  border:1.5px solid var(--rs-pri);pointer-events:none;",
+      "  transition:transform .34s cubic-bezier(.2,.8,.2,1),width .34s cubic-bezier(.2,.8,.2,1),height .34s cubic-bezier(.2,.8,.2,1)}",
+      "#rsTour .rs-t-bub{position:absolute;top:0;left:0;box-sizing:border-box;",
+      "  width:min(340px,calc(100vw - 28px));background:var(--rs-s2);border:1px solid var(--rs-line2);",
+      "  border-radius:18px;padding:14px 16px 12px;color:var(--rs-ink);",
+      "  font-family:var(--rs-sans);font-size:14px;line-height:1.5;",
+      "  box-shadow:0 18px 44px rgba(0,0,0,.55);opacity:0;",
+      "  transition:transform .34s cubic-bezier(.2,.8,.2,1),opacity .16s linear}",
+      "#rsTour .rs-t-bub.rs-t-show{opacity:1}",
+      "#rsTour .rs-t-step{display:block;font-size:11px;line-height:1.4;letter-spacing:.09em;",
+      "  text-transform:uppercase;color:var(--rs-dim)}",
+      "#rsTour .rs-t-t{display:block;margin:2px 30px 4px 0;font-size:17px;line-height:1.3;font-weight:700}",
+      "#rsTour .rs-t-b{margin:0 0 12px;color:var(--rs-dim)}",
+      "#rsTour .rs-t-foot{display:flex;align-items:center;gap:8px}",
+      "#rsTour .rs-t-skip{margin-right:auto;background:none;border:0;color:var(--rs-dim);",
+      "  font-family:var(--rs-sans);font-size:14px;font-weight:600;padding:0 4px;min-height:44px;cursor:pointer}",
+      "#rsTour .rs-t-back{background:none;border:1px solid var(--rs-line2);color:var(--rs-ink);",
+      "  border-radius:12px;padding:0 14px;min-height:44px;font-family:var(--rs-sans);",
+      "  font-size:14px;font-weight:600;cursor:pointer}",
+      "#rsTour .rs-t-next{background:var(--rs-pri);border:1px solid var(--rs-pri);color:var(--rs-on-pri);",
+      "  border-radius:12px;padding:0 16px;min-height:44px;font-family:var(--rs-sans);",
+      "  font-size:14px;font-weight:700;cursor:pointer}",
+      "#rsTour .rs-t-x{position:absolute;top:5px;right:5px;width:44px;height:44px;display:grid;",
+      "  place-items:center;border:0;background:none;color:var(--rs-dim);border-radius:50%;cursor:pointer}",
+      "#rsTour .rs-t-x svg{width:20px;height:20px}",
+      "#rsTour .rs-t-caret{position:absolute;width:14px;height:14px;background:var(--rs-s2);",
+      "  transform:rotate(45deg);display:none}",
+      "#rsTour .rs-t-caret.rs-t-top{display:block;top:-8px;border-top:1px solid var(--rs-line2);border-left:1px solid var(--rs-line2)}",
+      "#rsTour .rs-t-caret.rs-t-bottom{display:block;bottom:-8px;border-bottom:1px solid var(--rs-line2);border-right:1px solid var(--rs-line2)}",
+      "#rsTour.rs-t-first .rs-t-hole,#rsTour.rs-t-first .rs-t-bub{transition:none}",
+      "@media (prefers-reduced-motion: reduce){#rsTour .rs-t-hole,#rsTour.rs-t-first .rs-t-ring,",
+      "  #rsTour .rs-t-ring,#rsTour .rs-t-bub{transition:none}}"
+    ].join("\n"), "rsTourCss");
+  }
+
+  function tourSteps() {
+    return [
+      { sel: null, title: "Welcome to " + APP_NAME,
+        body: "A short look at where everything lives — the player, the library, the engine room " +
+              "and the visuals. Move with Next; the tick leaves at any time." },
+      { nav: "home", sel: "#rsNav", title: "Five places",
+        body: "Home, Sessions, Studio, Visualise and Settings. The bar tucks itself away while " +
+              "you listen; touch anywhere to bring it back." },
+      { nav: "home", sel: ".rs-hero", title: "The player",
+        body: "Play, volume, loop and the clock. A session keeps running while you move between " +
+              "screens, and the mini player follows you." },
+      { nav: "home", sel: "#rsStates", title: "Eight sessions",
+        body: "Deep sleep through Morning. One tap loads the session and starts it — the pulse " +
+              "bands tell you what each one is aiming at." },
+      { nav: "studio", sel: "#rsBuild", title: "Build a tone",
+        body: "Carrier is the pitch you hear, beat is the pulse, and a bed softens the edges. " +
+              "\"Play this tone\" starts it straight away." },
+      { nav: "sessions", sel: "#rsModules", title: "The whole library",
+        body: "Search it or filter by band, then tap a row to load it. Quick picks live in " +
+              "Studio, next to the schedule editor." },
+      { nav: "studio", sel: "#rsVoices", title: "The engine room",
+        body: "Every layer and its schedule, the sound itself, live tools and the files — this " +
+              "is where a session is edited rather than chosen." },
+      { nav: "viz", sel: "#rsChamber", title: "See the tone",
+        body: "The chamber draws the figure the session actually drives. Focus view beside it " +
+              "is the gentle one for leaving on." },
+      { nav: "settings", sel: "#rsTourRow", title: "That's the tour",
+        body: "Replay it from here whenever you like, and switch between the Full and Minimal " +
+              "interface just above. Nothing here is permanent." }
+    ];
+  }
+
+  function tourBuild() {
+    tourCss();
+    var el = doc.createElement("div");
+    el.id = "rsTour";
+    el.setAttribute("aria-hidden", "true");
+    el.innerHTML =
+      '<div class="rs-t-hole" aria-hidden="true"></div>' +
+      '<div class="rs-t-ring" aria-hidden="true"></div>' +
+      '<div class="rs-t-bub" role="dialog" aria-modal="true" tabindex="-1" ' +
+      '  aria-labelledby="rsTourT" aria-describedby="rsTourB">' +
+      '  <button class="rs-t-x" aria-label="End the tour">' + TOUR_TICK + '</button>' +
+      '  <span class="rs-t-step" id="rsTourN"></span>' +
+      '  <b class="rs-t-t" id="rsTourT"></b>' +
+      '  <p class="rs-t-b" id="rsTourB"></p>' +
+      '  <div class="rs-t-foot">' +
+      '    <button class="rs-t-skip">Skip</button>' +
+      '    <button class="rs-t-back">Back</button>' +
+      '    <button class="rs-t-next">Next</button>' +
+      '  </div>' +
+      '  <i class="rs-t-caret" aria-hidden="true"></i>' +
+      '</div>';
+    doc.body.appendChild(el);
+    TOUR.el = el;
+    TOUR.hole = el.querySelector(".rs-t-hole");
+    TOUR.hole2 = el.querySelector(".rs-t-ring");
+    TOUR.bub = el.querySelector(".rs-t-bub");
+    el.addEventListener("click", function (ev) {
+      var b = ev.target.closest("button");
+      if (!b) return;
+      if (b.classList.contains("rs-t-next")) tourStep(TOUR.i + 1);
+      else if (b.classList.contains("rs-t-back")) tourStep(TOUR.i - 1);
+      else tourEnd(true);                       /* Skip and the tick both leave for good */
+    });
+    return el;
+  }
+
+  function tourFill() {
+    var st = TOUR.steps[TOUR.i], n = TOUR.steps.length, bub = TOUR.bub;
+    bub.querySelector("#rsTourN").textContent = (TOUR.i + 1) + " of " + n;
+    bub.querySelector("#rsTourT").textContent = st.title;
+    bub.querySelector("#rsTourB").textContent = st.body;
+    bub.querySelector(".rs-t-back").style.display = TOUR.i ? "" : "none";
+    bub.querySelector(".rs-t-skip").style.display = TOUR.i === n - 1 ? "none" : "";
+    bub.querySelector(".rs-t-next").textContent = TOUR.i === n - 1 ? "Done" : "Next";
+  }
+
+  function tourPlace() {
+    var st = TOUR.steps[TOUR.i] || {};
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var bub = TOUR.bub, hole = TOUR.hole, ring = TOUR.hole2;
+    var tgt = st.sel ? doc.querySelector(st.sel) : null;
+    if (tgt && !tgt.getClientRects().length) tgt = null;
+    var bw = Math.min(340, vw - 28);
+    bub.style.width = Math.round(bw) + "px";
+    var bh = bub.offsetHeight, margin = 16, x, y, w, h, top, left, below, above;
+    var caret = bub.querySelector(".rs-t-caret");
+    if (tgt) {
+      var r = tgt.getBoundingClientRect();
+      x = Math.max(6, r.left - 6);
+      y = Math.max(6, r.top - 6);
+      w = Math.min(vw - x - 6, r.width + 12);
+      h = Math.min(r.height + 12, Math.round(vh * 0.52));
+      [hole, ring].forEach(function (e) {
+        e.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
+        e.style.width = Math.round(w) + "px";
+        e.style.height = Math.round(h) + "px";
+        e.style.opacity = "1";
+      });
+      below = y + h + margin;
+      above = y - bh - margin;
+      if (below + bh <= vh - 8) { top = below; caret.className = "rs-t-caret rs-t-top"; }
+      else if (above >= 8) { top = above; caret.className = "rs-t-caret rs-t-bottom"; }
+      else { top = Math.max(8, vh - bh - 16); caret.className = "rs-t-caret"; }
+      left = Math.max(14, Math.min(vw - bw - 14, x + w / 2 - bw / 2));
+      bub.style.transform = "translate(" + Math.round(left) + "px," + Math.round(top) + "px)";
+      var cx = Math.max(20, Math.min(bw - 34, x + w / 2 - left - 7));
+      caret.style.left = Math.round(cx) + "px";
+    } else {
+      [hole, ring].forEach(function (e) {
+        e.style.width = "0px"; e.style.height = "0px"; e.style.opacity = "0";
+      });
+      caret.className = "rs-t-caret";
+      bub.style.transform = "translate(" + Math.round((vw - bw) / 2) + "px," +
+        Math.round((vh - bh) / 2) + "px)";
+    }
+  }
+
+  function tourStep(i) {
+    if (!TOUR.on) return;
+    if (i < 0) i = 0;
+    if (i >= TOUR.steps.length) { tourEnd(true); return; }
+    TOUR.i = i;
+    var st = TOUR.steps[i], gen = ++TOUR.gen;
+    window.clearTimeout(TOUR.timer);
+    if (st.nav && CUR !== st.nav) go(st.nav);
+    doc.documentElement.classList.remove("rs-navhide");
+    armNav();
+    TOUR.bub.classList.remove("rs-t-show");
+    TOUR.timer = window.setTimeout(function () {
+      if (gen !== TOUR.gen || !TOUR.on) return;
+      tourFill();
+      var tgt = st.sel ? doc.querySelector(st.sel) : null, scrolled = false;
+      if (tgt) {
+        var r = tgt.getBoundingClientRect();
+        if (r.top < 76 || r.bottom > window.innerHeight - 76) {
+          try { tgt.scrollIntoView({ block: "center", behavior: "smooth" }); scrolled = true; }
+          catch (e) { try { tgt.scrollIntoView(); } catch (e2) { } }
+        }
+      }
+      tourPlace();
+      TOUR.bub.classList.add("rs-t-show");
+      try { TOUR.bub.focus({ preventScroll: true }); } catch (e) { }
+      /* a smooth scroll keeps moving after the first measure; re-aim once it has settled */
+      if (scrolled) {
+        window.clearTimeout(TOUR.timer);
+        TOUR.timer = window.setTimeout(function () {
+          if (gen === TOUR.gen && TOUR.on) tourPlace();
+        }, 380);
+      }
+    }, 120);
+  }
+
+  function tourStart() {
+    if (TOUR.on) return;
+    if (!TOUR.el) tourBuild();
+    if (SHEET.open) { openSheet(false); unmarkBackTop(); }
+    for (var i = 0; i < overlays.length; i++) {
+      if (overlays[i].classList.contains("rs-ov-on")) closeOverlay(overlays[i], true);
+    }
+    TOUR.on = true;
+    TOUR.i = -1;
+    TOUR.steps = tourSteps();
+    TOUR.el.classList.add("rs-t-first", "rs-t-on");
+    TOUR.el.setAttribute("aria-hidden", "false");
+    doc.documentElement.classList.add("rs-locked");
+    markBack();
+    tourStep(0);
+    window.setTimeout(function () { TOUR.el.classList.remove("rs-t-first"); }, 60);
+  }
+
+  function tourEnd(byUser) {
+    if (!TOUR.on) return;
+    TOUR.on = false;
+    TOUR.gen++;
+    window.clearTimeout(TOUR.timer);
+    TOUR.el.classList.remove("rs-t-on");
+    TOUR.el.setAttribute("aria-hidden", "true");
+    TOUR.bub.classList.remove("rs-t-show");
+    doc.documentElement.classList.remove("rs-locked");
+    prefs.tour = "done"; savePrefs();
+    if (byUser) unmarkBackTop();
+  }
+
+  function tourAuto() {
+    if (prefs.tour || TOUR.on || SHEET.open || anyOverlayOpen() || FS.on) return;
+    tourStart();
+  }
+
+
+
+  function openGuide(keepBack) {
     var ov = doc.getElementById("rsGuide");
     if (!ov) {
       ov = buildOverlay("rsGuide", "Quick guide",
@@ -2140,9 +2444,11 @@
         'built-in sessions are ready to play; everything about them can be changed.</p>' +
         '<h4>Start here</h4>' +
         '<ul>' +
-        '<li><b>Home</b> — tap Sleep, Focus, Relax or Wake and it plays.</li>' +
-        '<li><b>Build a tone</b> — set a carrier and a beat, pick a bed, press play.</li>' +
+        '<li><b>Home</b> — eight sessions, from Deep sleep to Morning. Tap a card and it loads ' +
+        'and plays.</li>' +
         '<li><b>Sessions</b> — the whole library, searchable. Tap a row to load it.</li>' +
+        '<li><b>Studio</b> — build a tone from a carrier and a beat, pick a bed, press play. ' +
+        'Quick picks, the schedule editor and files all live here too.</li>' +
         '</ul>' +
         '<h4>Headphones or speakers?</h4>' +
         '<p><b>Binaural pair</b> sessions need headphones — the beat is created in your hearing, ' +
@@ -2153,6 +2459,7 @@
         'actually drives on a plate, in water or as bubbles. Open it from Visualise; the back ' +
         'button returns. The panels are capped below the flashing thresholds.</p>' +
         '<h4>Make it yours</h4>' +
+        '<p>All of these live in <b>Studio</b>.</p>' +
         '<ul>' +
         '<li><b>Quick picks</b> adds one layer to the current sound.</li>' +
         '<li><b>Layers &amp; entries</b> edits each layer’s schedule: every entry ramps into the ' +
@@ -2174,7 +2481,7 @@
         'tones. Skip it while driving or operating machinery, and stop if it feels unpleasant. ' +
         '<b>Not a medical device or treatment.</b></p>');
     }
-    showOverlay(ov);
+    showOverlay(ov, keepBack);
   }
 
   /* ------------------------------------------------------------ device check --- */
@@ -2235,7 +2542,7 @@
     return body;
   }
 
-  function openCheck() {
+  function openCheck(keepBack) {
     var ov = doc.getElementById("rsCheck");
     if (!ov) ov = buildOverlay("rsCheck", "Check device", "<div id='rsCheckBody'></div>");
     var body = ov.querySelector("#rsCheckBody");
@@ -2246,10 +2553,10 @@
       copy.textContent = ok ? "✓ Copied" : "✕ Copy failed";
       window.setTimeout(function () { copy.textContent = "Copy report"; }, 2000);
     });
-    showOverlay(ov);
+    showOverlay(ov, keepBack);
   }
 
-  function openAbout() {
+  function openAbout(keepBack) {
     var ov = doc.getElementById("rsAbout");
     if (!ov) {
       var d = deviceFacts();
@@ -2274,10 +2581,10 @@
       ov.addEventListener("click", function (ev) {
         var b = ev.target.closest("[data-about-ext]");
         if (b) { native("url", [b.getAttribute("data-about-ext")]); return; }
-        if (ev.target.closest("#rsAboutUpd")) { toast("Checking for updates…"); native("checkUpdate", []); }
+        if (ev.target.closest("#rsAboutUpd")) { askUpdate(); }
       });
     }
-    showOverlay(ov);
+    showOverlay(ov, keepBack);
   }
 
   /* ======================================================= fullscreen viz === */
@@ -2683,7 +2990,21 @@
 
   /* =============================================================== update strip === */
 
-  var UPD = { state: "unknown", latest: null };
+  var UPD = { state: "unknown", latest: null, manual: false };
+
+  /* One entry point for "Check for updates": it remembers that the person asked, so the
+     answer is spoken even when there is nothing to install. The launch check stays quiet. */
+  function askUpdate() {
+    UPD.manual = true;
+    toast("Checking for updates…");
+    native("checkUpdate", []);
+  }
+
+  function updAnswer(ok) {
+    if (!UPD.manual) return;
+    UPD.manual = false;
+    toast(ok);
+  }
   var updEl = null;
 
   function updShow() {
@@ -2729,9 +3050,25 @@
   }
 
   window.__rsUpdate = {
-    available: function (info) { UPD.latest = info || {}; UPD.state = "available"; try { updShow(); } catch (e) { } return UPD.state; },
-    none: function (latest) { UPD.state = "current"; UPD.latest = latest ? { version: latest } : null; return UPD.state; },
-    failed: function (why) { UPD.state = "failed"; UPD.why = String(why || ""); return UPD.state; },
+    available: function (info) {
+      UPD.latest = info || {};
+      UPD.state = "available";
+      UPD.manual = false;          /* the strip itself is the answer */
+      try { updShow(); } catch (e) { }
+      return UPD.state;
+    },
+    none: function (latest) {
+      UPD.state = "current";
+      UPD.latest = latest ? { version: latest } : null;
+      updAnswer("You are on the newest build.");
+      return UPD.state;
+    },
+    failed: function (why) {
+      UPD.state = "failed";
+      UPD.why = String(why || "");
+      updAnswer("Could not reach moddys.net — check the connection and try again.");
+      return UPD.state;
+    },
     state: function () { return { state: UPD.state, latest: UPD.latest }; }
   };
 
@@ -2873,8 +3210,20 @@
     if (filters) $id("rsFilterWrap").appendChild(filters);
     var browse = cardOf("#plist");
     if (browse) $id("rsBrowse").appendChild(browse);
+    /* the library's own Surprise me button lives in the player now (see #rsSurprise);
+       it stays in the DOM because both the page and the visualiser bind to it */
+    var rnd = $id("randomBtn");
+    if (rnd) rnd.style.display = "none";
     var quick = cardOf("#quickpick");
-    if (quick) $id("rsQuick").appendChild(quick);
+    if (quick) {
+      $id("rsQuick").appendChild(quick);
+      /* the shell's own heading is the card's heading; the page's repeats it, and its
+         two-sentence hint says more than this row needs to */
+      $$("h3", quick).forEach(function (n) { n.style.display = "none"; });
+      var qh = quick.querySelector("p.hint");
+      if (qh) qh.textContent = "Adds one layer to what is playing. Pulses work on any speaker; " +
+        "pairs need headphones.";
+    }
     var qsec = $id("rsQuick");
     if (qsec && $id("rsVoices")) $id("rsVoices").parentNode.insertBefore(qsec, $id("rsVoices"));
 
@@ -2934,6 +3283,9 @@
       var vc = $id("vizCard");
       if (vc) {
         $$("h3", vc).forEach(function (n) { n.style.display = "none"; });
+        /* the page's paragraph described the panels' plumbing; one line is enough here */
+        var vhint = vc.querySelector("p.hint");
+        if (vhint) vhint.textContent = "Follows the audio itself — no microphone, no sensors.";
         $id("rsVizCard").appendChild(vc);
         return;
       }
@@ -2981,6 +3333,8 @@
     try { schedLoop(0); } catch (e) { }
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });
     window.addEventListener("beforeunload", function () { native("state", [false, "", ""]); });
+    /* first launch: the tour introduces the shape of the app, once */
+    if (!prefs.tour) window.setTimeout(tourAuto, 1600);
     report("shim ready | session=" + (sessionTitle() || "none"));
   }
 
@@ -3011,6 +3365,12 @@
     check: function () { openCheck(); },
     checkReport: checkReport,
     about: function () { openAbout(); },
+    tour: {
+      start: tourStart,
+      end: function () { tourEnd(true); },
+      step: tourStep,
+      state: function () { return { on: TOUR.on, i: TOUR.i, n: TOUR.steps.length }; }
+    },
     compat: function () { openCheck(); },
     chamber: openChamber,
     sched: drawSched,
