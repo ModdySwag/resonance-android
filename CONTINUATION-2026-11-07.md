@@ -4,7 +4,7 @@
 
 ### STATE
 
-- `C:/Users/Moddy/resonance-android`, branch `main`, HEAD `ace1348`, **tree clean**, 42 commits
+- `C:/Users/Moddy/resonance-android`, branch `main`, HEAD `ba8f233`, **tree clean**, 48 commits
   ahead of `origin/main`, **nothing pushed**.
 - Version unchanged: `2.0.5-beta`, `versionCode 12`. Installed on `ZY22LGC75T` as a signed
   release from commit `ace1348`'s build; emulator `emulator-5554` still has an older debug build.
@@ -59,7 +59,7 @@ More sheet closes on Back and the app stays.
 - **Overlays**: `aria-modal`, reopen at the top, focus returns to the opener (or the More button
   when the opener was a sheet row).
 
-### LATER THE SAME DAY — interaction pass (HEAD ace1348, 183/183)
+### LATER THE SAME DAY — interaction pass (HEAD `ace1348` + docs, 183/183)
 
 - **Files & export**: two equal columns per action row, the page's duplicate "Files" heading
   hidden, the export length on its own labelled row (stacked label, full-width select), the share
@@ -80,18 +80,22 @@ More sheet closes on Back and the app stays.
 
 ### STILL OPEN, in order
 
-1. **His eye** on the tour (all nine stops), the Surprise pill beside LIVE, and the three trimmed
-   copy blocks.
-2. **The update feed is stale and blocks the update path.** `https://moddys.net/updates.json`'s
+1. **His eye** on what this pass changed: the Files & export card, the Scene menu in Ambient panels,
+   the Surprise pill beside LIVE, the welcome tour (all nine stops), and the trimmed copy.
+2. **Tablet / large-screen pass.** Only the phone has been driven this session. At tablet widths the
+   scene box, the tour bubble (max 340 px), the More sheet and the fullscreen layers have never been
+   looked at, and no tablet is attached. The swipe work covered layers and over-scroll, not layout.
+3. **The update feed is stale and blocks the update path.** `https://moddys.net/updates.json`'s
    `resonance-android` entry is still `1.1.4-beta` / `versionCode 6`, so the app (12) can only ever
-   answer "you are on the newest build". The download → sha256 → installer path is therefore
-   **untested end to end**. Publishing 2.0.5 with a bumped versionCode and fresh feed entry is a
-   deploy he must review (queue items 4/5).
-3. **Tour Back on the phone by his thumb** — I verified the sheet's Back on the device and the
-   tour's popstate in the harness; clearing app data is the only way I can re-trigger the first
-   run without him, so I left his data alone.
-4. Then the older queue: systemic type/radius pass, re-cut `tile-drift`/`tile-focus`, Play
-   submission (privacy page first), versionCode bump + push + tag.
+   answer "you are on the newest build". The download → sha256 → installer path is **untested end to
+   end**. Publishing 2.0.5 with a bumped versionCode and a fresh feed entry is a deploy he reviews.
+4. **Tour Back on the phone by his thumb** — the sheet's Back and the chamber's Back are verified on
+   the device; the tour's Back is proven only in the harness, because re-triggering a first run on
+   his phone would mean clearing its app data.
+5. Then the older queue: systemic type/radius pass, re-cut `tile-drift`/`tile-focus`, Play submission
+   (privacy page first), versionCode bump + push + tag.
+6. **Always**: `py -3.11 tools/shim_harness.py` (183/183) + `cache/contrast.py` (0) before anything
+   ships; APK identity 32/32 on the built APK.
 
 ### NEW TRAPS
 
@@ -105,6 +109,14 @@ More sheet closes on Back and the app stays.
   suite now clicks the rows a person taps.
 - **Vision coordinates come back in the image space the model saw**, which is downscaled — scale by
   `device_width / described_width` before `adb input tap`, or the tap lands elsewhere.
+- **A `<select>` with an empty value renders blank**, not as its first option. The scene picker did;
+  it now carries a named "Custom (chips below)" option.
+- **A page card adopted into a shell card pays two paddings** — `#vizCard` inside `#rsVizCard` cost
+  every control ~60 px until the inner card's padding was zeroed.
+- **The phone locks itself mid-test**: `dumpsys window` showing `NotificationShade` with
+  `mDreamingLockscreen=true` means it dozed. `input keyevent 82` (MENU) unlocks an unsecured
+  keyguard; a secure one needs the owner. Screenshots then come back black — check focus, not just
+  pixels.
 
 ---
 
