@@ -778,6 +778,8 @@
     "  box-shadow:0 4px 14px rgba(0,0,0,.5);padding:calc(8px + " + SAFE_T + ") 10px 8px !important}",
     "html[data-rs-ui=full] .rs-app .cym .cym-top h2,html[data-rs-ui=full] .rs-app .cym .cym-top b{",
     "  color:#F6EFE0;letter-spacing:.06em;text-transform:uppercase;font-size:12px}",
+    /* the wording goes; the plate keeps the room for the controls */
+    ".rs-app .cym .cym-top .cym-brand{display:none}",
     "  align-items:center !important}",
     ".rs-app .cym .cym-dock{bottom:calc(12px + " + SAFE_B + ") !important}",
     ".rs-app .cym .cym-actions{gap:8px !important;flex-wrap:wrap;justify-content:flex-end}",
