@@ -84,12 +84,18 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
 
 ## OPEN — in the order to take them
 
-1. **Owner eye** on the map, the vintage face (Full) against Minimal, the folded hearing row, the
-   chamber-led Visualise and Focus view — cut what does not earn its place.
-2. **Play submission:** deploy `store/privacy.html` to `moddys.net/resonance/privacy/` first
-   (Moddy must review a deploy), then icon/feature/screenshots/listing/data-safety.
-3. **Push** the branch and cut the tag only after his review of the release copy; bump
-   `versionCode`/`versionName` in the same pass.
+1. **Owner eye**, in this order: the Home module grid and its art, the Sessions bands and rail cards,
+   the chamber's faceplate header and wrapped control row, the Focus view chrome timing, the
+   Visualise cards, and Full against Minimal. Cut what does not earn its place.
+2. **Systemic type/radius pass** — titles run 62/46/43 px across screens and the radii are ad hoc.
+   One scale, one gutter, one radius/elevation family.
+3. **Re-cut the weak art** — `tile-drift` and `tile-focus` are the thinnest of the eleven.
+4. **Play submission:** deploy `store/privacy.html` to `moddys.net/resonance/privacy/` first (Moddy
+   must review a deploy), then icon/feature/screenshots/listing/data-safety.
+5. **Push** — 39 commits ahead of `origin/main`, nothing pushed; bump `versionCode`/`versionName` and
+   cut the tag only after his review of the release copy.
+6. **Unrun since the last two CSS-only commits** (`0df2ce8`, `be6b302`): the full suite. Run it
+   before anything else ships.
 
 ## TRAPS (all still live, plus this session's)
 
