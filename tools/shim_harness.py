@@ -397,6 +397,16 @@ def main():
         page.click("#rsFilterBtn")
         suite.check("the Filters button reveals the chip block",
                     suite.wait_until("document.getElementById('rsFilterBtn').getAttribute('aria-expanded') === 'true'"))
+        suite.wait_until("Array.from(document.querySelectorAll('#plist .item'))"
+                         ".every(r => r.getAttribute('data-band'))", 5)
+        bands = page.evaluate("Array.from(document.querySelectorAll('#plist .item'))"
+                              ".map(r => r.getAttribute('data-band'))")
+        suite.check("every session row carries a band", bool(bands) and all(bands), bands[:8])
+        suite.check("a sleep session is banded sleep", page.evaluate(
+            "Array.from(document.querySelectorAll('#plist .item')).some("
+            "r => /sleep|delta/i.test(r.textContent) && r.getAttribute('data-band') === 'sleep')"))
+        suite.check("the band shows as a tinted edge", page.evaluate(
+            "getComputedStyle(document.querySelector('#plist .item')).backgroundImage.indexOf('gradient') > -1"))
         page.click("#filters .chip:nth-child(2)")
         suite.check("the Favourites chip filters to the starred session",
                     page.evaluate("document.querySelectorAll('#plist .item').length") == 1)
@@ -542,6 +552,8 @@ def main():
         suite.check("Minimal drops the art and says so",
                     page.evaluate("document.documentElement.getAttribute('data-rs-ui')") == "minimal" and
                     page.evaluate("getComputedStyle(document.getElementById('rsPlay')).backgroundImage") == "none")
+        suite.check("Minimal drops the band tint too", page.evaluate(
+            "getComputedStyle(document.querySelector('#plist .item')).backgroundImage") == "none")
         suite.check("the choice is stored",
                     page.evaluate("JSON.parse(localStorage.getItem('resonance.app.theme.v1')).ui") == "minimal")
         page.click("#rsUi button[data-u=full]")

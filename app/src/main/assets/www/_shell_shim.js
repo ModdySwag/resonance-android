@@ -423,6 +423,8 @@
     ".rs-hero-top .rs-tt{flex:1 1 auto;min-width:0}",
     ".rs-hero h1{margin:0;font-size:20px;line-height:26px;font-weight:700;letter-spacing:-.015em}",
     ".rs-hero p{margin:3px 0 0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    /* the player below already names the session; the line under the title only mirrored it */
+    ".rs-hero #rsNowSrc{display:none}",
     ".rs-pill{flex:0 0 auto;font:600 11px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
     "  padding:7px 11px;border-radius:999px;background:var(--rs-s3);color:var(--rs-ink2)}",
     "html.rs-playing .rs-pill.rs-live{background:var(--rs-live);color:var(--rs-on-live)}",
@@ -499,6 +501,18 @@
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=work]{background-image:url(ui/tile-work.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=meditate]{background-image:url(ui/tile-meditate.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=morning]{background-image:url(ui/tile-morning.webp)}",
+    /* session rows carry their band: a 3 px edge and a wash that dies out */
+    "html[data-rs-ui=full] #plist .item{position:relative;overflow:hidden}",
+    "html[data-rs-ui=full] #plist .item[data-band=sleep]{box-shadow:inset 3px 0 0 #6C81BE;",
+    "  background-image:linear-gradient(92deg,rgba(108,129,190,.20),rgba(108,129,190,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=focus]{box-shadow:inset 3px 0 0 #D2A659;",
+    "  background-image:linear-gradient(92deg,rgba(210,166,89,.18),rgba(210,166,89,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=relax]{box-shadow:inset 3px 0 0 #6FA678;",
+    "  background-image:linear-gradient(92deg,rgba(111,166,120,.18),rgba(111,166,120,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=wake]{box-shadow:inset 3px 0 0 #D8B45C;",
+    "  background-image:linear-gradient(92deg,rgba(216,180,92,.18),rgba(216,180,92,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=other]{box-shadow:inset 3px 0 0 #5FBFAE;",
+    "  background-image:linear-gradient(92deg,rgba(95,191,174,.12),rgba(95,191,174,0) 52%)}",
     /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
     "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
     "  background-position:center;background-color:#141210;border:1px solid #2A2318;border-radius:14px;",
@@ -2704,6 +2718,20 @@
     }
   }
 
+  function paintItems() {
+    var box = $id("plist");
+    if (!box) return;
+    $$(".item", box).forEach(function (row) {
+      if (row.getAttribute("data-band")) return;
+      var t = text(row).toLowerCase();
+      var b = /sleep|delta|drift/.test(t) ? "sleep"
+        : /focus|study|alpha|concentrat/.test(t) ? "focus"
+        : /relax|calm|theta|meditat|breath/.test(t) ? "relax"
+        : /wake|morning|energis|gamma|beta|alert/.test(t) ? "wake" : "other";
+      row.setAttribute("data-band", b);
+    });
+  }
+
   function tick() {
     applyInsets();
     if (CUR === "studio") syncStats();
@@ -2870,6 +2898,8 @@
     go("home", { scroll: false });
     syncStats();
     window.setInterval(tick, 1000);
+    /* the library re-renders on every keystroke and filter; band the rows promptly */
+    window.setInterval(function () { if (CUR === "sessions") paintItems(); }, 300);
     tick();
     try { schedLoop(0); } catch (e) { }
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });
