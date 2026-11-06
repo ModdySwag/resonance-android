@@ -487,6 +487,34 @@
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=focus]{background-image:url(ui/tile-focus.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=relax]{background-image:url(ui/tile-relax.webp)}",
     "html[data-rs-ui=full] .rs-tile[data-rs-tile=wake]{background-image:url(ui/tile-wake.webp)}",
+    /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
+    "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
+    "  background-position:center;background-color:#141210;border:1px solid #2A2318;border-radius:14px;",
+    "  padding:6px 8px;color:#F2F6F4}",
+    "html[data-rs-ui=full] #rsMini b{color:#F6FAF8}",
+    "html[data-rs-ui=full] #rsMini span{color:#C9D3CE}",
+    "html[data-rs-ui=full] #rsMiniPlay{background-image:url(ui/knob-calm.webp);background-size:cover;",
+    "  background-position:center;box-shadow:0 3px 9px rgba(0,0,0,.55);position:relative}",
+    "html[data-rs-ui=full][data-rs-accent=dusk] #rsMiniPlay{background-image:url(ui/knob-dusk.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sage] #rsMiniPlay{background-image:url(ui/knob-sage.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=sand] #rsMiniPlay{background-image:url(ui/knob-sand.webp)}",
+    "html[data-rs-ui=full][data-rs-accent=slate] #rsMiniPlay{background-image:url(ui/knob-slate.webp)}",
+    "html[data-rs-ui=full] #rsMiniPlay svg{display:none}",
+    "html[data-rs-ui=full] #rsMiniStop{background-image:url(ui/btn-stop.webp);background-size:cover;",
+    "  background-position:center;border:0;box-shadow:0 3px 9px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] #rsMiniStop svg{display:none}",
+    "html[data-rs-ui=full] #rsBar{background-image:url(ui/strip.webp);background-size:cover;",
+    "  background-position:center top;background-color:transparent}",
+    "html[data-rs-ui=full] #rsNav{background-image:url(ui/strip.webp);background-size:cover;",
+    "  background-position:center bottom;background-color:#141210}",
+    "html[data-rs-ui=full] #rsNav button[aria-selected=true]{background:rgba(224,185,111,.14)}",
+    "html[data-rs-ui=full] #rsNav button{color:#C9D3CE}",
+    "html[data-rs-ui=full] #rsNav button[aria-selected=true]{color:#F8F1E1}",
+    "html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button{background-image:url(ui/knob-calm.webp);",
+    "  background-size:cover;background-position:center;border:0}",
+    "html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button svg,html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button{",
+    "  font-size:0}",
+    "html[data-rs-ui=full] #rsFsCtl .rs-fs-stop{background-image:url(ui/btn-stop.webp)}",
 
     /* --------------------------------------------------------------- tiles --- */
     ".rs-states{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}",
@@ -1494,12 +1522,14 @@
       '<section class="card rs-cta" aria-labelledby="rsCymH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
       '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
-      '    <p class="rs-cta-sub">A plate, water and bubbles, driven by the tone. The full instrument.</p></div></div>' +
+      '    <p class="rs-cta-sub">Full visual experience</p></div></div>' +
       '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
-      '<section class="card">' +
-      '  <button class="rs-mrow" data-act="focus">' + svg("moon", 22) +
-      '    <span class="rs-mtxt"><b>Focus view</b><span>Ambient panels, gently following the tone</span></span>' + svg("chev", 18) + '</button>' +
+      '<section class="card rs-cta" aria-labelledby="rsFocusH">' +
+      '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("moon", 26) + '</span>' +
+      '    <div><h3 id="rsFocusH">Focus view</h3>' +
+      '    <p class="rs-cta-sub">Gentle visuals</p></div></div>' +
+      '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
       '</section>' +
       '<section class="card" aria-labelledby="rsFollowH">' +
       '  <h3 id="rsFollowH">Follow the session</h3>' +
@@ -1553,10 +1583,8 @@
   }
 
   function wireVis() {
-    screenEls.vis.addEventListener("click", function (ev) {
-      var b = ev.target.closest("[data-act=focus]");
-      if (b) openFocus();
-    });
+    var fg = $id("rsFocusGo");
+    if (fg) fg.addEventListener("click", openFocus);
     SCENES.forEach(function (s) {
       var b = doc.createElement("button");
       b.type = "button";
@@ -2217,6 +2245,8 @@
       "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:1;",
       "  color:#fff !important;background:rgba(10,8,6,.72) !important;padding:4px 9px;border-radius:999px}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
+      "html.rs-fs-hide #rsFocusBar{opacity:0;pointer-events:none}",
+      "html.rs-fs-hide #rsFsTop button,html.rs-fs-hide #rsFsCtl button{pointer-events:none}",
       "html.rs-fs-hide #rsFsCtl button,html.rs-fs-hide #rsFsTop button{pointer-events:none}"
     ].join("\n"), "rsFsCss");
   }
@@ -2252,7 +2282,7 @@
       if (act === "fPrev") { stepFocus(-1); return; }
       if (act === "fNext") { stepFocus(1); return; }
       if (act === "fPick") { openFocusPick(); return; }
-      if (act === "fsStage") { doc.documentElement.classList.toggle("rs-fs-hide"); return; }
+      if (act === "fsStage") { if (FSWAS.hidden) armHide(); else hideChrome(); return; }
     });
     return fs;
   }
@@ -2334,6 +2364,21 @@
     pushState(true);
   }
 
+  /* chrome that gets out of the way: any touch brings it back, and a few quiet
+     seconds slide it off again so only the visuals are left */
+  var FSIDLE = 0;
+  var FSWAS = { hidden: false };
+  function hideChrome() {
+    if (FSIDLE) { window.clearTimeout(FSIDLE); FSIDLE = 0; }
+    if (FS.on) doc.documentElement.classList.add("rs-fs-hide");
+  }
+  function armHide() {
+    doc.documentElement.classList.remove("rs-fs-hide");
+    if (FSIDLE) { window.clearTimeout(FSIDLE); FSIDLE = 0; }
+    if (!FS.on) return;
+    FSIDLE = window.setTimeout(hideChrome, FOCUS.on ? 4500 : 6000);
+  }
+
   function enterFullscreen() {
     if (FS.on) return;
     var cv = doc.querySelector("[data-viz-panel]");
@@ -2351,6 +2396,11 @@
     doc.documentElement.classList.remove("rs-fs-hide");
     FS.on = true;
     markBack();
+    armHide();
+    fs.addEventListener("pointerdown", function () {
+      FSWAS.hidden = doc.documentElement.classList.contains("rs-fs-hide");
+      armHide();
+    });
     try { window.dispatchEvent(new Event("resize")); } catch (e) { }
     syncFs();
   }
@@ -2359,6 +2409,8 @@
     if (!FS.on) return;
     FS.on = false;
     if (FOCUS.on) { FOCUS.on = false; }
+    if (FSIDLE) { window.clearTimeout(FSIDLE); FSIDLE = 0; }
+    doc.documentElement.classList.remove("rs-fs-hide");
     doc.documentElement.classList.remove("rs-focus");
     var fs = doc.getElementById("rsFs");
     if (FS.host && FS.home) {

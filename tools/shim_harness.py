@@ -419,12 +419,29 @@ def main():
         suite.check("a one-line version stands in its place",
                     page.evaluate("(() => { const h = document.querySelector('#rsVizCard .rs-hint');"
                                   " return !!h && h.textContent.indexOf('flash threshold') > -1; })()"))
-        page.click("#scr-vis [data-act=focus]")
+        suite.check("the two ways in are equal cards",
+                    page.evaluate("(() => { const c = document.querySelectorAll('#scr-vis section.card.rs-cta');"
+                                  " if (c.length !== 2) return false;"
+                                  " const h = [...c].map(x => x.querySelector('h3').textContent + '|' +"
+                                  " x.querySelector('.rs-cta-sub').textContent);"
+                                  " return h[0] === 'Cymatic chamber|Full visual experience' &&"
+                                  " h[1] === 'Focus view|Gentle visuals'; })()"))
+        suite.check("Focus view has its own way in",
+                    page.evaluate("!!document.getElementById('rsFocusGo')"))
+        page.click("#scr-vis [data-act=focus], #rsFocusGo")
         suite.check("Focus view opens full screen", suite.wait_until(
             "document.documentElement.classList.contains('rs-focus')", 8))
         suite.check("it brings a bar to change the visualisation",
                     page.evaluate("getComputedStyle(document.getElementById('rsFocusBar')).display") == "flex")
         first = page.evaluate("document.getElementById('rsFocusName').textContent")
+        suite.check("the chrome is up at first",
+                    page.evaluate("!document.documentElement.classList.contains('rs-fs-hide')"))
+        page.wait_for_timeout(5200)
+        suite.check("a few quiet seconds slide the chrome away",
+                    page.evaluate("document.documentElement.classList.contains('rs-fs-hide')"))
+        page.click("#rsFsStage")
+        suite.check("a touch brings it back",
+                    suite.wait_until("!document.documentElement.classList.contains('rs-fs-hide')", 4))
         suite.check("it starts on a named visualisation", bool(first) and first != "Visualisation", first)
         suite.check("the visualiser is genuinely enabled", page.evaluate(
             "window.ResonanceViz.api.getPrefs().on === true"))
@@ -508,7 +525,7 @@ def main():
                     "tile-sleep" in page.evaluate(
                         "getComputedStyle(document.querySelector('.rs-tile[data-rs-tile=sleep]')).backgroundImage"))
         art = page.evaluate("""() => Promise.all(["knob-calm","knob-dusk","knob-sage","knob-sand",
-            "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate"]
+            "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate","strip"]
             .map(n => fetch("ui/" + n + ".webp").then(r => r.ok)))""")
         suite.check("every piece of art actually loads", bool(art) and all(art), art)
         page.click("#rsUi button[data-u=minimal]")
