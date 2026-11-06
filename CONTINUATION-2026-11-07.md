@@ -61,6 +61,12 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
 - **Visualise** leads with the chamber CTA card (`.rs-cta`), Focus view second, and the page's long
   motion caption is replaced by one line in the panels card (`#vizNote` is display:none).
 - **Home**: "What you are hearing" folds into one summary row (`.rs-fold` details).
+- **The material spread** (Full only): the separate faceplate strip (`ui/strip.webp`) carries the mini
+  player, the app bar, the bottom nav and the viewer control bar; the player's play/stop reuse the
+  knob and chrome-cap art. Visualise's two entries are equal cards (CYMATIC CHAMBER / Full visual
+  experience, FOCUS VIEW / Gentle visuals), each with its own button.
+- **Chrome that leaves**: focus and fullscreen chrome slide away after 4.5 s / 6 s of quiet and come
+  back on any touch (`rs-fs-hide`, armed on pointerdown, `FSWAS.hidden` remembers the pre-tap state).
 
 ## OPEN — in the order to take them
 
@@ -107,7 +113,10 @@ page's three-band monospace chart, which was the last "web page" tell on Home.
   own `.pill` and `.rs-sw span` inside the hero carry their own colours, so the parent's colour is
   not enough — target them.
 - **Contrast probes cannot see a background image**: give any art-backed element an explicit dark
-  `background-color` or the probe (and the first paint) fails.
+  `background-color` or the probe (and the first paint) fails. Anything sitting on the strip (the nav
+  labels especially) needs its ink forced light too.
+- **A pointerdown handler that reveals the chrome fires before the click that toggles it** — capture
+  the "was hidden" state on pointerdown (`FSWAS`) or every tap hides again instead of revealing.
 
 ## FIRST THREE MOVES
 
