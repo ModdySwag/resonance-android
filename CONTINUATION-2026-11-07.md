@@ -1,3 +1,106 @@
+# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 9 FINAL)
+
+## SESSION 9 FINAL — the chamber faceplate, scene chips fixed, versionCode 13
+
+Read this block first; everything below it is history.
+
+### STATE
+
+- HEAD `b885a81`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
+- **Signed release APK: 714,735 B, sha256 `0c99cecac05d0d6bf8dd8da854b15037b0f31120f1d4028bb092bf770b508d4b`**,
+  installed on the phone (`192.168.1.95:33139`) over the 683,566 B / code-12 build: cold start
+  **454 ms**, `page: shim ready` in logcat, crash buffer empty.
+- Debug build (`com.moddys.resonance.debug`) on the phone — device_gate and CDP need it.
+- **Publish payload staged locally in `radio-browser`, NOT uploaded** (house rule: his review
+  first): `deploy/downloads/resonance-studio-v2.0.5-beta.apk` (same bytes as the release APK),
+  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714735 /
+  `0c99ceca…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
+  certutil line, GitHub link → `/releases`, "New in 2.0.5", 130 sessions). Backups of the two
+  site files: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
+
+### FIXED THIS SESSION — the scene chips were dead (proven with numbers, then repaired)
+
+Moddy reported Cathedral / Cold Forge / Solar Disc "don't respond". A probe showed the click set
+`preset`, then three separate mechanisms erased it: `openChamber()` re-applied the plan's scene on
+every open; `applyVis()` forced `src:"session"` after each chip click; `syncVis()` repainted the
+chips from the plan, so the chip un-lit immediately. Now a chip is a **manual decision**:
+`follow` goes false (persisted, the switch moves with it), the chip stays lit, and opening the
+chamber keeps it. `Follow` turned back on returns the chamber to the session. Five harness legs
+pin it, including "opening the chamber keeps the scene a person picked".
+
+### BUILT THIS SESSION — the chamber faceplate (his two follow-ups)
+
+- **Root cause found: a stray `}` in the shim's CSS string array.** `.rs-app .cym .cym-top{padding-top:… !important;`
+  had no closing brace, so every shell rule after it was swallowed — the chamber had been running
+  without its chrome. Fixed; the whole block parses now.
+- **Top row:** Back ‹ · LIVE · **?** (the page's **Close removed** — Back already leaves; the
+  fullscreen ✕ stays). **Transport row:** Play/Pause 56 px (brass face swaps while playing) ·
+  Stop 48 · master fader · CONTROLS engraved on a brass plate.
+- **Four new generated keys** (`amp-back/next/info/close`, gpt_image_2 1k/high, 28 credits total,
+  re-rolled once because the first set lacked the black bezel ring), cut to 256 px and
+  tone-matched radially to the play/pause/stop family.
+- **Layout is placed, not wrapped:** two flex rows; navigation on top, transport beneath (phone),
+  one row on ≥600 px. Measured 320/390/800: no overlaps, everything inside the glass, 44 px floor,
+  fader grows (84–197 px) and nothing else moves. The labelled key is brass with dark engraving.
+- **Gestures, verified on the phone with real `adb shell input swipe`:** drag the player's lip up →
+  panel away (lip parks under the status bar, `y≈60` CSS); drag it down → back; tap the drawer
+  handle → open; drag it down → closed; drag it up → open.
+- **Auto-hide:** 8 s of quiet puts both panels away together; any touch wakes the player (the
+  drawer only from its own handle, so a stray tap cannot spring it over the instrument).
+- **Focus view / fullscreen:** one faceplate — `#rsFocusBar` (‹ name › Change) now lives *inside*
+  `#rsFsCtl`, above the transport row (play · stop · fader · time). Brass faces on both.
+- `paintLevel()` now also paints `#rsCymVol` and `#rsFsVol`, so all four faders/levels are one value.
+
+### GATES (this session, all green)
+
+`py -3.11 tools/shim_harness.py` **199/0** · `cache/contrast.py` **0** · `tools/tablet_pass.py`
+**82/0** · `:app:lintRelease` 0/0 · JVM tests **26/26** across both channels ·
+`tools/device_gate.py -s 192.168.1.95:33139` **19/0** (a fresh install needs a second run — the
+first launch settles) · `apk_identity` **36/43**: the seven "byte-identical to the site" legs
+compare raw source to a **minified** asset (app.js 38,185 → 21,932 B) and cannot pass on a release
+APK — fix the tool or judge identity from a debug build.
+
+### PUBLISH — one command away, waiting on his review
+
+```
+cd /c/Users/Moddy/radio-browser
+python3 upload-site.py --only downloads/resonance-studio-v2.0.5-beta.apk updates.json moddys-downloads.html
+python3 upload-site.py --verify --only downloads/resonance-studio-v2.0.5-beta.apk updates.json moddys-downloads.html
+```
+Then the untested chain, for real: `curl -sL https://moddys.net/downloads/resonance-studio-v2.0.5-beta.apk`
+→ `sha256sum` against the feed → install the downloaded bytes on the phone → confirm
+`versionCode=13` and that the app offers no update (feed code == installed code).
+`check-moddys-downloads.py` local: 60 checks, the resonance link resolves; its 3 failures are
+pre-existing (two PatternForge live links answer HTTP 300, palette/spraybar drift vs index.html).
+
+### DECIDED
+
+- The chamber's Close key is gone (Back owns leaving); the fullscreen ✕ stays.
+- A scene chip is manual control and turns Follow off — do not "restore" the old auto-reapply.
+
+### QUEUE, in order
+
+1. **His eye on the chamber** (faceplate, drawer, lip, auto-hide, chips) — then the publish above.
+2. Play track: privacy page live, AAB, closed test.
+3. VizGL step 3: mask the field to the plate.
+4. Robolectric follow-ups; Error Prone/JaCoCo/StrictMode/Perfetto/MobSF.
+5. Track F features. Do not build accounts/cloud/social/Wear.
+
+### TRAPS (new, costly)
+
+- **A stray `}` in the shim's CSS string array kills every rule after it, silently.** When a
+  chamber rule "does not apply", balance the braces of the injected sheet before anything else.
+- **`!important` + higher specificity beats a later rule.** The header's padding is pinned by the
+  full-UI rule, so a second `padding-bottom` never landed; put the lip outside the box instead.
+- **A flex item in an `overflow:auto` column shrinks below its height** — give handles `flex:0 0 46px`.
+- **Clamp the visual drag delta, keep the RAW one for the decision**, or the threshold is unreachable.
+- **Playwright's synthetic mouse does not drive these pointer-drag handlers** (page.mouse down/move/up
+  produced no drag); `adb shell input swipe` does. Scale CSS → device px with `wm size / innerWidth`.
+- **The generated release APK is minified**, so the site byte-identity legs of `apk_identity` are red
+  by construction.
+
+---
+
 # RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 8 FINAL)
 
 ## SESSION 8 FINAL — player rebuilt, two new gates, swipe refused (HEAD `05483e0`)
