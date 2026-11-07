@@ -6,15 +6,15 @@ Read this block first; everything below it is history.
 
 ### STATE
 
-- HEAD `c239866`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
-- **Signed release APK: 714,923 B, sha256 `5f6a72066537aa4013b429a92ab249b98d5ed0ad19a8c7734e9ccf2968ef8f99`**,
+- HEAD `777f53e`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
+- **Signed release APK: 715,067 B, sha256 `fedfcfe14e5b65f8487dd1f2f88dd93ed4cbade37d7c0fe21c670d20291ea405`**,
   installed on the phone (`192.168.1.95:33139`) over the 683,566 B / code-12 build: cold start
   **454 ms**, `page: shim ready` in logcat, crash buffer empty.
 - Debug build (`com.moddys.resonance.debug`) on the phone — device_gate and CDP need it.
 - **Publish payload staged locally in `radio-browser`, NOT uploaded** (house rule: his review
   first): `deploy/downloads/resonance-studio-v2.0.5-beta.apk` (same bytes as the release APK),
-  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714923 /
-  `5f6a7206…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
+  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 715067 /
+  `fedfcfe1…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
   certutil line, GitHub link → `/releases`, "New in 2.0.5", 130 sessions). Backups of the two
   site files: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
 
@@ -68,6 +68,18 @@ pin it, including "opening the chamber keeps the scene a person picked".
   follow, scene/medium/sand chips, hero play (aria flips to Pause, sample advances) and stop, mute
   and restore. "Add a voice" *opens* the builder pane rather than adding a voice — that is the
   page's design, not a dead control. `tools/shim_harness.py` 199/0 after the cleanups.
+
+### CARD BANDING (the Sessions look, carried across)
+
+Studio / Visualise / Settings sections now wear a session row's band: a 3 px edge in the band
+colour plus a wash that dies inside the first half of the box, at **0.09 alpha against the rows'
+0.18** because a card is ~4x the area. Bands are assigned by function, not decoration: amber
+(focus) = build a tone, voices, chamber; green (relax) = data, focus view; gold (wake) =
+appearance; teal (other) = catalogue, quick picks, follow, ambient panels, help. Minimal is
+untouched (all rules gated on `data-rs-ui=full`). **The Speaker-friendly rail was plain because
+its title matched none of the band patterns** — the rail builder's regex now maps
+speaker|pulse|room|iso to `other`. No Higgsfield art: the Sessions boxes are pure CSS.
+Contrast 0 after the change; harness 199/0 (that run predates the one-line rail regex).
 
 ### GATES (this session, all green)
 
