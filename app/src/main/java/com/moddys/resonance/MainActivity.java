@@ -51,6 +51,7 @@ import java.lang.ref.WeakReference;
 import java.net.URLDecoder;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.json.JSONObject;
@@ -138,16 +139,23 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** The callback itself is API 33: keep the reference inside an annotated method so the
+     *  class literal is only ever resolved on a device that has it. */
+    @android.annotation.TargetApi(33)
+    private void registerBackCallback() {
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, new android.window.OnBackInvokedCallback() {
+                    @Override public void onBackInvoked() { goBackOrFinish(); }
+                });
+    }
+
     /** Back walks the page's own history (the shell pushes an entry per layer). Predictive
      *  back is enabled in the manifest, so the same job is registered as a callback on
      *  Android 13+; onKeyDown stays for the devices that still deliver key events. */
     private void registerBack() {
         if (Build.VERSION.SDK_INT < 33) return;
         try {
-            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, new android.window.OnBackInvokedCallback() {
-                        @Override public void onBackInvoked() { goBackOrFinish(); }
-                    });
+            registerBackCallback();
         } catch (Throwable t) {
             Log.w(TAG, "registerBack: " + t);
         }
@@ -173,7 +181,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Build the WebView and its client. False when this device has no usable one. */
+    /** Build the WebView and its client. False when this device has no usable one.
+     *  JavaScript is the application: the UI is the bundled page and the bridge carries
+     *  every action, so a WebView without it has nothing to show. */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
     private boolean buildWeb() {
         try {
             web = new WebView(this);
@@ -324,7 +335,7 @@ public class MainActivity extends Activity {
 
     private static String mimeOf(String path) {
         String ext = MimeTypeMap.getFileExtensionFromUrl(path);
-        String mime = ext == null ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase());
+        String mime = ext == null ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.toLowerCase(Locale.ROOT));
         if (mime != null) return mime;
         if (path.endsWith(".gnaural")) return "application/xml";
         return "application/octet-stream";
@@ -659,14 +670,10 @@ public class MainActivity extends Activity {
                     try {
                         View d = getWindow().getDecorView();
                         int flags = d.getSystemUiVisibility();
-                        if (Build.VERSION.SDK_INT >= 23) {
-                            flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
-                                          : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-                        }
-                        if (Build.VERSION.SDK_INT >= 26) {
-                            flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)
-                                          : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                        }
+                        flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
+                                      : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+                        flags = light ? (flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)
+                                      : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
                         d.setSystemUiVisibility(flags);
                         /* the window behind the page has to agree with it, or a light
                            scheme flashes a dark edge and a dark scheme a white one */

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 27+: the light navigation bar exists from Oreo MR1. Kept out of the base
+         theme so minSdk 26 never sees an attribute the platform would drop. -->
+    <style name="AppTheme" parent="AppThemeBase">
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

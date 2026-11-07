@@ -3,12 +3,14 @@
     <!-- Platform Material theme: no AppCompat, no AndroidX dependency. The window
          background matches the page's own surface so there is no flash of the wrong
          theme before the first paint; values-night/ carries the dark pair. -->
-    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <style name="AppThemeBase" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/bg_day</item>
         <item name="android:colorBackground">@color/bg_day</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
     </style>
+
+    <!-- windowLightNavigationBar is API 27: values-v27 / values-night-v27 add it. -->
+    <style name="AppTheme" parent="AppThemeBase" />
 </resources>

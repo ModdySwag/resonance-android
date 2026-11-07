@@ -2,8 +2,5 @@
 <resources>
     <color name="bg">#0E1211</color>
     <color name="bg_day">#F5FAF8</color>
-    <color name="brand">#7FDCCB</color>
-    <color name="live">#E9B972</color>
-    <color name="ink">#E6ECEA</color>
     <color name="icon_bg">#0E1211</color>
 </resources>

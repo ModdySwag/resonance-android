@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 27+ dark pair: a dark room wants light nav icons, not the light-bar flag. -->
+    <style name="AppTheme" parent="AppThemeBase">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

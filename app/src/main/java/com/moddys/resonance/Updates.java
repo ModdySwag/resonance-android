@@ -165,6 +165,8 @@ final class Updates {
         }
     }
 
+    @android.annotation.SuppressLint("InlinedApi")   /* RECEIVER_NOT_EXPORTED inlines to 4; a forged
+        broadcast still cannot pass the download-id and sha256 checks below */
     static void downloadAndInstall(final Activity act, String url, String version, final String sha256) {
         if (url == null || url.trim().isEmpty()) {
             toast(act, "The update feed has no download link yet.");
@@ -230,8 +232,7 @@ final class Updates {
 
             /* Android 8+ makes "install unknown apps" a per-app permission. Installing an
                update over the running app needs it, and only the user can grant it. */
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                    && !act.getPackageManager().canRequestPackageInstalls()) {
+            if (!act.getPackageManager().canRequestPackageInstalls()) {
                 toast(act, "Allow \"install unknown apps\" for Resonance Studio, then tap Update again.");
                 Intent allow = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         Uri.parse("package:" + act.getPackageName()));
