@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- AAPT2 only compiles <adaptive-icon> in a v26-qualified folder, so the qualifier has to
+         stay even though minSdk is 26. Scoped to the folder, not the whole check. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

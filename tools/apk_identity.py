@@ -255,8 +255,10 @@ def main() -> int:
 
     if "assets/www/_shell_shim.js" in names:
         shim = z.read("assets/www/_shell_shim.js").decode("utf-8", "replace")
-        check("the shim is the shared shell (native() bridge, not host.*)",
-              "function native(" in shim and "host.state" not in shim)
+        # Release packages a minified shim, so assert on markers that survive mangling:
+        # the bridge name is a property/string, and the page's own bridge is host.*.
+        check("the shim is the shared shell (ResonanceJs bridge, not the page's host.*)",
+              "ResonanceJs" in shim and "__rs" in shim and "host.state" not in shim)
         check("the shim still carries the compat panel", "compat" in shim.lower())
 
     print("\n== the signature ==")

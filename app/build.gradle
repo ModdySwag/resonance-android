@@ -53,11 +53,72 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // Release packages the minified page; the readable sources stay in src/main/assets/www.
+    // A variant source set outranks main for the same path, so only the .js files need to be
+    // generated here - every other asset still comes from main.
+    sourceSets {
+        release {
+            assets.srcDirs += new File(buildDir, "generated/minifiedPage").absolutePath
+        }
+    }
+
     lint {
         abortOnError true
         checkReleaseBuilds true
         // the adaptive icon is the real launcher icon; the density PNGs are fallbacks for
         // launchers that cannot read it, and their square shape is deliberate
         disable 'IconLauncherShape'
+    }
+}
+
+// Minify the page's JavaScript for the release package only.
+//
+// Sources under app/src/main/assets/www stay readable. This writes minified copies of just
+// the .js files into build/generated/minifiedPage/www, which the release source set adds to
+// its assets; a variant source set outranks main for the same path, so packaging picks these
+// up and everything else still comes from main. terser runs through npx: a machine without
+// Node still builds - it copies the file verbatim and says so.
+def minifyPageJs = tasks.register("minifyPageJs") {
+    def srcRoot = file("src/main/assets/www")
+    def outRoot = file("$buildDir/generated/minifiedPage/www")
+    inputs.dir(srcRoot)
+    outputs.dir(outRoot)
+    doLast {
+        delete outRoot
+        def npx = System.getProperty("os.name").toLowerCase().contains("windows") ?
+                ["cmd", "/c", "npx"] : ["npx"]
+        int done = 0, failed = 0
+        fileTree(srcRoot) { include "**/*.js" }.each { f ->
+            def rel = srcRoot.toPath().relativize(f.toPath()).toString()
+            def dst = new File(outRoot, rel)
+            dst.parentFile.mkdirs()
+            try {
+                def p = new ProcessBuilder(npx + ["--yes", "terser@5", f.absolutePath,
+                                                  "-c", "-m", "-o", dst.absolutePath])
+                        .redirectErrorStream(true).start()
+                def text = p.inputStream.text
+                if (p.waitFor() == 0 && dst.isFile() && dst.length() > 0) {
+                    done++
+                } else {
+                    failed++
+                    dst.bytes = f.bytes          // verbatim fallback: still a valid asset
+                    logger.warn("minify: terser failed on ${rel}: ${text.take(160)}")
+                }
+            } catch (Exception e) {
+                failed++
+                dst.bytes = f.bytes
+                logger.warn("minify: ${e.message} on ${rel}")
+            }
+        }
+        logger.lifecycle("minify: ${done} JavaScript file(s) minified for release, ${failed} verbatim")
+    }
+}
+
+// The merge task is created lazily by AGP after the variants are configured, so match it
+// lazily too rather than by name at evaluation time. Lint reads the same asset tree, so it
+// needs the same dependency or Gradle refuses the graph as an implicit dependency.
+tasks.configureEach { t ->
+    if (t.name != "minifyPageJs" && t.name.contains("Release") && !t.name.contains("clean")) {
+        t.dependsOn minifyPageJs
     }
 }

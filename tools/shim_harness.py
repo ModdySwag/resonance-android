@@ -157,8 +157,17 @@ class Suite:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=None, help="page to drive (default: bundled assets)")
+    ap.add_argument("--www", default=None,
+                    help="asset root to serve and inject the shim from (default: app/src/main/assets/www); "
+                         "point it at build/intermediates/assets/release/mergeReleaseAssets/www to gate "
+                         "the minified bytes that actually ship")
     ap.add_argument("--shots", default=None, help="write screenshots into this directory")
     a = ap.parse_args()
+
+    global WWW, SHIM
+    if a.www:
+        WWW = os.path.abspath(a.www)
+        SHIM = open(os.path.join(WWW, "_shell_shim.js"), encoding="utf-8").read()
 
     httpd = None
     url = a.url
