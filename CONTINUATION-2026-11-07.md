@@ -1,5 +1,86 @@
 # RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (session 2)
 
+## SESSION 4 — tablet / large-screen pass (HEAD `2a0412b`)
+
+### STATE
+
+- HEAD `2a0412b`, tree clean, 49 commits ahead of `origin/main`, **nothing pushed**.
+- `2.0.5-beta`, `versionCode 12`. **Signed release built from this HEAD and installed on
+  `ZY22LGC75T`** — APK 864,550 B, sha256
+  `3cb246963aa4a3c4ef465f9136c76cd06b521af171b633d7a654da4021173a53`, identity 32/32.
+- `emulator-5554` carries the **debug** build (`com.moddys.resonance.debug`) and is the tablet
+  surface: `wm size 800x1280`, `wm density 160` (CSS px == device px). Its WebView is
+  Chrome 83 — older than any phone, so it is a useful floor for CSS support.
+- **GATES on these bytes: harness 183/183, contrast 0, tablet probe 78/78, identity 32/32.**
+
+### WHAT WAS BUILT
+
+Only the phone had ever been driven. At 800 and 1280 the phone layout stretched: the hero read
+as a banner, module cards 4:1, the Scene picker ~1000 px, the More sheet full width, the guide
+~100 characters a line.
+
+- **One content rail**: `#rsTop`, `.rs-screen` and `#rsMini` share `--rs-rail` = 720 px at
+  600+, 960 px at 900+, centred. Layers meant to be full bleed (chamber, fullscreen, focus)
+  are untouched.
+- **Module grid counts columns** instead of growing cards: flex with a fixed basis, 3 across
+  at 600+ and 4 at 900+, and a short last row is **centred** rather than left hanging (8 cards
+  over 3 columns is 3+3+2).
+- **The More sheet** caps at 560 px, centres, and **lifts 16 px** off the bottom edge with
+  all-round corners (`--rs-sheet-lift`). "Closed" travels `height() + lift()` **and** the
+  layer is `visibility:hidden` when shut — without both, a strip of it stayed over the nav bar
+  and ate taps (measured: closed top 1216 of 1280 before the fix, 1280 after).
+- **Help overlays** get a document measure — `min(var(--rs-rail), 640px)` on both `.rs-ov-head`
+  and `.rs-ov-body` — so the reading column is not the app rail.
+- **The tour bubble** is 400 px wide at 600+ (JS owns the width, because placement measures it
+  immediately), and `tourFill()` now runs **before** the 120 ms placement timer instead of
+  inside it, so the bubble is never on screen empty.
+- **`tools/tablet_pass.py`** — new gate tool. Drives 800x1280 and 1280x800 and measures the
+  sheet (closed and open), the three overlays, the scene menu, the file card, all nine tour
+  stops, the chamber, the fullscreen layer and focus view: **78 checks**. Screenshots with
+  `--shots DIR`.
+
+### VERIFIED WHERE
+
+- Harness + contrast + tablet probe: Chromium, both tablet viewports.
+- **Real WebView at 800x1280** (emulator, debug build): rail 720, lift 16, sheet closed
+  top = 1280 and hit-testing the app, open 913..1264, guide body/head 640, tour bubble 400,
+  step 2 hole 788x129 over the nav. Screenshots in `cache/shots-emu/`.
+- **Tour Back on his phone** (queue item 4): Settings → Replay the welcome tour → hardware
+  Back from step 1 **and** from step 2 both close the tour and leave the app resumed
+  (`topResumedActivity` = MainActivity). No app data was cleared.
+
+### STILL OPEN, in order
+
+1. **His eye** on the tablet look (`cache/shots-tablet9/`, `cache/shots-emu/`): the rail, the
+   3-/4-column grid and its centred last row, the floating More sheet, the overlays' 640 px
+   measure, the 400 px tour bubble. Plus the earlier list: Files & export, Scene menu,
+   Surprise pill, nine tour stops, trimmed copy.
+2. **Publishing 2.0.5 needs his review, and the feed entry must bump `versionCode`.** A draft
+   entry (`url` `https://moddys.net/downloads/resonance-studio-v2.0.5-beta.apk`, `size` 864550,
+   `sha256` `3cb24696…3a53`, `versionName` `2.0.5-beta`) can only be offered to an installed
+   build with a **lower** code, so publishing means: bump to 13, rebuild, upload, then write
+   `updates.json`. The download → sha256 → installer path is still untested end to end.
+3. Then the older queue: systemic type/radius pass, re-cut `tile-drift`/`tile-focus`, Play
+   submission (privacy page first), push + tag.
+
+### NEW TRAPS
+
+- **A bottom sheet lifted off the edge must travel `height + lift` and be `visibility:hidden`
+  when shut.** Off-setting with `bottom:16px` alone leaves a 16 px strip over the nav bar that
+  silently eats taps; `elementFromPoint(vw/2, vh-6)` is how you catch it.
+- **A boot-time read of a media-query CSS variable can come back empty.** The sheet's first
+  close offset measured 0 lift and parked it 16 px short. Read the offset back from the
+  element (`getComputedStyle(el).bottom`) and re-park on `requestAnimationFrame` + `resize`.
+- **The tour filled its bubble inside the 120 ms placement timer**, so `#rsTourN` could be
+  empty while `rs-t-on` was already set — a blank bubble for a person and a flaky check.
+  Fill synchronously, place later.
+- **The page hides its own `Controls` button at ≥821 px**, so a 44 px sweep of the chamber must
+  skip zero-size controls (the harness already did; the tablet probe did not).
+- **The emulator's devtools socket pid changes on every install** — re-read
+  `/proc/net/unix | grep webview_devtools_remote` and re-`adb forward` before CDP.
+
+---
+
 ## SESSION 3 (later the same day) — read this first
 
 ### STATE
