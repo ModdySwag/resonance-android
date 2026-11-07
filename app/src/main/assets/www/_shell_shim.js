@@ -102,7 +102,7 @@
   function paintLevel(v) {
     var off = !(v > 0.001);
     var a = $id("rsVol"), b = $id("rsMiniVol"), p = $id("rsVolPct");
-    var more = [$id("rsCymVol"), $id("rsFsVol")];
+    var more = [$id("rsCymVol"), $id("rsFsVol"), $id("rsStuVol")];
     if (a && Math.abs(parseFloat(a.value) - v) > 0.004) a.value = String(v);
     if (b && Math.abs(parseFloat(b.value) - v) > 0.004) b.value = String(v);
     var pct = Math.round(v * 100) + "%";
@@ -890,15 +890,33 @@
     ".rs-mtile span{display:block;margin-top:3px;font:600 9.5px/1.15 var(--rs-sans);letter-spacing:0;",
     "  text-transform:uppercase;color:var(--rs-dim);white-space:normal;overflow-wrap:anywhere}",
     ".rs-nowtr{display:flex;align-items:center;gap:10px}",
-    ".rs-stuplay{width:56px;height:56px;flex:0 0 56px;border-radius:50%;border:1px solid var(--rs-pri);",
-    "  background:var(--rs-pri);color:var(--rs-on-pri);display:flex;align-items:center;",
-    "  justify-content:center;cursor:pointer;padding:0}",
-    ".rs-stuplay svg{display:block;width:26px;height:26px}",
-    ".rs-stuplay.rs-live{background:var(--rs-live);border-color:var(--rs-live);color:var(--rs-on-live)}",
-    ".rs-stustop{width:48px;height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:center;",
-    "  border-radius:50%;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink2);cursor:pointer}",
-    ".rs-stustop svg{width:20px;height:20px}",
-    ".rs-nowclock{flex:1 1 auto;text-align:center;font:600 12.5px/1 var(--rs-sans);",
+    /* the same machined keys as the hero and the chamber: the generated brass faces,
+       play and pause as separate keys so the shape says what a press will do */
+    ".rs-ampk{border:0;border-radius:50%;padding:0;flex:0 0 auto;cursor:pointer;",
+    "  background-color:#100e0c;background-size:cover;background-position:center;",
+    "  transition:transform .12s var(--rs-ease)}",
+    ".rs-stuplay{width:56px;height:56px;background-image:url(ui/amp-play.webp);",
+    "  box-shadow:0 5px 14px rgba(0,0,0,.5)}",
+    ".rs-stupause{width:48px;height:48px;background-image:url(ui/amp-pause.webp);opacity:.9;",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    ".rs-stustop{width:48px;height:48px;background-image:url(ui/amp-stop.webp);",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    ".rs-stuplay:active,.rs-stupause:active,.rs-stustop:active{transform:scale(.95)}",
+    ".rs-stuplay.rs-live{box-shadow:0 5px 14px rgba(0,0,0,.5),0 0 0 2px var(--rs-live)}",
+    ".rs-stupause.rs-dim{opacity:.55}",
+    /* the master fader: a sunk slot with a knurled brass thumb, sized to stay 44 px */
+    ".rs-stuvol{display:flex;align-items:center;flex:1 1 auto;min-width:64px;height:48px;margin-left:2px}",
+    "#rsStuVol{width:100%;height:44px;margin:0;-webkit-appearance:none;background:transparent;",
+    "  accent-color:#C9A227}",
+    "#rsStuVol::-webkit-slider-runnable-track{height:28px;border-radius:7px;",
+    "  background:linear-gradient(180deg,#2B231A,#14100C);border:1px solid rgba(0,0,0,.8);",
+    "  box-shadow:inset 0 2px 6px rgba(0,0,0,.8)}",
+    "#rsStuVol::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:34px;",
+    "  margin-top:-4px;border-radius:5px;border:1px solid rgba(0,0,0,.7);",
+    "  background:linear-gradient(180deg,#E7C98A,#8A6A33 58%,#3B2C15);",
+    "  box-shadow:0 2px 5px rgba(0,0,0,.65)}",
+    ".rs-nowtr2{display:flex;align-items:center;gap:10px;margin-top:10px}",
+    ".rs-nowclock{flex:1 1 auto;text-align:left;font:600 12.5px/1 var(--rs-sans);",
     "  font-variant-numeric:tabular-nums;color:var(--rs-ink2);white-space:nowrap}",
     ".rs-stuloop{flex:0 0 auto;min-height:44px;padding:0;gap:8px}",
     ".rs-stuloop .rs-swt span{font-size:12px;color:var(--rs-dim)}",
@@ -965,6 +983,17 @@
     "#rsChapPanel #rsBuild{padding:0 !important}",
     "#rsChapPanel #rsBuild h3{display:none}",
 
+    /* every option carries its own mark: a palette swatch in the colours it renders,
+       or a shape for the looks that have no colour of their own. Small and quiet — the
+       chip's label still says the name; the mark only has to be recognisable. */
+    ".rs-swb{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;",
+    "  vertical-align:-1px;flex:0 0 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}",
+    ".rs-mk{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;",
+    "  flex:0 0 16px;opacity:.85;color:currentColor}",
+    ".rs-mk svg{width:16px;height:16px;display:block}",
+    "#vizBackdrops .chip,#vizOverlays .chip,#vizPalettes .chip{display:inline-flex;align-items:center;gap:0}",
+    "#rsScenes button{display:inline-flex;align-items:center}",
+    "#vizBackdrops .chip .rs-mk,#vizOverlays .chip .rs-mk{margin-right:6px}",
     /* ---------------------------------------------------- visualise section --- */
     ".rs-map{font-variant-numeric:tabular-nums;font-size:13px;line-height:19px;color:var(--rs-ink2);",
     "  background:var(--rs-bg);border:1px solid var(--rs-line);border-radius:var(--rs-r-sm);padding:12px;margin:10px 0}",
@@ -2242,9 +2271,13 @@
     })();
 
     var play = $id("rsStuPlay");
-    if (play) play.addEventListener("click", function () { pageToggle(); pushState(true); syncStudio(); });
+    if (play) play.addEventListener("click", function () { pagePlay(); pushState(true); syncStudio(); });
+    var pause = $id("rsStuPause");
+    if (pause) pause.addEventListener("click", function () { pagePause(); pushState(true); syncStudio(); });
     var stop = $id("rsStuStop");
     if (stop) stop.addEventListener("click", function () { pageStop(); pushState(true); syncStudio(); });
+    var vol = $id("rsStuVol");
+    if (vol) vol.addEventListener("input", function () { setMaster(parseFloat(vol.value)); });
     var lp = $id("rsStuLoop");
     if (lp) lp.addEventListener("change", function () {
       var l = $id("loop");
@@ -2354,17 +2387,10 @@
     }
     var cl = $id("rsStuClock");
     if (cl) cl.textContent = clock || "0:00 / 0:00";
-    var b = $id("rsStuPlay");
-    if (b) {
-      var on = isPlaying();
-      /* the markup ships with the label already right, so the icon must not be guarded
-         on a label change alone or the first paint leaves a blank key */
-      if (b.getAttribute("aria-label") !== (on ? "Pause" : "Play") || !b.firstChild) {
-        b.setAttribute("aria-label", on ? "Pause" : "Play");
-        b.innerHTML = on ? svgFill("pause") : svgFill("play");
-        b.classList.toggle("rs-live", on);
-      }
-    }
+    var b = $id("rsStuPlay"), pb = $id("rsStuPause");
+    var on = isPlaying();
+    if (b) b.classList.toggle("rs-live", on);
+    if (pb) pb.classList.toggle("rs-dim", !on);
     var lp = $id("rsStuLoop"), lel = $id("loop");
     if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
 
@@ -2417,8 +2443,13 @@
       '    <span class="rs-stpill" id="rsStuPill" data-state="idle">idle</span></div>' +
       '  <div class="rs-metrics" id="rsMetrics" aria-live="polite"></div>' +
       '  <div class="rs-nowtr">' +
-      '    <button class="rs-stuplay" id="rsStuPlay" aria-label="Play"></button>' +
-      '    <button class="rs-stustop" id="rsStuStop" aria-label="Stop">' + svgFill("stop") + '</button>' +
+      '    <button class="rs-ampk rs-stuplay" id="rsStuPlay" aria-label="Play"></button>' +
+      '    <button class="rs-ampk rs-stupause" id="rsStuPause" aria-label="Pause"></button>' +
+      '    <button class="rs-ampk rs-stustop" id="rsStuStop" aria-label="Stop"></button>' +
+      '    <label class="rs-stuvol"><input id="rsStuVol" type="range" min="0" max="1" step="0.01" ' +
+      'value="0.7" aria-label="Volume"></label>' +
+      '  </div>' +
+      '  <div class="rs-nowtr2">' +
       '    <span class="rs-nowclock" id="rsStuClock">0:00 / 0:00</span>' +
       '    <label class="rs-sw rs-stuloop"><span class="rs-swt"><span>Loop</span></span>' +
       '      <input type="checkbox" id="rsStuLoop" checked><span class="rs-track" aria-hidden="true"></span></label>' +
@@ -2468,6 +2499,53 @@
     ["faraday-storm", "Faraday Storm"], ["skin-tight", "Skin Tight"], ["minnaert-cloud", "Bubbles"],
     ["ember-pool", "Ember Pool"], ["black-water", "Black Water"]
   ];
+
+
+  /* Each option carries a mark of its own. Palettes and chamber scenes get a swatch in
+     the colours that option actually renders (extracted from cymrender.js' palette
+     table and vizpal.js' stops); backdrops and overlays have no colour of their own, so
+     they get a shape mark instead. Decorative only: the label still carries the name. */
+  var RS_SW = {"cym": {"champagne": ["rgb(249,228,177)", "rgb(255,236,189)"], "ion": ["rgb(136,237,255)", "rgb(158,246,255)"], "copper": ["rgb(255,194,143)", "rgb(255,202,156)"], "verdigris": ["rgb(158,249,228)", "rgb(194,255,238)"], "ice": ["rgb(217,237,255)", "rgb(230,243,255)"], "mono": ["rgb(237,237,237)", "rgb(253,253,253)"], "ember": ["rgb(255,176,104)", "rgb(255,205,128)"], "magma": ["rgb(255,133,176)", "rgb(255,172,189)"], "orchid": ["rgb(228,152,255)", "rgb(238,189,255)"], "ultraviolet": ["rgb(172,133,255)", "rgb(196,183,255)"], "toxic": ["rgb(160,238,104)", "rgb(189,246,138)"], "candy": ["rgb(255,168,220)", "rgb(255,202,238)"], "aurora": ["rgb(123,250,220)", "rgb(172,255,236)"], "solar": ["rgb(255,228,104)", "rgb(255,241,156)"], "neon": ["rgb(128,205,255)", "rgb(176,222,255)"], "blood": ["rgb(246,104,123)", "rgb(255,156,160)"], "lagoon": ["rgb(104,233,238)", "rgb(156,248,250)"], "blossom": ["rgb(255,156,189)", "rgb(255,189,211)"], "cobalt": ["rgb(143,199,248)", "rgb(205,233,255)"], "gunmetal": ["rgb(189,211,233)", "rgb(222,233,246)"], "abyss": ["rgb(90,230,249)", "rgb(148,253,255)"]}, "viz": {"auto": ["hsl(205, 4%, 34%)", "hsl(214, 6%, 76%)"], "ember": ["hsl(34, 8%, 36%)", "hsl(46, 10%, 78%)"], "moss": ["hsl(128, 7%, 34%)", "hsl(144, 9%, 74%)"], "ice": ["hsl(240, 6%, 32%)", "hsl(250, 6%, 73%)"], "dusk": ["hsl(299, 8%, 34%)", "hsl(312, 8%, 75%)"], "rose": ["hsl(12, 9%, 35%)", "hsl(25, 12%, 76%)"], "mono": ["hsl(210, 0%, 32%)", "hsl(210, 0%, 78%)"]}, "scenePal": {"cold-forge": "gunmetal", "ember-grid": "ember", "ultraviolet-room": "ultraviolet", "salt-flat": "solar", "toxic-bloom": "toxic", "cathedral": "mono", "lagoon-drift": "lagoon", "orchid-field": "orchid", "blood-iron": "blood", "blossom": "blossom", "machine-room": "neon", "magma-bolt": "magma", "candy-rig": "candy", "aurora-bolt": "aurora", "iron-weather": "ice", "solar-disc": "solar", "deep-lagoon": "ice", "violet-vault": "ultraviolet", "neon-plate": "neon", "ash-coin": "mono", "skin-tight": "verdigris", "toxic-membrane": "toxic", "blood-drum": "blood", "candy-skin": "candy", "faraday-storm": "ion", "black-water": "mono", "ember-pool": "ember", "aurora-ripple": "aurora", "minnaert-cloud": "abyss", "orchid-fizz": "orchid"}};
+  var RS_MK = {"off": "<circle cx=\"8\" cy=\"8\" r=\"5.2\" stroke-dasharray=\"2 2.2\"/>", "tide": "<path d=\"M1.4 9.6c1.7-2.4 3.4-2.4 5.1 0s3.4 2.4 5.1 0 2.3-1.2 3-.1\"/><path d=\"M1.4 12.8c1.7-2.4 3.4-2.4 5.1 0s3.4 2.4 5.1 0\"/>", "phasefield": "<path d=\"M8 13.2a5.2 5.2 0 1 1 0-10.4\"/><path d=\"M8 11.2a3.2 3.2 0 1 1 0-6.4\"/><circle cx=\"8\" cy=\"8\" r=\"1\"/>", "drift": "<circle cx=\"3.4\" cy=\"5.4\" r=\".95\"/><circle cx=\"7\" cy=\"9.4\" r=\".95\"/><circle cx=\"11\" cy=\"4.6\" r=\".95\"/><circle cx=\"12.6\" cy=\"11\" r=\".95\"/><circle cx=\"5.4\" cy=\"12.2\" r=\".95\"/>", "rainfall": "<path d=\"M4 2.5 2.6 8.5\"/><path d=\"M8 2.5 6.6 8.5\"/><path d=\"M12 2.5 10.6 8.5\"/><path d=\"M6 10 4.6 14\"/><path d=\"M10 10 8.6 14\"/>", "score": "<path d=\"M2 11.6h4v-3h4v-3h4\"/>", "aurora": "<path d=\"M2 10.6c2.4-3.8 4.6-3.8 6 0s3.6 3.8 6 0\"/><path d=\"M2 6.2c2.4-3.8 4.6-3.8 6 0\"/>", "pulse": "<path d=\"M4 12.2V7\"/><path d=\"M8 12.2V4\"/><path d=\"M12 12.2V9\"/>", "phasors": "<circle cx=\"8\" cy=\"8\" r=\"5.2\"/><path d=\"M8 8 12.2 6\"/><circle cx=\"12.2\" cy=\"6\" r=\"1\"/>", "traces": "<path d=\"M1.6 10.4 5 6.6l2.6 3 2.6-5 3.6 2.6\"/>", "orbits": "<circle cx=\"8\" cy=\"8\" r=\"3\"/><ellipse cx=\"8\" cy=\"8\" rx=\"6.4\" ry=\"3.4\" transform=\"rotate(-24 8 8)\"/>", "ripples": "<circle cx=\"8\" cy=\"8\" r=\"2\"/><circle cx=\"8\" cy=\"8\" r=\"4\"/><circle cx=\"8\" cy=\"8\" r=\"6\"/>", "harmonograph": "<path d=\"M8 2.4c2.7 0 2.7 4.1 0 5.6s-2.7 5.6 0 5.6\"/><path d=\"M4.3 8c0-2.7 4.1-2.7 5.6 0\"/>", "weave": "<path d=\"M2.4 2.4 13.6 13.6\"/><path d=\"M13.6 2.4 2.4 13.6\"/><path d=\"M8 2v12\"/><path d=\"M2 8h12\"/>", "meters": "<path d=\"M3 12.4V8.6\"/><path d=\"M6.6 12.4V5.4\"/><path d=\"M10.2 12.4V7\"/><path d=\"M13.4 12.4V9.6\"/>", "plate": "<rect x=\"2.6\" y=\"2.6\" width=\"10.8\" height=\"10.8\" rx=\"1.4\"/>", "bolted": "<rect x=\"2.6\" y=\"2.6\" width=\"10.8\" height=\"10.8\" rx=\"1.2\"/><circle cx=\"4.6\" cy=\"4.6\" r=\".6\"/><circle cx=\"11.4\" cy=\"4.6\" r=\".6\"/><circle cx=\"4.6\" cy=\"11.4\" r=\".6\"/><circle cx=\"11.4\" cy=\"11.4\" r=\".6\"/>", "disc": "<circle cx=\"8\" cy=\"8\" r=\"5.6\"/><circle cx=\"8\" cy=\"8\" r=\"1.4\"/>", "drum": "<ellipse cx=\"8\" cy=\"8\" rx=\"5.6\" ry=\"3\"/><path d=\"M2.4 8v2.6c0 1.7 2.5 3 5.6 3s5.6-1.3 5.6-3V8\"/>", "water": "<path d=\"M1.8 6.6c1.6-2 3.1-2 4.7 0s3.1 2 4.7 0\"/><path d=\"M1.8 10.2c1.6-2 3.1-2 4.7 0s3.1 2 4.7 0\"/>", "bubbles": "<circle cx=\"5.4\" cy=\"10.4\" r=\"2.6\"/><circle cx=\"10.4\" cy=\"6.2\" r=\"1.6\"/><circle cx=\"9.6\" cy=\"11.6\" r=\"1\"/>"};
+
+  function swatch(bg) {
+    return '<i class="rs-swb" aria-hidden="true" style="background-image:' + bg + '"></i>';
+  }
+  function mark(id) {
+    var g = RS_MK[id];
+    return g ? '<i class="rs-mk" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+      g + '</svg></i>' : '';
+  }
+  function decorateSwatches() {
+    var sc = $id("rsScenes");
+    if (sc) $$("button[data-scene]", sc).forEach(function (b) {
+      if (b.getAttribute("data-rs-sw")) return;
+      b.setAttribute("data-rs-sw", "1");
+      var cols = RS_SW.cym[RS_SW.scenePal[b.getAttribute("data-scene")]] || RS_SW.cym.mono;
+      b.insertAdjacentHTML("afterbegin", swatch("linear-gradient(135deg," + cols[0] + "," + cols[1] + ")"));
+    });
+    var med = $id("rsMedia");
+    if (med) $$("button[data-medium]", med).forEach(function (b) {
+      if (b.getAttribute("data-rs-sw")) return;
+      b.setAttribute("data-rs-sw", "1");
+      b.insertAdjacentHTML("afterbegin", mark(b.getAttribute("data-medium")));
+    });
+    [["vizBackdrops", 0], ["vizOverlays", 0], ["vizPalettes", 1]].forEach(function (pair) {
+      var box = $id(pair[0]); if (!box) return;
+      $$(".chip", box).forEach(function (c) {
+        if (c.getAttribute("data-rs-sw")) return;
+        c.setAttribute("data-rs-sw", "1");
+        var id = c.getAttribute("data-id") || "";
+        if (pair[1]) {
+          var cols = RS_SW.viz[id] || RS_SW.viz.mono || ["#8b8b8b", "#d0d0d0"];
+          c.insertAdjacentHTML("afterbegin", swatch("linear-gradient(135deg," + cols[0] + "," + cols[1] + ")"));
+        } else {
+          c.insertAdjacentHTML("afterbegin", mark(id));
+        }
+      });
+    });
+  }
 
   function sessionShape() {
     var st = pState(); if (!st) return null;
@@ -2574,6 +2652,7 @@
   function syncVis() {
     var map = $id("rsMap");
     if (!map) return;
+    decorateSwatches();
     var shape = sessionShape();
     var plan = planFor(shape);
     markScenes(plan);
@@ -2625,6 +2704,7 @@
       setFollow(this.checked);
     });
     $id("rsChamber").addEventListener("click", openChamber);
+    decorateSwatches();
   }
 
   function applyVis(o) {
@@ -4527,6 +4607,7 @@
           if (shuf) { shuf.classList.add("rs-scene-shuffle"); sceneHead.appendChild(shuf); }
         }
         $id("rsVizCard").appendChild(vc);
+        decorateSwatches();
         return;
       }
       if (++tries < 40) window.setTimeout(adoptViz, 250);
