@@ -746,7 +746,9 @@
       "<div class='cym-btns'><button id='cymReset'>Reset camera</button>" +
       "<button id='cymScatter'>Scatter sand</button>" +
       "<button id='cymPng'>Save PNG</button></div>" +
-      "<p class='cym-note'>Drag to orbit · wheel to zoom · double-click to reset · click the plate to disturb the sand.</p></div>";
+      "<p class='cym-note'>Drag to orbit · " +
+      ((window.matchMedia && matchMedia("(pointer: coarse)").matches) ? "pinch" : "wheel") +
+      " to zoom · double-click to reset · click the plate to disturb the sand.</p></div>";
 
     /* right rail */
     var right = el("aside", "cym-panel cym-right", root);
@@ -888,13 +890,39 @@
     cam.dist = clamp(cam.dist * (1 + Math.sign(ev.deltaY) * 0.08), 1.35, 6);
   }
 
+  /* Two-finger pinch is the touch equivalent of the wheel. Pointers are tracked by id, so a
+   * second finger arriving mid-drag starts a pinch instead of orbiting; the remaining finger
+   * re-seeds the drag on release so the view does not jump. */
+  var pointers = {};
+  var pinch = null;
+  function pointerCount() { return Object.keys(pointers).length; }
+  function pinchDistance() {
+    var ids = Object.keys(pointers);
+    if (ids.length < 2) return 0;
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    var dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy) || 0;
+  }
+
   /* drag-orbit + click-to-disturb */
   var drag = null;
   function onDown(ev) {
+    pointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+    if (pointerCount() >= 2) {
+      drag = null;
+      pinch = { d: pinchDistance(), dist: cam.dist };
+      return;
+    }
     drag = { x: ev.clientX, y: ev.clientY, yaw: cam.yaw, pitch: cam.pitch, moved: 0, t: performance.now() };
     canvas.setPointerCapture(ev.pointerId);
   }
   function onMove(ev) {
+    if (pointers[ev.pointerId]) { pointers[ev.pointerId].x = ev.clientX; pointers[ev.pointerId].y = ev.clientY; }
+    if (pinch && pointerCount() >= 2) {
+      var d = pinchDistance();
+      if (d > 4 && pinch.d > 4) cam.dist = clamp(pinch.dist * (pinch.d / d), 1.35, 6);
+      return;
+    }
     if (!drag) return;
     var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
     drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
@@ -902,10 +930,24 @@
     cam.pitch = clamp(drag.pitch + dy * 0.005, 0.12, 1.45);
   }
   function onUp(ev) {
+    delete pointers[ev.pointerId];
+    if (pinch) {
+      if (pointerCount() >= 2) return;
+      pinch = null;
+      var rest = Object.keys(pointers);
+      if (rest.length === 1) {
+        var p = pointers[rest[0]];
+        drag = { x: p.x, y: p.y, yaw: cam.yaw, pitch: cam.pitch, moved: 0, t: performance.now() };
+      } else {
+        drag = null;
+      }
+      return;
+    }
     if (!drag) return;
     var wasClick = drag.moved < 5 && performance.now() - drag.t < 400;
+    var cx = ev.clientX, cy = ev.clientY;
     drag = null;
-    if (wasClick) disturb(ev.clientX, ev.clientY);
+    if (wasClick) disturb(cx, cy);
   }
   function disturb(cx, cy) {
     var r = canvas.getBoundingClientRect();
