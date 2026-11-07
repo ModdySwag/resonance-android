@@ -241,10 +241,13 @@
   var CSS = [
     /* ---------------------------------------------------------------- tokens --- */
     "html[data-rs-theme]{",
-    "  --rs-bg:#0E1211; --rs-surface:#111615; --rs-s1:#171D1B; --rs-s2:#1D2422;",
-    "  --rs-s3:#242C2A; --rs-s4:#2C3533;",
-    "  --rs-ink:#E6ECEA; --rs-ink2:#C2CFCB; --rs-dim:#A7B5B1; --rs-out:#7E8C88;",
-    "  --rs-line:#33403D; --rs-line2:#48565A;",
+    /* surfaces are the tablet's warm brushed plate, not the old green-grey: the same
+       brown/silver family the full-screen plate and the brass keys are cut from, so a
+       phone screen and a tablet screen read as one material. The accent stays teal. */
+    "  --rs-bg:#0F0C0A; --rs-surface:#141110; --rs-s1:#1B1714; --rs-s2:#231E19;",
+    "  --rs-s3:#2C2621; --rs-s4:#372F28;",
+    "  --rs-ink:#EFE9E1; --rs-ink2:#D2C8BC; --rs-dim:#B3A89B; --rs-out:#8D8275;",
+    "  --rs-line:#3B332B; --rs-line2:#544A3F;",
     "  --rs-pri:#7FDCCB; --rs-on-pri:#003731; --rs-pri-c:#12463F; --rs-on-pri-c:#A9F2E4;",
     "  --rs-live:#E9B972; --rs-on-live:#3A2405;",
     "  --rs-good:#8FD6A8; --rs-bad:#FFB4AB;",
@@ -619,35 +622,45 @@
     "  background-image:linear-gradient(92deg,rgba(108,129,190,.20),rgba(108,129,190,0) 52%)}",
     "html[data-rs-ui=full] #plist .item[data-band=focus]{box-shadow:inset 3px 0 0 #D2A659;",
     "  background-image:linear-gradient(92deg,rgba(210,166,89,.18),rgba(210,166,89,0) 52%)}",
-    "html[data-rs-ui=full] #plist .item[data-band=relax]{box-shadow:inset 3px 0 0 #6FA678;",
-    "  background-image:linear-gradient(92deg,rgba(111,166,120,.18),rgba(111,166,120,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=relax]{box-shadow:inset 3px 0 0 #8E9E6B;",
+    "  background-image:linear-gradient(92deg,rgba(142,158,107,.18),rgba(142,158,107,0) 52%)}",
     "html[data-rs-ui=full] #plist .item[data-band=wake]{box-shadow:inset 3px 0 0 #D8B45C;",
     "  background-image:linear-gradient(92deg,rgba(216,180,92,.18),rgba(216,180,92,0) 52%)}",
-    "html[data-rs-ui=full] #plist .item[data-band=other]{box-shadow:inset 3px 0 0 #5FBFAE;",
-    "  background-image:linear-gradient(92deg,rgba(95,191,174,.12),rgba(95,191,174,0) 52%)}",
+    "html[data-rs-ui=full] #plist .item[data-band=other]{box-shadow:inset 3px 0 0 #B6AFA3;",
+    "  background-image:linear-gradient(92deg,rgba(182,175,163,.12),rgba(182,175,163,0) 52%)}",
     /* the same banding on the rail cards, a touch lighter because they are small */
     /* the session row's band, carried onto the app's cards: a 3 px edge and a wash that
        dies inside the first half of the box. Quieter than a row because a card is four
        times the area - the colour marks the section, it does not become the section. */
-    "html[data-rs-ui=full] .rs-screen .card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#B6AFA3)}",
+    /* every card in the dark Full interface is the same brushed plate as the bars and the
+       hero, under a scrim dark enough to keep body copy at full contrast; a banded card
+       stacks its band wash on top of that material */
+    "html[data-rs-ui=full][data-rs-theme=\"dark\"] .rs-screen section.card{background-image:",
+    "  linear-gradient(160deg,rgba(22,18,14,.90),rgba(14,11,9,.945)),url(ui/strip.webp);",
+    "  background-size:cover;background-position:center top;background-repeat:no-repeat;",
+    "  border-color:#3B332B}",
     "html[data-rs-ui=full] .rs-screen .card[data-band]{background-image:",
-    "  linear-gradient(100deg,var(--rs-band-wash2,rgba(95,191,174,.08)),rgba(0,0,0,0) 52%)}",
+    "  linear-gradient(100deg,var(--rs-band-wash2,rgba(182,175,163,.08)),rgba(0,0,0,0) 52%),",
+    "  linear-gradient(160deg,rgba(22,18,14,.90),rgba(14,11,9,.945)),url(ui/strip.webp);",
+    "  background-size:100% 100%,cover,cover;background-position:left top,center top,center top;",
+    "  background-repeat:no-repeat}",
     "html[data-rs-ui=full] .rs-screen .card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash2:rgba(108,129,190,.09)}",
     "html[data-rs-ui=full] .rs-screen .card[data-band=focus]{--rs-band:#D2A659;--rs-band-wash2:rgba(210,166,89,.09)}",
-    "html[data-rs-ui=full] .rs-screen .card[data-band=relax]{--rs-band:#6FA678;--rs-band-wash2:rgba(111,166,120,.09)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=relax]{--rs-band:#8E9E6B;--rs-band-wash2:rgba(142,158,107,.09)}",
     "html[data-rs-ui=full] .rs-screen .card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash2:rgba(216,180,92,.09)}",
-    "html[data-rs-ui=full] .rs-screen .card[data-band=other]{--rs-band:#5FBFAE;--rs-band-wash2:rgba(95,191,174,.08)}",
-    "html[data-rs-ui=full] .rs-card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE);",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=other]{--rs-band:#B6AFA3;--rs-band-wash2:rgba(182,175,163,.08)}",
+    "html[data-rs-ui=full] .rs-card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#B6AFA3);",
     "  background-image:linear-gradient(100deg,var(--rs-band-wash,transparent),transparent 70%)}",
     "html[data-rs-ui=full] .rs-card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash:rgba(108,129,190,.18)}",
     "html[data-rs-ui=full] .rs-card[data-band=focus]{--rs-band:#D2A659;--rs-band-wash:rgba(210,166,89,.16)}",
-    "html[data-rs-ui=full] .rs-card[data-band=relax]{--rs-band:#6FA678;--rs-band-wash:rgba(111,166,120,.16)}",
+    "html[data-rs-ui=full] .rs-card[data-band=relax]{--rs-band:#8E9E6B;--rs-band-wash:rgba(142,158,107,.16)}",
     "html[data-rs-ui=full] .rs-card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash:rgba(216,180,92,.16)}",
-    "html[data-rs-ui=full] .rs-card[data-band=other]{--rs-band:#5FBFAE;--rs-band-wash:rgba(95,191,174,.12)}",
-    "html[data-rs-ui=full] #quickpick button.chip[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE)}",
+    "html[data-rs-ui=full] .rs-card[data-band=other]{--rs-band:#B6AFA3;--rs-band-wash:rgba(182,175,163,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#B6AFA3)}",
     "html[data-rs-ui=full] #quickpick button.chip[data-band=sleep]{--rs-band:#6C81BE}",
     "html[data-rs-ui=full] #quickpick button.chip[data-band=focus]{--rs-band:#D2A659}",
-    "html[data-rs-ui=full] #quickpick button.chip[data-band=relax]{--rs-band:#6FA678}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=relax]{--rs-band:#8E9E6B}",
     "html[data-rs-ui=full] #quickpick button.chip[data-band=wake]{--rs-band:#D8B45C}",
     /* the same faceplate material on the chrome: player bar, app bar, nav, viewer controls */
     "html[data-rs-ui=full] #rsMini{background-image:url(ui/strip.webp);background-size:cover;",
