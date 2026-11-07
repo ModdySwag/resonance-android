@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `278aef9`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `54468ed`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **758,038 B, sha256 `f0e64fa9c417fb78328681a4c7b76058a21d748db67ba4d2688fad0335c9efdd`**.
+- Signed release APK: **758,130 B, sha256 `9451ce022391812d0a27f952e52404fd3c89bc52176d1aaf2f9ff309e876c955`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 758,038 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 758,130 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -66,6 +66,9 @@
     pointer parallax written to the wrapper. Motion is inside `prefers-reduced-motion: no-preference`.
     `openFocus` now waits up to ~1.2 s for `[data-viz-panel]` instead of toasting, and forces the
     visualiser on before the host is moved, so the first frame paints in place.
+16. **Home counter line**: `#meta` (voices · entries · length · loop) is centred under the schedule
+    picture and wears an amber LED window (smoked glass, inset shadow, glowing monospace) — pure shell CSS
+    on `html[data-rs-ui=full] .rs-hero #meta`, no page edit.
 15. **Focus preset audit (24 presets, session playing, pixel-sampled):** 11 animate, 11 draw but read as
     near-static (slow/calm presets: quiet-tide, drift-meter, aurora-orbits, ember-bed, ember-ripples,
     phosphor, harmonograph, orbits-only), and **2 draw nothing at all — `cold-drift` (drift backdrop) and
@@ -88,8 +91,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 758,038 B bytes (re-staged in place; 2.0.6 was never uploaded).
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 758038 / `f0e64fa9…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 758,130 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 758130 / `9451ce02…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
