@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `7e33a6d`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `1643326`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **721,967 B, sha256 `9442c86a7117d59f2aeadcb76c10ba0e06634db5bf3315ea7383e948d61648e4`**.
+- Signed release APK: **732,612 B, sha256 `ac592812e6ea7c84ac38d191145b6ad1ffc9e377d7a3d0c92c05edca9424cb0a`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 721,967 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 732,612 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -52,6 +52,13 @@
     drift, rainfall, score, aurora; pulse, phasors, traces, orbits, ripples, harmonograph, weave, meters);
     ambient palettes get a swatch from `vizpal.js`'s own stops. Decorative only — the label still names it,
     and `decorateSwatches()` is idempotent so a re-adopted card cannot double-mark.
+12. **The Home player's Loop is amplifier hardware**: a generated brass loop key (`ui/amp-loop.webp`,
+    gpt_image_2 1k/high, 3.5 credits, cut to 256 px) with a **red pilot lamp** that lights when looping is
+    on, plus an engraved LOOP label; the timer sits in an **amber LED window** (smoked glass, inset
+    shadow, glowing monospace digits). Full interface only — Minimal keeps the plain switch. The key
+    drives the page's own `#loop` input, so nothing about the engine changed. Contrast needed a fixed
+    warm grey for the engraved label (a theme token vanishes on the dark plate) and a solid
+    `background-color` on the LED panel for the probe.
 
 ## Gates on these bytes
 
@@ -62,8 +69,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 721,967 B bytes (re-staged in place; 2.0.6 was never uploaded).
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 721967 / `9442c86a…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 732,612 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 732612 / `ac592812…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
