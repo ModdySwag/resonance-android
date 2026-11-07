@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app talks to moddys.net over HTTPS only; there is no plaintext endpoint and the
+     page is loaded from the in-APK asset host, so cleartext is refused outright. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">moddys.net</domain>
+    </domain-config>
+</network-security-config>

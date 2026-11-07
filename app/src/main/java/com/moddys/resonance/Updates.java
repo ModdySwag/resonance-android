@@ -152,9 +152,30 @@ final class Updates {
      * Download the new APK and hand it to the system installer. One tap from the shell reaches
      * here; the system's own confirmation is the last step, and it is not skippable by design.
      */
+    /** Only the project's own host may serve an update: a tampered feed must not be able
+     *  to point the downloader at another origin. */
+    static boolean trustedUrl(String url) {
+        try {
+            java.net.URL u = new java.net.URL(url);
+            if (!"https".equalsIgnoreCase(u.getProtocol())) return false;
+            String h = u.getHost();
+            return "moddys.net".equalsIgnoreCase(h) || "www.moddys.net".equalsIgnoreCase(h);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     static void downloadAndInstall(final Activity act, String url, String version, final String sha256) {
         if (url == null || url.trim().isEmpty()) {
             toast(act, "The update feed has no download link yet.");
+            return;
+        }
+        if (!trustedUrl(url.trim())) {
+            toast(act, "The update link is not on moddys.net - not downloading.");
+            return;
+        }
+        if (sha256 == null || !sha256.trim().matches("[0-9a-fA-F]{64}")) {
+            toast(act, "The update feed has no valid checksum - not downloading.");
             return;
         }
         try {
@@ -179,11 +200,9 @@ final class Updates {
                 }
             };
             IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-            if (Build.VERSION.SDK_INT >= 33) {
-                act.getApplicationContext().registerReceiver(done, filter, Context.RECEIVER_EXPORTED);
-            } else {
-                act.getApplicationContext().registerReceiver(done, filter);
-            }
+            /* the completion broadcast comes from the system, so NOT_EXPORTED still sees it
+               (and no other app can forge one to swallow the install) */
+            act.getApplicationContext().registerReceiver(done, filter, Context.RECEIVER_NOT_EXPORTED);
             toast(act, "Downloading the update - Android will ask to install it when it lands.");
         } catch (Exception e) {
             Log.w(TAG, "update download: " + e);
@@ -197,8 +216,14 @@ final class Updates {
             if (apk == null) { toast(act, "The downloaded update could not be opened."); return; }
 
             /* The feed carries a checksum, so verify what arrived before offering it: a
-               truncated download must not reach the installer pretending to be an app. */
-            if (sha256 != null && !sha256.isEmpty() && !matches(act, apk, sha256)) {
+               truncated download must not reach the installer pretending to be an app.
+               A missing or malformed checksum is a refusal, not a skip - the old code
+               installed unverified bytes when the feed omitted the field. */
+            if (sha256 == null || !sha256.trim().matches("[0-9a-fA-F]{64}")) {
+                toast(act, "The update feed has no valid checksum - not installing.");
+                return;
+            }
+            if (!matches(act, apk, sha256)) {
                 toast(act, "The downloaded file did not match the published one - not installing.");
                 return;
             }

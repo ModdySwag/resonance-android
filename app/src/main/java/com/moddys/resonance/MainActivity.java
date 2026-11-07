@@ -186,6 +186,14 @@ public class MainActivity extends Activity {
         }
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
+        /* The page is a bundled asset and never needs the filesystem or a content provider;
+           say so explicitly instead of trusting the targetSdk default to stay safe. */
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
+        s.setAllowFileAccessFromFileURLs(false);
+        s.setAllowUniversalAccessFromFileURLs(false);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        s.setSafeBrowsingEnabled(true);
         /* no glow or rubber-band at the edges: a swipe past the top or bottom must not
            hand the gesture to the system or offer a pull-to-refresh the shell cannot honour */
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);

@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.moddys.resonance'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.moddys.resonance"
         minSdk 26            // 2017+; also lets us use Notification.Builder(context, channel)
-        targetSdk 35
+        targetSdk 36         // Play requires API 36 for new apps/updates since 2026-08-31
         versionCode 12
         versionName "2.0.5-beta"
     }
@@ -37,7 +37,11 @@ android {
             versionNameSuffix "-debug"
         }
         release {
-            minifyEnabled false
+            // R8: the payload is assets, so the size win is small; what it buys is a dex
+            // that cannot be read back class-by-class at the store
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (System.getenv("KEYSTORE_FILE")) {
                 signingConfig signingConfigs.release
             }
@@ -47,5 +51,13 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+        // the adaptive icon is the real launcher icon; the density PNGs are fallbacks for
+        // launchers that cannot read it, and their square shape is deliberate
+        disable 'IconLauncherShape'
     }
 }
