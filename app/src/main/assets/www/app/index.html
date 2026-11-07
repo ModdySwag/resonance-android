@@ -236,9 +236,10 @@
 <script src="app.js?v=81r"></script>
 <script src="studio.js?v=84a"></script>
 <!-- visualizer system: mounts its own panels + menu card, follows the audio -->
-<!-- WebGL2 field renderer: capability + shader only, inert until a caller invokes
-     window.__rsGL.init(canvas); wiring into the live visualiser is a later step. -->
-<script src="vizgl.js?v=1a"></script>
+<!-- WebGL2 cymatic field renderer: capability + shader. Inert until a caller invokes
+     window.__rsGL.init(canvas); the cymatic chamber (cym.js) is that caller when its
+     "GPU field (WebGL2)" switch is on, and always keeps its canvas path as the fallback. -->
+<script src="vizgl.js?v=1b"></script>
 <script src="vizmath.js?v=82v"></script>
 <script src="vizpal.js?v=82v"></script>
 <script src="vizmodes.js?v=82x"></script>
@@ -247,8 +248,8 @@
 <!-- the dedicated cymatic chamber: physics -> field -> renderer -> UI -->
 <script src="cymatics.js?v=1b"></script>
 <script src="cymfield.js?v=1d"></script>
-<script src="cymrender.js?v=1d"></script>
+<script src="cymrender.js?v=1e"></script>
 <script src="cympresets.js?v=1b"></script>
-<script src="cym.js?v=1d"></script>
+<script src="cym.js?v=1e"></script>
 </body>
 </html>

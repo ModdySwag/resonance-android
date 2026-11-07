@@ -30,7 +30,10 @@
     var d = {
       v: 1, medium: "plate", material: "steel", size: 300, thickness: 1, q: 90,
       palette: "champagne", sand: true, lines: true, bubbles: true, src: "session",
-      hz: 220, drive: 0.75, speed: 0.5, freeze: false, sandN: 9000, dust: true, dustN: 0, preset: "cold-forge"
+      hz: 220, drive: 0.75, speed: 0.5, freeze: false, sandN: 9000, dust: true, dustN: 0, preset: "cold-forge",
+      /* which renderer draws the cymatic FIELD layer: "canvas" (default, the chamber's
+       * own renderer) or "gl" (the WebGL2 field, opt-in) */
+      fieldRenderer: "canvas"
     };
     try {
       var raw = localStorage.getItem(KEY);
@@ -51,6 +54,9 @@
   var ana = { nearest: 0, detune: 0, peak: 0 };   /* persists between weight updates */
   var cursors = [], cursorVoices = null, beatPh = [];
   var dirtyField = true, resizeT = 0, lastMediumKey = "", lastWaterBuild = 0, lastResizeT = 0;
+  /* field-layer path: glCanvas is OUR canvas for the GPU field, glMode is the path that
+   * is actually live ("gl" | "canvas"), glFail carries the reason for a fallback. */
+  var glCanvas = null, glLive = false, glMode = "canvas", glFail = "", glBlocked = false, glTries = 0, glWant = "";
 
   /* ==================================================================== *
    * medium construction
@@ -170,12 +176,261 @@
   }
 
   /* ==================================================================== *
+   * field layer: GPU (opt-in) or the chamber's own Canvas 2D renderer
+   *
+   * The chamber composites two layers: the cymatic FIELD, and everything that rides
+   * on it (sand, bubbles, dust, the panels). By default both are drawn by the
+   * chamber's own renderer, exactly as before. When the field path is "gl" the field
+   * moves onto the GPU: vizgl.js draws it into glCanvas (ours, inserted UNDER the
+   * chamber canvas) and the 2D renderer is asked for draw({ field: false }), so it
+   * paints only the particles and the field is never drawn twice.
+   *
+   * The path is the persisted preference (resonance.cym.v2 → fieldRenderer, default
+   * "canvas"), and window.__rsGLRender = "gl" | "canvas" pins it for a probe/QA without
+   * touching storage. Every failure (no webgl2, init refused, draw refused, context
+   * lost) drops straight back to the canvas path on the next frame.
+   * ==================================================================== */
+
+  function prefFieldMode() {
+    var o = window.__rsGLRender;
+    if (o === "gl" || o === "canvas") return o;
+    return P.fieldRenderer === "gl" ? "gl" : "canvas";
+  }
+
+  function glReason() {
+    try {
+      if (glFail) return glFail;
+      var d = window.__rsGLDiag ? window.__rsGLDiag() : null;
+      return (d && d.reason) || "webgl2 unavailable";
+    } catch (e) { return glFail || "webgl2 unavailable"; }
+  }
+
+  function notePath(text) {
+    try { if (window.__rsGL && window.__rsGL.note) window.__rsGL.note(text || ""); } catch (e) {}
+  }
+
+  /* our canvas: same geometry as the chamber canvas (the .cym-canvas rule), one DOM
+   * position beneath it, never a pointer target */
+  function sizeGL() {
+    if (!glCanvas || !root) return;
+    var w = root.clientWidth, h = root.clientHeight;
+    if (!w || !h) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var gw = Math.max(1, Math.round(w * dpr)), gh = Math.max(1, Math.round(h * dpr));
+    if (glCanvas.width !== gw || glCanvas.height !== gh) { glCanvas.width = gw; glCanvas.height = gh; }
+    glCanvas.style.width = w + "px";
+    glCanvas.style.height = h + "px";
+  }
+
+  function detachGL() {
+    glLive = false;
+    if (glCanvas) {
+      try { glCanvas.removeEventListener("webglcontextlost", onGLLost, false); } catch (e) {}
+      try { if (glCanvas.parentNode) glCanvas.parentNode.removeChild(glCanvas); } catch (e2) {}
+      glCanvas = null;
+    }
+    try { if (window.__rsGL && window.__rsGL.dispose) window.__rsGL.dispose(); } catch (e3) {}
+  }
+
+  /* the context is gone: drop our canvas, re-arm the canvas path, keep the reason */
+  function onGLLost(ev) {
+    try { if (ev && ev.preventDefault) ev.preventDefault(); } catch (e) {}
+    glFail = "webgl context lost — fell back to the canvas field";
+    glBlocked = true;                 /* do not try to re-init the dead context */
+    glMode = "canvas";
+    detachGL();
+    notePath(glFail);
+    syncGLControl();
+  }
+
+  function ensureGL() {
+    if (glLive && glCanvas) return true;
+    if (glBlocked) return false;
+    if (glTries >= 4) { glFail = glFail || "webgl2 init kept failing"; return false; }
+    var G = window.__rsGL;
+    if (!G || typeof G.init !== "function") { glFail = "vizgl.js is not loaded"; return false; }
+    var ok = false;
+    try { ok = G.available(); } catch (e) { ok = false; }
+    if (!ok) { glTries++; glFail = "webgl2 unavailable: " + glReason(); return false; }
+
+    var gc = document.createElement("canvas");
+    gc.className = "cym-canvas";
+    gc.setAttribute("aria-hidden", "true");
+    gc.style.pointerEvents = "none";
+    gc.style.cursor = "default";
+    gc.style.background = "#0a0806";
+    if (canvas && canvas.parentNode === root) root.insertBefore(gc, canvas);
+    else root.appendChild(gc);
+    glCanvas = gc;
+    sizeGL();
+
+    var inited = false;
+    try { inited = G.init(gc, { preserveDrawingBuffer: true }); } catch (e2) { glFail = "vizgl init threw: " + ((e2 && e2.message) || e2); }
+    if (!inited) {
+      detachGL();
+      glTries++;
+      glFail = glFail || ("vizgl init failed: " + glReason());
+      return false;
+    }
+    try { gc.addEventListener("webglcontextlost", onGLLost, false); } catch (e3) {}
+    glLive = true;
+    glFail = "";
+    return true;
+  }
+
+  /* the chamber canvas is replaced whenever the renderer family changes: a canvas that
+   * has handed out a webgl2 context can never give a 2d one (and vice versa) */
+  function rebuildRenderer(use2d) {
+    var fresh = document.createElement("canvas");
+    fresh.className = "cym-canvas";
+    fresh.width = 2; fresh.height = 2;
+    if (canvas && canvas.parentNode) canvas.parentNode.replaceChild(fresh, canvas);
+    else if (root) root.appendChild(fresh);
+    canvas = fresh;
+    bindCanvas(canvas);
+    renderer = null;
+    try { renderer = use2d ? R.create2d(canvas) : R.create(canvas); } catch (e) { renderer = null; }
+    if (!renderer) { try { renderer = R.create2d(canvas); } catch (e2) { renderer = null; } }
+    if (renderer && renderer.el && renderer.el !== canvas) {
+      canvas = renderer.el;              /* createAuto may have swapped the element */
+      bindCanvas(canvas);
+    }
+    if (!renderer) { console.warn("[cym] no renderer available"); return; }
+    resize(true);
+  }
+
+  /* decide + apply the field path. manual=true re-arms a blocked path (user asked). */
+  function applyFieldMode(manual) {
+    if (manual) { glBlocked = false; glTries = 0; glFail = ""; }
+    var want = prefFieldMode();
+    glWant = want;
+    var onGL = false;
+    if (want === "gl") {
+      if (ensureGL()) {
+        if (!renderer || renderer.kind !== "canvas2d") rebuildRenderer(true);
+        onGL = !!renderer;
+        if (!onGL) glFail = "no 2D overlay renderer for the GL field";
+      } else {
+        glBlocked = true;
+      }
+    }
+    if (onGL) {
+      glMode = "gl";
+      notePath("gl field live");
+    } else {
+      if (glLive || glCanvas) detachGL();
+      if (glMode === "gl" || !renderer) rebuildRenderer(false);
+      glMode = "canvas";
+      notePath(want === "gl" ? (glFail || "webgl2 unavailable — canvas field") : "canvas field (mode=canvas)");
+    }
+    syncGLControl();
+  }
+
+  function syncGLControl() {
+    var c = $("cymGL");
+    if (!c) return;
+    c.checked = glMode === "gl";
+    var box = c.parentNode;
+    if (box) box.title = glMode === "gl" ? "the cymatic field is drawn on the GPU"
+      : (glFail || "the cymatic field is drawn by the chamber (canvas)");
+  }
+
+  /* ---- the field the GPU has to draw: same inputs the canvas field gets ---- */
+
+  /* One mode -> the (u,v) pair of standing half-waves the shader multiplies.
+   * The chamber's modes carry their own shape (m,n) / (m,s) / (kx,ky); the shader's
+   * sin(u*PI*x) has 2u half-waves across the plate, so plate orders halve. */
+  function modeUV(m, med) {
+    if (!m) return null;
+    var u, v;
+    if (med.kind === "water") {
+      /* planeGrid: cos(kx*u + ky*v) over u in [-1,1]; k is already in display units */
+      u = Math.abs(m.kx || 0) / Math.PI;
+      v = Math.abs(m.ky || 0) / Math.PI;
+      return [clamp(u || 1, 1, 8), clamp(v || 1, 1, 8)];
+    }
+    if (typeof m.m === "number" && typeof m.n === "number") {
+      if (med.kind === "drum") return [clamp(m.m / 2 + 0.5, 0.5, 8), clamp(m.n + 1, 0.5, 8)];
+      return [clamp(m.m / 2, 0.5, 8), clamp(m.n / 2, 0.5, 8)];
+    }
+    if (typeof m.m === "number" && typeof m.s === "number") {
+      return [clamp(m.m / 2 + 0.25, 0.5, 8), clamp(m.s + 1, 0.5, 8)];
+    }
+    /* Free square plate (Rayleigh-Ritz): no integer orders, but f ~ lambda^2 ~ (m^2+n^2),
+     * so the order follows the square root of the mode's frequency against the plate's
+     * fundamental — denser figures for higher modes, exactly like the real plate. */
+    var f = m.f, f0 = med.fMin;
+    if (typeof f === "number" && typeof f0 === "number" && f0 > 0) {
+      var k = 1.55 * Math.sqrt(Math.max(1, f / f0));
+      return [clamp(k * 0.62, 0.6, 6), clamp(k * 1.05, 0.6, 6)];
+    }
+    return null;
+  }
+
+  /* up to 8 (u,v) pairs, strongest weighted modes first, padded with the modes nearest
+   * the carrier so the figure always has structure */
+  function glModes() {
+    var med = medium, modes = (med && med.modes) || [], w = field && field.weights, i, j;
+    var scored = [];
+    for (i = 0; i < modes.length; i++) {
+      var wr = w ? (w.re[i] || 0) : 0, wi = w ? (w.im[i] || 0) : 0;
+      var mag = Math.sqrt(wr * wr + wi * wi);
+      if (mag < 0.02) continue;
+      var uv = modeUV(modes[i], med);
+      if (uv) scored.push({ uv: uv, m: mag });
+    }
+    scored.sort(function (a, b) { return b.m - a.m; });
+    if (scored.length < 4) {
+      var f0 = audioState.f0 || P.hz || 220, near = [];
+      for (i = 0; i < modes.length; i++) {
+        var uv2 = modeUV(modes[i], med);
+        if (!uv2) continue;
+        near.push({ uv: uv2, d: Math.abs((modes[i].f || f0) - f0) });
+      }
+      near.sort(function (a, b) { return a.d - b.d; });
+      for (i = 0; i < near.length && scored.length < 4; i++) {
+        var dup = false;
+        for (j = 0; j < scored.length; j++) {
+          if (scored[j].uv[0] === near[i].uv[0] && scored[j].uv[1] === near[i].uv[1]) { dup = true; break; }
+        }
+        if (!dup) scored.push(near[i]);
+      }
+    }
+    var out = [];
+    for (i = 0; i < scored.length && out.length < 8; i++) out.push(scored[i].uv);
+    return out.length ? out : null;
+  }
+
+  function drawGLField(st) {
+    if (!glLive || !glCanvas) return false;
+    var pal = (R.PALETTES && R.PALETTES[st.palette]) || (R.PALETTES && R.PALETTES.champagne) || null;
+    var drive = clamp(audioState.drive || 0, 0, 1);
+    var ok = false;
+    try {
+      ok = window.__rsGL.drawField({
+        time: st.phase,                                   /* the chamber's own phase clock */
+        amp: clamp(0.45 + 0.75 * drive, 0.15, 1.4),       /* drive, not the 2D height scale */
+        hue: 0.58,
+        gain: 1,
+        sharp: clamp(0.15 + 0.8 * ((P.q || 90) - 8) / 132, 0.05, 1),   /* Q -> ridge width */
+        modes: glModes(),                                 /* mode orders + carrier choice */
+        circle: st.circle ? 1 : 0,
+        palette: pal ? { base: pal.base, line: pal.line, bg: pal.bg } : null
+      });
+    } catch (e) { ok = false; }
+    return !!ok;
+  }
+
+
+  /* ==================================================================== *
    * per-frame
    * ==================================================================== */
 
   function frame(ts) {
     raf = requestAnimationFrame(frame);
     if (!opened) return;
+    /* the field path can change under us: a pref flip, __rsGLRender, a recovery */
+    if (prefFieldMode() !== glWant) applyFieldMode(false);
     var dt = lastT ? (ts - lastT) / 1000 : 1 / 60;
     lastT = ts;
     if (!(dt > 0)) dt = 1 / 60;
@@ -242,11 +497,33 @@
 
     var amp = P.medium === "water" ? 0.022 : (P.medium === "bubbles" ? 0.055 : 0.095);
     amp *= (0.75 + 0.35 * Math.max(0.15, a.drive));
+
+    /* the field layer: the GPU draws it into its own canvas (under this one), then the
+     * 2D renderer paints only the particles — the field itself is never drawn twice */
+    var circle = medium.geometry === "circle";
+    if (glMode === "gl" && glLive) {
+      if (!drawGLField({ phase: phase, circle: circle, palette: P.palette })) {
+        var why = "drawField refused";
+        try {
+          var dg = window.__rsGLDiag ? window.__rsGLDiag() : null;
+          if (dg && (dg.status === "lost" || dg.lost || /0x924/.test(dg.lastError || ""))) why = "webgl context lost";
+          else if (dg && dg.lastError) why = "drawField refused: " + dg.lastError;
+        } catch (e0) {}
+        glFail = why + " — fell back to the canvas field";
+        glBlocked = true;
+        glMode = "canvas";
+        detachGL();
+        notePath(glFail);
+        syncGLControl();
+      }
+    }
+
     renderer.draw({
       yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist, amp: amp, palette: P.palette,
       showSand: P.sand && P.medium !== "water", showLines: P.lines,
       lineW: P.medium === "water" ? 0.010 : 0.016, glow: P.medium === "water" ? 0.35 : 0.55,
-      water: P.medium === "water", circle: medium.geometry === "circle",
+      water: P.medium === "water", circle: circle,
+      field: !(glMode === "gl" && glLive),
       showBubbles: P.bubbles, sand: P.sand ? sand : null, bubbles: P.medium === "bubbles" ? bubbles : null,
       dust: P.dust ? dust : null, showDust: P.dust,
       dustSize: P.medium === "water" ? 0.55 : (P.medium === "bubbles" ? 1.55 : 1.0),
@@ -313,7 +590,7 @@
       $("cymBars").innerHTML = rows || "<p class='hint'>no mode excited</p>";
     }
     if ($("cymStats")) {
-      $("cymStats").textContent = Math.round(fps) + " fps · " + renderer.kind + " · " + field.active.length + " modes";
+      $("cymStats").textContent = Math.round(fps) + " fps · " + (glMode === "gl" ? "gl field" : renderer.kind) + " · " + field.active.length + " modes";
     }
     if ($("cymHzV")) $("cymHzV").textContent = Math.round(P.hz) + " Hz";
     if ($("cymDriveV")) $("cymDriveV").textContent = Math.round(P.drive * 100) + "%";
@@ -460,6 +737,7 @@
       "<div class='cym-chips' id='cymPal'></div>" +
       "<label class='cym-check'><input id='cymSand' type='checkbox'> Sand grains</label>" +
       "<label class='cym-check'><input id='cymLines' type='checkbox'> Nodal glow</label>" +
+      "<label class='cym-check'><input id='cymGL' type='checkbox'> GPU field (WebGL2)</label>" +
       "<label class='cym-check'><input id='cymBub' type='checkbox'> Bubbles</label>" +
       "<label class='cym-check'><input id='cymDust' type='checkbox'> Airborne dust</label>" +
       "<label class='cym-check'><input id='cymFreeze' type='checkbox'> Freeze motion</label>" +
@@ -486,6 +764,10 @@
 
     wire();
     renderer = R.create(canvas);
+    if (renderer && renderer.el && renderer.el !== canvas) {
+      canvas = renderer.el;            /* createAuto swapped in a fresh element */
+      bindCanvas(canvas);
+    }
     sand = new F.Sand(P.sandN || 6000);
     /* dust is atmosphere, not geometry: a phone gets a third of a desktop's
      * grains (fill rate is the only real cost - additive sprites at depth) */
@@ -555,15 +837,20 @@
     $("cymNext").onclick = function () { stepScene(1); };
     $("cymShuffle").onclick = function () { var s = CP.random(P.preset); if (s) applyScene(s.id); };
 
-    canvas.addEventListener("pointerdown", onDown);
-    canvas.addEventListener("pointermove", onMove);
-    canvas.addEventListener("pointerup", onUp);
-    canvas.addEventListener("pointercancel", onUp);
-    canvas.addEventListener("dblclick", resetCam);
-    canvas.addEventListener("wheel", function (ev) {
-      ev.preventDefault();
-      cam.dist = clamp(cam.dist * (1 + Math.sign(ev.deltaY) * 0.08), 1.35, 6);
-    }, { passive: false });
+    bindCanvas(canvas);
+    var gcb = $("cymGL");
+    if (gcb) gcb.onchange = function () {
+      var on = !!this.checked;
+      P.fieldRenderer = on ? "gl" : "canvas";
+      save();
+      applyFieldMode(true);
+      if (on && glMode !== "gl") {
+        this.checked = false;
+        P.fieldRenderer = "canvas";
+        save();
+        toast(glFail || "WebGL2 unavailable — canvas field");
+      }
+    };
     window.addEventListener("resize", function () {
       clearTimeout(resizeT); resizeT = setTimeout(function () { resize(false); }, 120);
     });
@@ -581,6 +868,24 @@
       else if (ev.key === "p" || ev.key === "P") { stepScene(-1); }
       else if (ev.key === "R") { var rs = CP.random(P.preset); if (rs) applyScene(rs.id); }   /* Shift+R: random scene */
     });
+  }
+
+  /* drag-orbit + click-to-disturb: bound to whichever canvas is the live overlay. The
+   * chamber canvas is replaced when the renderer family changes, so this is idempotent
+   * per element and called again after every rebuild. */
+  function bindCanvas(c) {
+    if (!c || c.__cymBound) return;
+    c.__cymBound = true;
+    c.addEventListener("pointerdown", onDown);
+    c.addEventListener("pointermove", onMove);
+    c.addEventListener("pointerup", onUp);
+    c.addEventListener("pointercancel", onUp);
+    c.addEventListener("dblclick", resetCam);
+    c.addEventListener("wheel", onWheel, { passive: false });
+  }
+  function onWheel(ev) {
+    ev.preventDefault();
+    cam.dist = clamp(cam.dist * (1 + Math.sign(ev.deltaY) * 0.08), 1.35, 6);
   }
 
   /* drag-orbit + click-to-disturb */
@@ -703,6 +1008,7 @@
     }
     var scale = $("cymScale");
     if (scale) scale.textContent = P.medium === "water" ? "Pattern scale is compressed to stay visible; the true wavelength is in Physics." : "";
+    syncGLControl();
   }
 
   /* ==================================================================== *
@@ -715,6 +1021,7 @@
     if (!w || !h) return;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     renderer.resize(w, h, dpr);
+    sizeGL();
   }
 
   function open() {
@@ -724,6 +1031,7 @@
     opened = true;
     lastT = 0;
     resize(true);
+    applyFieldMode(false);
     if (!raf) raf = requestAnimationFrame(frame);
     if (P.src === "session") {
       var api = window.__gnauralAPI;
@@ -756,8 +1064,22 @@
 
   function savePng() {
     try {
+      var src = canvas;
+      /* GL field lives on a second canvas: composite so the PNG is what is on screen */
+      if (glMode === "gl" && glLive && glCanvas) {
+        var out = document.createElement("canvas");
+        out.width = canvas.width; out.height = canvas.height;
+        var cx = out.getContext("2d");
+        if (cx) {
+          cx.fillStyle = "#0a0806";
+          cx.fillRect(0, 0, out.width, out.height);
+          try { cx.drawImage(glCanvas, 0, 0, out.width, out.height); } catch (e0) {}
+          try { cx.drawImage(canvas, 0, 0); } catch (e1) {}
+          src = out;
+        }
+      }
       var a = document.createElement("a");
-      a.href = canvas.toDataURL("image/png");
+      a.href = src.toDataURL("image/png");
       a.download = "cymatic-" + P.medium + "-" + Math.round(audioState.f0) + "hz.png";
       document.body.appendChild(a); a.click();
       setTimeout(function () { a.remove(); }, 3000);
@@ -806,6 +1128,8 @@
       open: opened, medium: P.medium, material: P.material, size: P.size, thickness: P.thickness,
       q: P.q, palette: P.palette, src: P.src, hz: P.hz, sand: !!P.sand, lines: !!P.lines,
       renderer: renderer ? renderer.kind : null, fps: Math.round(fps),
+      fieldMode: glMode, glLive: !!glLive, glError: glFail || "",
+      fieldRendererPref: P.fieldRenderer, glRenderOverride: window.__rsGLRender || null,
       field: field ? { N: field.N, active: field.active.length, scale: field.scale } : null,
       modeCount: medium ? medium.modes.length : 0,
       fRange: medium ? [medium.fMin, medium.fMax] : null,
@@ -829,6 +1153,15 @@
       syncControls(); dirtyField = true;
     },
     getPrefs: function () { return JSON.parse(JSON.stringify(P)); },
+    /* field-layer path: "gl" | "canvas" (persisted in resonance.cym.v2 → fieldRenderer) */
+    fieldMode: function () { return glMode; },
+    setFieldRenderer: function (m) {
+      P.fieldRenderer = (m === "gl" ? "gl" : "canvas");
+      save();
+      applyFieldMode(true);
+      return glMode;
+    },
+    glModes: function () { return glModes(); },
     dustState: function () { return dust; },
     scene: function (id) { return applyScene(id, true); },
     scenes: function () { return CP.LIST.map(function (s) { return s.id; }); }

@@ -399,7 +399,7 @@ void main() {
     }
 
     return {
-      kind: "webgl2", gl: gl, N: N,
+      kind: "webgl2", gl: gl, N: N, el: canvas,
       resize: function (w, h, dpr) {
         canvas.width = Math.max(1, Math.round(w * dpr));
         canvas.height = Math.max(1, Math.round(h * dpr));
@@ -550,12 +550,19 @@ void main() {
 
   /* ---------------------------------------------------------------- 2d fallback */
 
+  /* create2d(canvas) draws the whole chamber on the CPU. The GL field path reuses it
+   * as the particle overlay by passing draw({ field: false }): the background fill and
+   * the field image are then skipped and the canvas is cleared to transparent, so the
+   * GPU field underneath shows through and nothing is drawn twice. */
+
   function create2d(canvas) {
     var ctx = canvas.getContext("2d");
     if (!ctx) return null;
     var off = document.createElement("canvas"), img = null, lastN = 0;
     return {
       kind: "canvas2d",
+      el: canvas,
+      hasField: true,
       resize: function (w, h, dpr) {
         canvas.width = Math.max(1, Math.round(w * dpr));
         canvas.height = Math.max(1, Math.round(h * dpr));
@@ -566,37 +573,45 @@ void main() {
       draw: function (st) {
         var W = canvas.width, H = canvas.height, n = this._n || 128;
         var pal = PALETTES[st.palette] || PALETTES.champagne;
-        if (!img || lastN !== n) { off.width = n; off.height = n; img = off.getContext("2d").createImageData(n, n); lastN = n; }
-        var d = img.data, h = this._h, e = this._e;
-        var c = Math.cos(st.phase || 0), s = Math.sin(st.phase || 0);
-        for (var i = 0; i < n; i++) {
-          for (var j = 0; j < n; j++) {
-            var k = i * n + j;
-            var hv = ((st.re ? (st.re[k] * c - st.im[k] * s) : h[k])) * st.amp;
-            var i1 = Math.min(n - 1, i + 1), j1 = Math.min(n - 1, j + 1);
-            var dx = h[i1 * n + j] * st.amp - hv, dy = h[i * n + j1] * st.amp - hv;
-            var nz = 1 / Math.sqrt(dx * dx + dy * dy + 0.02);
-            var lit = 0.10 + 0.40 * Math.max(0, Math.min(1, (-dx * 0.5 - dy * 0.4 + 0.8) * nz * 0.20));
-            var env = e ? e[k] : 0;
-            var line = Math.max(0, 1 - env / 0.06);
-            var o = k * 4;
-            d[o] = 255 * Math.min(1, pal.base[0] * lit * 0.9 + pal.line[0] * line * 0.65);
-            d[o + 1] = 255 * Math.min(1, pal.base[1] * lit * 0.9 + pal.line[1] * line * 0.65);
-            d[o + 2] = 255 * Math.min(1, pal.base[2] * lit * 0.9 + pal.line[2] * line * 0.65);
-            d[o + 3] = 255;
-          }
-        }
-        off.getContext("2d").putImageData(img, 0, 0);
-        ctx.fillStyle = "rgb(" + pal.bg.map(function (x) { return Math.round(x * 255); }).join(",") + ")";
-        ctx.fillRect(0, 0, W, H);
         var side = Math.min(W, H) * 0.92, ox = (W - side) / 2, oy = (H - side) / 2;
-        ctx.imageSmoothingEnabled = true;
-        if (st.medium === "circle") {
-          ctx.save(); ctx.beginPath(); ctx.arc(ox + side / 2, oy + side / 2, side / 2, 0, 6.2832); ctx.clip();
-        }
-        ctx.drawImage(off, ox, oy, side, side);
-        if (st.medium === "circle") ctx.restore();
         var map = function (u, v) { return [ox + (u * 0.5 + 0.5) * side, oy + (v * 0.5 + 0.5) * side]; };
+        /* st.field === false: the field layer is being drawn OUTSIDE this canvas (the
+         * GPU path). This canvas is then only the particle overlay, so it must be
+         * cleared to transparent — no background fill, no field image. */
+        var paintField = st.field !== false;
+        if (!paintField) {
+          ctx.clearRect(0, 0, W, H);
+        } else {
+          if (!img || lastN !== n) { off.width = n; off.height = n; img = off.getContext("2d").createImageData(n, n); lastN = n; }
+          var d = img.data, h = this._h, e = this._e;
+          var c = Math.cos(st.phase || 0), s = Math.sin(st.phase || 0);
+          for (var i = 0; i < n; i++) {
+            for (var j = 0; j < n; j++) {
+              var k = i * n + j;
+              var hv = ((st.re ? (st.re[k] * c - st.im[k] * s) : h[k])) * st.amp;
+              var i1 = Math.min(n - 1, i + 1), j1 = Math.min(n - 1, j + 1);
+              var dx = h[i1 * n + j] * st.amp - hv, dy = h[i * n + j1] * st.amp - hv;
+              var nz = 1 / Math.sqrt(dx * dx + dy * dy + 0.02);
+              var lit = 0.10 + 0.40 * Math.max(0, Math.min(1, (-dx * 0.5 - dy * 0.4 + 0.8) * nz * 0.20));
+              var env = e ? e[k] : 0;
+              var line = Math.max(0, 1 - env / 0.06);
+              var o = k * 4;
+              d[o] = 255 * Math.min(1, pal.base[0] * lit * 0.9 + pal.line[0] * line * 0.65);
+              d[o + 1] = 255 * Math.min(1, pal.base[1] * lit * 0.9 + pal.line[1] * line * 0.65);
+              d[o + 2] = 255 * Math.min(1, pal.base[2] * lit * 0.9 + pal.line[2] * line * 0.65);
+              d[o + 3] = 255;
+            }
+          }
+          off.getContext("2d").putImageData(img, 0, 0);
+          ctx.fillStyle = "rgb(" + pal.bg.map(function (x) { return Math.round(x * 255); }).join(",") + ")";
+          ctx.fillRect(0, 0, W, H);
+          ctx.imageSmoothingEnabled = true;
+          if (st.medium === "circle") {
+            ctx.save(); ctx.beginPath(); ctx.arc(ox + side / 2, oy + side / 2, side / 2, 0, 6.2832); ctx.clip();
+          }
+          ctx.drawImage(off, ox, oy, side, side);
+          if (st.medium === "circle") ctx.restore();
+        }
         if (st.bubbles && st.showBubbles !== false) {
           var b = st.bubbles;
           for (var q = 0; q < b.n; q++) {

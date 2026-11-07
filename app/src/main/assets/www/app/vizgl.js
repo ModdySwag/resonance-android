@@ -3,10 +3,12 @@
  *
  * WHAT THIS IS
  * ------------
- * A self-contained WebGL2 backend for the visualiser, landed BEHIND the existing
- * Canvas2D renderers. It is deliberately not wired into any visualiser yet: loading
- * this file does nothing at all. No canvas is created or attached, no frame loop is
- * started, no global state outside window.__rsGL / window.__rsGLDiag is touched.
+ * A self-contained WebGL2 backend for the visualiser. It is INERT until a caller
+ * invokes window.__rsGL.init(canvas): loading this file creates no canvas, starts no
+ * frame loop, and touches no global state outside window.__rsGL / window.__rsGLDiag.
+ * The cymatic chamber (cym.js) is one such caller: it owns a canvas for the field
+ * layer and asks for one drawField() per frame, falling back to its own Canvas 2D
+ * renderer whenever init or a draw fails or the context is lost.
  *
  * The renderer draws ONE full-screen triangle with ONE fragment shader that evaluates
  * an analytic Chladni/cymatic field:
@@ -19,8 +21,11 @@
  *
  * API (all calls are total: they return false instead of throwing)
  * ---------------------------------------------------------------
- *   window.__rsGL.init(canvas)        -> bool   binds a webgl2 context to `canvas`,
+ *   window.__rsGL.init(canvas, opts)  -> bool   binds a webgl2 context to `canvas`,
  *                                                 compiles the program, returns success.
+ *                                                 opts.preserveDrawingBuffer (default false)
+ *                                                 keeps the buffer so a caller can
+ *                                                 toDataURL()/drawImage() the frame.
  *   window.__rsGL.available()         -> bool   real capability probe: getContext('webgl2')
  *                                                 + compile + test draw + readPixels. Uses an
  *                                                 OffscreenCanvas (or a detached canvas when
@@ -28,21 +33,31 @@
  *                                                 anything to the document. A live renderer
  *                                                 short-circuits to true.
  *   window.__rsGL.drawField(params)   -> bool   draws one frame. params (all optional):
- *                                                 { time, amp, hue, gain, sharp, modes }
+ *                                                 { time, amp, hue, gain, sharp, modes,
+ *                                                   palette: {base,line,bg}, circle }
  *                                                 time   seconds, caller-owned clock (default 0)
  *                                                 amp    0..2 field amplitude (default 1)
  *                                                 hue    palette rotation (default 0.58)
  *                                                 gain   0..2 exposure (default 1)
  *                                                 sharp  0..1 nodal-ridge strength (default .55)
  *                                                 modes  [[u,v], ...] up to 8 pairs
+ *                                                 palette  three [r,g,b] 0..1 triples that
+ *                                                 replace the analytic palette with the
+ *                                                 caller's own (plate / nodal line / background)
+ *                                                 circle   1 masks the field to a disc (a
+ *                                                 clamped/circular medium), 0 fills the quad
  *   window.__rsGL.dispose()           -> void   frees program/VAO and releases the context.
  *                                                 Re-init needs a fresh canvas.
+ *   window.__rsGL.note(reason)        -> string the CALLER's reason for not being on the
+ *                                                 GPU path (shown by diag().reason while
+ *                                                 nothing is live). Cleared by note("").
  *
  *   window.__rsGLDiag() -> {
  *     api, available, webgl2,        // webgl2 = did getContext('webgl2') succeed
- *     renderer, vendor,              // gl.RENDERER / gl.VENDOR
+ *     renderer, path,                // WHICH PATH IS LIVE: "gl" | "canvas"
+ *     glRenderer, vendor,            // gl.RENDERER / gl.VENDOR (the driver's own name)
  *     unmaskedRenderer,              // WEBGL_debug_renderer_info when the driver exposes it
- *     reason,                        // why available is false ("" when true)
+ *     reason,                        // why the canvas path is live ("" when gl is live)
  *     status,                        // "idle" | "active" | "unavailable" | "lost"
  *     active, lost, draws, lastError,
  *     canvas: {width,height} | null,
@@ -82,6 +97,11 @@
     [1, 6], [6, 1], [7, 3], [3, 7]
   ];
 
+  // The analytic palette's own anchors, used when a caller passes no palette.
+  var DEFAULT_BASE = new Float32Array([0.62, 0.47, 0.24]);
+  var DEFAULT_LINE = new Float32Array([1.0, 0.84, 0.52]);
+  var DEFAULT_BG = new Float32Array([0.02, 0.018, 0.016]);
+
   var VERTEX_SRC = [
     "#version 300 es",
     "void main() {",
@@ -101,6 +121,11 @@
     "uniform float uGain;",
     "uniform float uSharp;",
     "uniform vec2  uModes[8];",
+    "uniform vec3  uBase;",
+    "uniform vec3  uLine;",
+    "uniform vec3  uBg;",
+    "uniform float uUsePal;",
+    "uniform float uCircle;",
     "",
     "out vec4 fragColor;",
     "",
@@ -142,14 +167,26 @@
     "  float ridge = 1.0 - smoothstep(0.0, 0.085 + 0.075 * (1.0 - uSharp), abs(f));",
     "  ridge = ridge * ridge * ridge;",
     "",
-    "  vec3 base = palette(uHue + 0.32 * f);",
-    "  vec3 col  = base * shade;",
-    "  col += vec3(1.0, 0.93, 0.78) * ridge * (0.20 + 0.55 * uSharp);",
+    "  vec3 col;",
+    "  if (uUsePal > 0.5) {",
+    "    // The caller's own palette (the chamber's): plate fill from base, nodal",
+    "    // ridges from line, background from bg. Same figure, the chamber's colours.",
+    "    col  = uBase * (0.20 + 0.80 * shade);",
+    "    col += uLine * ridge * (0.25 + 0.55 * uSharp);",
+    "  } else {",
+    "    vec3 base = palette(uHue + 0.32 * f);",
+    "    col  = base * shade;",
+    "    col += vec3(1.0, 0.93, 0.78) * ridge * (0.20 + 0.55 * uSharp);",
+    "  }",
     "  col *= uGain;",
     "",
     "  vec2 q = gl_FragCoord.xy / res;",
     "  float vig = smoothstep(1.15, 0.20, length(q - 0.5) * 1.55);",
-    "  col *= mix(0.55, 1.0, vig);",
+    "  if (uUsePal > 0.5) col = mix(uBg, col, mix(0.70, 1.0, vig));",
+    "  else col *= mix(0.55, 1.0, vig);",
+    "",
+    "  // circular media (disc / drum / bubbles): the plate is a disc on its own ground",
+    "  if (uCircle > 0.5 && length(p) > 0.92) col = uBg;",
     "",
     "  fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);",
     "}"
@@ -163,6 +200,14 @@
 
   function num(v, d) {
     return (typeof v === "number" && isFinite(v)) ? v : d;
+  }
+
+  // [r,g,b] in 0..1 from anything array-like; null when it is not usable
+  function tri(v) {
+    if (!v || typeof v.length !== "number" || v.length < 3) return null;
+    var r = num(v[0], NaN), g = num(v[1], NaN), b = num(v[2], NaN);
+    if (!isFinite(r) || !isFinite(g) || !isFinite(b)) return null;
+    return [clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1)];
   }
 
   function reasonOf(e) {
@@ -237,9 +282,15 @@
       hue: gl.getUniformLocation(program, "uHue"),
       gain: gl.getUniformLocation(program, "uGain"),
       sharp: gl.getUniformLocation(program, "uSharp"),
-      modes: gl.getUniformLocation(program, "uModes[0]")
+      modes: gl.getUniformLocation(program, "uModes[0]"),
+      base: gl.getUniformLocation(program, "uBase"),
+      line: gl.getUniformLocation(program, "uLine"),
+      bg: gl.getUniformLocation(program, "uBg"),
+      usePal: gl.getUniformLocation(program, "uUsePal"),
+      circle: gl.getUniformLocation(program, "uCircle")
     };
-    if (!u.res || !u.time || !u.amp || !u.hue || !u.gain || !u.sharp || !u.modes) {
+    if (!u.res || !u.time || !u.amp || !u.hue || !u.gain || !u.sharp || !u.modes ||
+        !u.base || !u.line || !u.bg || !u.usePal || !u.circle) {
       gl.deleteProgram(program);
       throw new Error("compiled program is missing an expected uniform");
     }
@@ -284,6 +335,17 @@
     gl.uniform1f(state.u.hue, num(p.hue, 0.58));
     gl.uniform1f(state.u.gain, clamp(num(p.gain, 1), 0, 2));
     gl.uniform1f(state.u.sharp, clamp(num(p.sharp, 0.55), 0, 1));
+
+    // Optional caller palette (the chamber's own): three [r,g,b] triples in 0..1.
+    // Anything malformed falls back to the analytic palette instead of throwing.
+    var pal = p.palette;
+    var pb = tri(pal && pal.base), pl = tri(pal && pal.line), pg = tri(pal && pal.bg);
+    var usePal = (pb && pl && pg) ? 1 : 0;
+    gl.uniform3fv(state.u.base, pb || DEFAULT_BASE);
+    gl.uniform3fv(state.u.line, pl || DEFAULT_LINE);
+    gl.uniform3fv(state.u.bg, pg || DEFAULT_BG);
+    gl.uniform1f(state.u.usePal, usePal);
+    gl.uniform1f(state.u.circle, num(p.circle, 0) > 0.5 ? 1 : 0);
 
     var modes = Array.isArray(p.modes) ? p.modes : null;
     for (var i = 0; i < MODE_COUNT; i++) {
@@ -399,6 +461,7 @@
   var lastError = "";
   var drawCount = 0;
   var wasLost = false;
+  var pathNote = "";        // the CALLER's reason for not being on the GPU path
 
   function available() {
     if (live) return true;
@@ -407,18 +470,31 @@
     return lastProbe.ok;
   }
 
+  // A caller that owns the decision (the chamber) records why the canvas path is live.
+  function note(reason) {
+    pathNote = reason ? String(reason).slice(0, 400) : "";
+    return pathNote;
+  }
+
   /* --------------------------------------------------------------------- api -- */
 
-  function init(canvas) {
+  function init(canvas, opts) {
     if (!canvas || typeof canvas.getContext !== "function") {
       lastError = "init(canvas) requires a canvas-like object";
       return false;
     }
     if (live) dispose();
 
+    var attrs = GL_ATTRS;
+    if (opts && opts.preserveDrawingBuffer) {
+      attrs = {};
+      for (var ak in GL_ATTRS) attrs[ak] = GL_ATTRS[ak];
+      attrs.preserveDrawingBuffer = true;
+    }
+
     var gl = null;
     try {
-      gl = canvas.getContext("webgl2", GL_ATTRS);
+      gl = canvas.getContext("webgl2", attrs);
       if (!gl) {
         lastError = "getContext('webgl2') returned null (WebGL2 unavailable, or this canvas already owns a 2D context)";
         return false;
@@ -535,14 +611,25 @@
     else if (ok) status = "idle";
     else status = "unavailable";
 
+    // renderer/path answer "which path is painting RIGHT NOW", which is what a probe
+    // needs to know; the driver's own name is glRenderer.
+    var path = live ? "gl" : "canvas";
+    var reason;
+    if (live) reason = "gl field live";
+    else if (pathNote) reason = pathNote;
+    else if (ok) reason = "gl available but idle (canvas field live)";
+    else reason = info.reason || lastError || "webgl2 unavailable";
+
     return {
       api: API_VERSION,
       available: ok,
       webgl2: !!info.webgl2,
-      renderer: info.renderer || "",
+      renderer: path,
+      path: path,
+      glRenderer: info.renderer || "",
       vendor: info.vendor || "",
       unmaskedRenderer: info.unmaskedRenderer || "",
-      reason: ok ? "" : (info.reason || lastError || "unavailable"),
+      reason: reason,
       status: status,
       active: !!live,
       lost: !!wasLost,
@@ -558,6 +645,7 @@
     available: available,
     drawField: drawField,
     dispose: dispose,
+    note: note,
     diag: diag
   };
   window.__rsGLDiag = diag;
