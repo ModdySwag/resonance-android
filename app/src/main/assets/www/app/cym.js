@@ -1174,6 +1174,7 @@
       fieldRendererPref: P.fieldRenderer, glRenderOverride: window.__rsGLRender || null,
       field: field ? { N: field.N, active: field.active.length, scale: field.scale } : null,
       modeCount: medium ? medium.modes.length : 0,
+      cam: { yaw: cam.yaw, pitch: cam.pitch, dist: cam.dist },
       fRange: medium ? [medium.fMin, medium.fMax] : null,
       nearest: ana.nearest, detune: ana.detune, drive: audioState.drive,
       nearestLabel: medium ? (medium.modes[ana.nearest] || {}).label : null,
