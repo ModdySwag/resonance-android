@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `1643326`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `c4a2045`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **732,612 B, sha256 `ac592812e6ea7c84ac38d191145b6ad1ffc9e377d7a3d0c92c05edca9424cb0a`**.
+- Signed release APK: **732,636 B, sha256 `21d83dcda31378e1f4e2b56a8961a3e285ee1db1f5c4288fdfd288c94f39b4e0`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 732,612 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 732,636 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -59,6 +59,12 @@
     drives the page's own `#loop` input, so nothing about the engine changed. Contrast needed a fixed
     warm grey for the engraved label (a theme token vanishes on the dark plate) and a solid
     `background-color` on the LED panel for the probe.
+13. **Medium chips were dead-looking (owner report).** The engine did switch (`prefs.medium` went plate →
+    bolted → disc → drum → bubbles), but `syncVis()` repainted the chip row and the `#rsMap` readout from the
+    session plan on every tick, so only the session's own medium ever stayed lit and the line still said "on
+    water". Now, once a person picks, the row and the readout read `getPrefs().medium`; the plan owns the look
+    only while Follow is on. A harness leg clicks drum, waits a tick, and asserts prefs + the lit chip + the
+    readout all agree.
 
 ## Gates on these bytes
 
@@ -69,8 +75,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 732,612 B bytes (re-staged in place; 2.0.6 was never uploaded).
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 732612 / `ac592812…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 732,636 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 732636 / `21d83dcd…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
