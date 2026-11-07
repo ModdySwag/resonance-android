@@ -105,11 +105,13 @@
     var more = [$id("rsCymVol"), $id("rsFsVol")];
     if (a && Math.abs(parseFloat(a.value) - v) > 0.004) a.value = String(v);
     if (b && Math.abs(parseFloat(b.value) - v) > 0.004) b.value = String(v);
+    var pct = Math.round(v * 100) + "%";
     more.forEach(function (el) {
-      if (el && Math.abs(parseFloat(el.value) - v) > 0.004) el.value = String(v);
-      if (el) el.setAttribute("aria-valuetext", Math.round(v * 100) + "%");
+      if (!el) return;
+      if (Math.abs(parseFloat(el.value) - v) > 0.004) el.value = String(v);
+      if (el.getAttribute("aria-valuetext") !== pct) el.setAttribute("aria-valuetext", pct);
     });
-    if (p) p.textContent = Math.round(v * 100) + "%";
+    if (p && p.textContent !== pct) p.textContent = pct;
     ["rsMute", "rsMiniMute"].forEach(function (id) {
       var el = $id(id);
       if (!el) return;
@@ -2074,6 +2076,11 @@
   }
 
   var cymHooked = false;
+  var CYM_MQ = null;
+  function cymNarrow() {
+    if (!CYM_MQ) { try { CYM_MQ = window.matchMedia("(max-width: 820px)"); } catch (e) { } }
+    return !!(CYM_MQ && CYM_MQ.matches);
+  }
   function chamberChrome() {
     if (cymHooked) return;
     var root = doc.getElementById("cymRoot");
@@ -2205,9 +2212,7 @@
         if (sc) sc.classList.toggle("on", on);
       };
       setSheet(sheet.classList.contains("open"));
-      var isPhone = function () {
-        try { return window.matchMedia("(max-width: 820px)").matches; } catch (e) { return false; }
-      };
+      var isPhone = cymNarrow;
       var drag = null;
       grab.addEventListener("pointerdown", function (e) {
         if (!isPhone()) return;
@@ -2262,9 +2267,7 @@
         if (em) em.textContent = on ? "▴" : "▾";
       };
       setTop(true);
-      var isPhoneT = function () {
-        try { return window.matchMedia("(max-width: 820px)").matches; } catch (e) { return false; }
-      };
+      var isPhoneT = cymNarrow;
       var tdrag = null;
       lip.addEventListener("pointerdown", function (e) {
         if (!isPhoneT()) return;
@@ -2310,7 +2313,8 @@
         window.clearTimeout(idleT);
         if (!isPhoneT()) return;
         idleT = window.setTimeout(function () {
-          if (!doc.documentElement.classList.contains("cym-open") || doc.hidden) { armIdle(); return; }
+          if (!doc.documentElement.classList.contains("cym-open")) return;   /* chamber gone: stop */
+          if (doc.hidden) { armIdle(); return; }                              /* backgrounded: wait */
           setTop(false);
           if (setSheet) setSheet(false);
         }, 8000);
@@ -2391,6 +2395,11 @@
     c.open();
     if (!CYM.back) { CYM.back = true; markBack(); window.setTimeout(watchChamber, 400); }
     window.setTimeout(chamberChrome, 60);
+    /* the page focused its own Close on open; that key is gone, so Back takes the focus */
+    window.setTimeout(function () {
+      var b = doc.getElementById("rsCymBack");
+      if (b && b.focus) { try { b.focus({ preventScroll: true }); } catch (e) { } }
+    }, 120);
   }
 
   /* =============================================================== settings === */
