@@ -1458,7 +1458,11 @@
   function schedLoop(ts) {
     SCHED.raf = window.requestAnimationFrame(schedLoop);
     if (CUR !== "home" || doc.hidden) return;
-    if (ts - SCHED.last < 66) return;
+    // A still session is a still map: four updates a second while paused, the full 15 only
+    // while the playhead is actually moving. This loop was the app's only frame source at
+    // idle and cost ~1.5 CPU cores on a tablet.
+    var step = isPlaying() ? 66 : 250;
+    if (ts - SCHED.last < step) return;
     SCHED.last = ts;
     try { drawSched(); } catch (e) { report("sched: " + (e && e.message)); }
   }
