@@ -104,6 +104,14 @@ nine source legs.
 
 ## NEXT, in order
 
+0. **FOCUS VIEW REDESIGN — the owner's ask, brief written, nothing built.**
+   Read `DESIGN-FOCUS-VIEW.md` first. Verdict: the 24 presets are a cartesian product and read as
+   the same picture retinted; replace them with eight scenes that each own a geometry (Cathedral of
+   Light, Deep Field, Ink Bloom, Aurora Veil, Ember Lattice, Rain on Glass, Slow Spiral,
+   Bioluminescent Drift). New page module `vizscenes.js` (three canvas layers: far plate / mid wash /
+   near anchor), 16 Higgsfield plates (~56 credits, ≤640 KB), stills for reduced motion and the
+   picker, and a **similarity gate** — the leg that would have caught "they all look the same".
+   Old presets stay behind a flag until sign-off. One focused session.
 1. **His eye** on the Studio (mix, add-a-sound chapters, a layer's editor), then the upload above.
 2. **Play track**: privacy page, AAB, 12-tester/14-day closed test.
 3. VizGL step 3: mask the field to the plate, move the simulation.
