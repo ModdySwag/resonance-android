@@ -1,5 +1,80 @@
 # RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (session 2)
 
+## SESSION 5 — tablet on real hardware: dark brushed, bottom bar, filling layout (HEAD `7f6fe34`)
+
+### STATE
+
+- HEAD `7f6fe34`, tree clean, 50 commits ahead of `origin/main`, **nothing pushed**.
+- `2.0.5-beta`, `versionCode 12`. Signed release installed on **`ZY22LGC75T`** and on the
+  **Galaxy Tab A9+ (SM-X210, `gta9pwifi`, Android 16 / API 36)**, the tablet he plugged in.
+  The tablet is on **wireless adb**: `adb pair 192.168.1.141:<pairing port> <code>`, then
+  `adb connect 192.168.1.141:33445`; its devtools socket pid changes per install (re-forward
+  `tcp:9335` for the debug build).
+- Tablet geometry: 1200x1920 at density 240 → **800x1280 CSS**, so it is the same surface the
+  emulator was set to.
+- **GATES on these bytes: harness 183/183, contrast 0, tablet probe 82/82, and the DOM audit
+  clean on all five screens at both tablet sizes.** APK identity was 32/32 on the earlier build;
+  re-run `tools/apk_identity.py` on the next cut.
+
+### WHAT HE ASKED FOR, AND WHAT LANDED
+
+> "keep the brown brushed aesthetic in full screen i like the brushed old school amplifier
+> look" · "format for full screen on all devices .. no blank white spaces fill the screen as
+> on phone" · "move the home sessions studio visualise settings bar to the bottom on tablet"
+
+- **Dark is the default** (`prefs.theme || "dark"`), System and Light remain in Settings.
+  The window behind the page and the nav bar now follow the shell's theme (`chrome()` sets both,
+  not just the status-bar icons), so the first frame is never white.
+- **The brushed plate is the app backdrop** in Full + dark: `#rsApp` carries `ui/plate.webp`
+  under an 88-93% dark scrim, `#rsTop` transparent — one amplifier face, not cards on a page.
+- **The tab bar stays at the bottom** on tablets (a left rail was built, shown to him, and he
+  asked for the phone arrangement back). `--rs-nrail:0px`.
+- **Home fills the glass**: modules take every pixel the player leaves — two columns of four
+  rows on portrait, and at 900+ two panes with Build a tone under the player.
+- **Back is fixed on Android 16**: `goBackOrFinish()` now asks `window.__rs.back()` before
+  finishing. The WebView's `canGoBack()` reports false for the shell's own same-document
+  entries on API 36, which sent a Back inside the open tour straight to the launcher.
+- **44 px floor** on the page's adopted Studio/Visualise controls (rate boxes, mute keys,
+  chips were 36-42).
+
+### HOW IT WAS MEASURED
+
+- `cache/tablet_audit.py` — per screen (home, sessions, studio, vis, settings) at 800x1280 and
+  1280x800: horizontal overflow, ellipsis-truncated text, sibling overlaps, empty bands under
+  the content, radius spread, tile sizes, controls under 44 px. It printed the anomaly list
+  this pass was fixed from; all five screens now read `clean`.
+- `tools/tablet_pass.py` — 82 checks, now also asserting the tab bar runs across the bottom
+  and that the module grid is two columns of sane cards.
+- Pixel check of the tablet render: mean luminance 22, zero bright rows.
+- **Anomalies still known and deliberately left**: the Wake tile's subtitle truncates
+  ("Focus 10 — Mind Awake, Body As…") exactly as it does on the phone; the radius family is
+  still 16 px cards / 12 px chips (the systemic type/radius pass is still queue item 3).
+
+### STILL OPEN, in order
+
+1. **His eye on the tablet** (`cache/shots-final2/`, `cache/shots-emu/tab-bottom-bar.png`).
+2. **Publishing 2.0.5** — needs his review and a `versionCode` bump (13), then upload and
+   `updates.json`; the download → sha256 → installer path is still untested end to end.
+3. Systemic type/radius pass, re-cut `tile-drift`/`tile-focus`, Play submission (privacy page
+   first), push + tag.
+
+### NEW TRAPS
+
+- **Android 16 WebView `canGoBack()` is false for `history.pushState` entries the shell made.**
+  Ask the page (`window.__rs.back()`), not the WebView, or a Back inside a layer finishes the
+  activity while the layer stays open behind it.
+- **A nav rail is a design opinion, not a rule**: he wants the phone's bottom bar on the tablet.
+- **`#scr-studio` *is* the `.rs-screen`** — `.rs-screen #scr-studio …` never matches.
+- **The page's own CSS beats the shell's** at equal specificity (chips stayed 40 px until the
+  rule carried `!important`).
+- **Samsung wireless adb**: `adb mdns services` gives the pairing port; `adb pair host:port code`,
+  then `adb connect host:connectport`.
+- **Vision was unavailable for long stretches** — the DOM audit plus PIL luminance checks gave
+  the evidence instead; keep both in the toolbox.
+
+---
+
+
 ## SESSION 4 — tablet / large-screen pass (HEAD `2a0412b`)
 
 ### STATE
