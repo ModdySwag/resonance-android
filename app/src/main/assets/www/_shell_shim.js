@@ -3300,6 +3300,8 @@
       "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:1;",
       "  color:#fff !important;background:rgba(10,8,6,.72) !important;padding:4px 9px;border-radius:999px}",
       "html.rs-focus .rs-fs-host .viz-badge{bottom:calc(164px + " + SAFE_B + ") !important}",
+      /* focus view is for lying still: the sync/slow badge is noise over the picture */
+      "html.rs-focus .viz-badge,html.rs-focus .rs-fs-host .viz-badge{display:none !important}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
       "html.rs-fs-hide #rsFocusBar{opacity:0;pointer-events:none}",
       "html.rs-fs-hide #rsFsTop button,html.rs-fs-hide #rsFsCtl button{pointer-events:none}",
@@ -3339,7 +3341,9 @@
       if (act === "fPrev") { stepFocus(-1); return; }
       if (act === "fNext") { stepFocus(1); return; }
       if (act === "fPick") { openFocusPick(); return; }
-      if (act === "fsStage") { if (FSWAS.hidden) armHide(); else hideChrome(); return; }
+      /* a tap anywhere on the layer only ever wakes the player: the old toggle hid the
+         chrome on the same tap that revealed it, which read as a flicker */
+      if (act === "fsStage") { armHide(); return; }
     });
     return fs;
   }
