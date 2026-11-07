@@ -117,7 +117,7 @@
       cam: { yaw: -0.45, pitch: 0.60, dist: 2.40 }, blurb: "Fast, fine waves in polar green." },
 
     /* ---- bubbles ---- */
-    { id: "minnaert-cloud", name: "Minnaert Cloud", medium: "bubbles", material: "steel", size: 150, thickness: 1.0, q: 100,
+    { id: "minnaert-cloud", name: "Minnaert Cloud", medium: "bubbles", material: "steel", size: 150, thickness: 1.0,
       palette: "abyss", mode: 1, drive: 0.92, speed: 0.34, q: 120, sand: false, lines: true, bubbles: false, dust: true,
       cam: { yaw: -0.05, pitch: 0.36, dist: 2.70 }, blurb: "Air in water: the resonant minority glows." },
     { id: "orchid-fizz", name: "Orchid Fizz", medium: "bubbles", material: "steel", size: 150, thickness: 1.0, q: 130,

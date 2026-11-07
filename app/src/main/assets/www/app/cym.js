@@ -573,13 +573,13 @@
       if (/INPUT|SELECT|TEXTAREA/.test(tag) && ev.key !== "Escape") return;
       if (ev.key === "Escape") { close(); ev.preventDefault(); }
       else if (ev.key === " ") { var api = window.__gnauralAPI; if (api && api.togglePlay) api.togglePlay(); ev.preventDefault(); }
-      else if (ev.key === "r" || ev.key === "R") resetCam();
+      else if (ev.key === "r") resetCam();            /* lowercase: camera back to rest */
       else if (ev.key === "c" || ev.key === "C") { P.sand = !P.sand; save(); syncControls(); }
       else if (ev.key === "l" || ev.key === "L") { P.lines = !P.lines; save(); syncControls(); }
       else if (ev.key === "f" || ev.key === "F") { P.freeze = !P.freeze; save(); syncControls(); }
       else if (ev.key === "n" || ev.key === "N") { stepScene(1); }
       else if (ev.key === "p" || ev.key === "P") { stepScene(-1); }
-      else if (ev.key === "r" || ev.key === "R") { var rs = CP.random(P.preset); if (rs) applyScene(rs.id); }
+      else if (ev.key === "R") { var rs = CP.random(P.preset); if (rs) applyScene(rs.id); }   /* Shift+R: random scene */
     });
   }
 

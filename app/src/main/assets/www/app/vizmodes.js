@@ -764,7 +764,7 @@
   Traces.prototype.draw = function (F) {
     var ctx = F.ctx, W = F.W, H = F.H;
     var list = [];
-    for (var i = 0; i < F.voices.length; i++) { var v = F.voices[i]; if (v.kind === "binaural" || v.kind === "iso" || v.kind === "isoalt") list.push(v); }
+    for (var i = 0; i < F.voices.length; i++) { var vv = F.voices[i]; if (vv.kind === "binaural" || vv.kind === "iso" || vv.kind === "isoalt") list.push(vv); }
     if (!list.length) return;
     var laneH = H * 0.9 / list.length;
     ctx.save();

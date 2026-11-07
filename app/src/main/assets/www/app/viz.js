@@ -613,8 +613,8 @@
           m.envPrevFrac = eph;
           var Ne = Math.max(1, N);
           var cvis = mod1(m.envCycleTotal / Ne);
-          var target = 0.5 + 0.5 * Math.cos(2 * Math.PI * cvis);
-          m._env = VM.follow(m._env === undefined ? 0.5 : m._env, target, dt, 0.25, 0.45);
+          var envTarget = 0.5 + 0.5 * Math.cos(2 * Math.PI * cvis);
+          m._env = VM.follow(m._env === undefined ? 0.5 : m._env, envTarget, dt, 0.25, 0.45);
           vo.env.phase = eph;
           vo.env.level = m._env;
           vo.env.N = Ne; vo.env.cycleTotal = m.envCycleTotal; vo.env.wraps = m.wraps;
@@ -654,7 +654,7 @@
       F.hasBeds = beds > 0;
       for (var k = 0; k < freqDb.length; k++) {
         var db = freqDb[k];
-        if (db < -110 || db !== db) db = -110;
+        if (db < -110 || Number.isNaN(db)) db = -110;
         var b = Math.round(((db + 100) / 80) * 255);
         synthBytes[k] = b < 0 ? 0 : (b > 255 ? 255 : b);
         specNorm[k] = clamp01((db + 78) / 66);

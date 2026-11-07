@@ -793,7 +793,7 @@
     ".rs-screen #voicelist .vrow{gap:0}",
     ".rs-screen #voicelist .vrow > * + *{margin-left:8px}",
     ".rs-tile{gap:0}",
-    ".rs-tile > * + *{margin-top:8px}",,
+    ".rs-tile > * + *{margin-top:8px}",
     ".rs-mrow{gap:0}.rs-mrow > * + *{margin-left:14px}",
     ".rs-sw{gap:0}.rs-sw > * + *{margin-left:14px}",
     "#rsMini{gap:0}#rsMini > * + *{margin-left:10px}",

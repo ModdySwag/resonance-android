@@ -45,6 +45,23 @@ mangling-safe markers (`ResonanceJs`, `__rs`) rather than `function native(`.
 Remaining size, if it is ever worth it: the nine pack zips are 39% of the APK and are already
 deflated - only shipping the default and fetching the rest on demand would move that.
 
+## Gates added 2026-11-07 (session 6)
+
+- **ESLint** (`eslint.config.mjs`) over the 7,214 lines of bundled JS. Rule set targets defects,
+  not style (`no-dupe-keys`, `no-dupe-else-if`, `no-sparse-arrays`, `no-self-compare`,
+  `no-redeclare`, `no-unreachable`, `valid-typeof`). It paid for itself on the first run: a
+  duplicate key in `cympresets.js`, a sparse array slot in the shell shim, and a dead keydown
+  branch in `cym.js` where `r`/`R` was claimed twice so Shift+R could never fire.
+  Run: `npx --yes eslint@9 --config eslint.config.mjs app/src/main/assets/www`
+- **Gradle wrapper** committed (`gradlew`, `gradle/wrapper/`), pinned to 8.7, so the build no
+  longer depends on a machine-local Gradle install.
+- **Error Prone was attempted and backed out.** `net.ltgt.errorprone` 4.1.0 resolved but never
+  injected `-Xplugin:ErrorProne` into AGP's `JavaCompile` tasks (they still reported
+  `fork=false` with only `-XDstringConcat=inline`), and a planted three-defect probe compiled
+  clean. Rather than leave a half-wired checker in the build pretending to gate, it was
+  reverted; wiring it needs the manual `-Xplugin` + `--add-exports` recipe or a different
+  plugin version.
+
 ## The two tools you asked about
 
 **Dr. Memory** is a Windows x86/x64 memory checker built on DynamoRIO. It has no Android
