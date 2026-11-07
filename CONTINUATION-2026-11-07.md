@@ -1,57 +1,98 @@
-# SAVE POINT — 2026-11-08, end of session 9 (read this first)
+# SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `e3b7a30`** (work commit `16f78b8`), tree clean, nothing pushed. 2.0.5-beta, versionCode 13.
+**HEAD `a44c141`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
-## What is on the devices right now
+## The bytes
 
-- Both the phone (`192.168.1.95:33139`) and the Tab A9+ (`adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp`)
-  carry the **same bytes**, verified by pulling the installed APK back and hashing it:
-  **715,323 B, sha256 `e48b88d4fb169feffeb159d1d6decc5686fd1beaaf0b580beb49d2dc000d7d68`**.
-- The debug twin (`com.moddys.resonance.debug`) is on both for device_gate/CDP (port forwards 9337 phone, 9338 tablet).
+- Signed release APK: **719,759 B, sha256 `a02183114e2938a7978fc5f8d4ed3f092d33845d2045fa84dc50bcbc35c3a5d3`**.
+- On **both** devices, verified by pulling the installed APK back and hashing it:
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 719,759 B and same sha.
+- `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
+- A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
-## Publish payload — STAGED, NOT UPLOADED (his review is the gate)
+## GUARDRAILS AND OWNER EYE — what shipped this session
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.5-beta.apk` = the same 715,323 B bytes.
-- `radio-browser/deploy/updates.json` regenerated: `resonance-android` = 2.0.5-beta / **13** / 715323 / `e48b88d4…`; feed→file verified MATCH.
-- `radio-browser/deploy/moddys-downloads.html`: pill v2.0.5-beta, href/filename, 0.7 MB, sha at the resonance label's own line (never regex the first 64-hex — it rewrites ModFlow's hash), certutil line, GitHub → `/releases`, "New in 2.0.5", 130 sessions in 18 packs.
-- Backups: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
-- Upload (on his word): `cd /c/Users/Moddy/radio-browser && python3 upload-site.py --only downloads/resonance-studio-v2.0.5-beta.apk updates.json moddys-downloads.html` then `--verify --only` (same list) → expect `0 file(s) not in sync.`
-- Then the untested chain, for real: curl the live APK → sha256 vs feed → install those bytes → confirm code 13 and that no update is offered.
+1. **The Studio is rebuilt around the mix** (his complaint: cluttered and unintuitive). The screen is now
+   three things in reading order: **Now** (title, state pill, four metrics — carrier / beat+band / length /
+   layers — a play-pause key with its glyph, stop, clock, loop, and one line saying whether the mix needs
+   headphones), **The mix** (one row per layer: dot, name, its numbers, level %, mute; tap a row to open
+   pitch / beat / level sliders + Timeline and Remove), and **files** (open by default).
+2. **One place to add a sound.** `#rsBuild`, the page's quick-pick catalogue (`rates.js` groups) and the
+   page's by-hand adder all live in **Add a sound**: eight chapters — Bands · Resonance · Breathing ·
+   Focus sets · Solfeggio · Noise · By hand · From scratch — one visible at a time, chips in two columns,
+   the per-chip note lines folded away. The catalogue is the page's own data, moved, not copied.
+3. **Voice vs layer is no longer two words for one thing.** The mix says *layer*; the raw editor says
+   *voices · entries* and lives in **Advanced — the raw schedule** (collapsed), together with **Live meters
+   & tools** (collapsed). Full control is still there; it is just put down.
+4. **The page API is wrapped once** (`loadSchedule`, `loadPreset`, `loadGnauralText`, `addVoice`,
+   `removeVoice`, `refresh`) so the mix repaints in the same beat instead of on the next 1 Hz tick.
+5. **Level is a ratio, not an overwrite**: `setLayerLevel` scales every entry, so a preset's fade survives.
+   Pitch and beat sliders appear only for single-entry layers; a multi-entry layer says so and offers its
+   timeline instead.
+6. **Visualise restructure (plan item 2)**: Follow + the mapping + scene/medium chips + layer toggles moved
+   into the chamber card above its Open button; Ambient panels keeps its own Scene menu; the select's
+   custom option now reads "Custom (chips)". Four harness legs pin the new structure.
+7. **Pre-existing tablet bug fixed**: `#scr-home{display:flex}` / `{display:grid}` were ID rules that beat
+   `.rs-screen{display:none}`, so Home stayed pinned above whatever screen was open (the Visualise card sat
+   at y=1129 on a tablet). Both are now `#scr-home.rs-on`, which also restored the two-pane Home at 900+
+   (the tablet pass caught that the 900 rule had lost its specificity).
+8. The **welcome tour** now points at `#rsMix` and `#rsAdvDet` (its old stops pointed at `#rsBuild` and
+   `#rsVoices`, both folded away, which stranded its bubble off-screen), and its copy describes the mix.
+9. The Studio's own transport means the **mini player no longer shows on Studio** (it would be a second
+   transport on the same glass).
 
-## Shipped this session (all gated)
+## Gates on these bytes
 
-1. **Chamber faceplate** — top row Back / LIVE / ? (page's Close removed; Back leaves, fullscreen ✕ stays); transport row brass Play-Pause 56, Stop 48, master fader, engraved brass CONTROLS. Four new generated keys (`amp-back/next/info/close`, 28 credits, re-rolled once for the bezel). Root cause of the missing chrome was a stray `}` in the shim's CSS string array.
-2. **Drawer** — the lower panel is a real bottom sheet (`top:auto`, safe-area bottom), 54 px handle, **40 px brass expand puck** at the far right, aria flips Hide/Show; drag down/up and tap all verified with real `adb input swipe`.
-3. **Player lip** — drag up to hide (lip parks under the status bar), drag down to return; **8 s of quiet auto-hides both panels**, any touch wakes the player.
-4. **Scene chips fixed** — a chip is manual control (Follow switches off, chip stays lit, pick survives reopening); `openChamber` no longer re-applies the plan.
-5. **Focus/fullscreen** — one faceplate (`#rsFocusBar` inside `#rsFsCtl` above play · stop · fader · time); **a tap anywhere in focus only wakes the player** (the old tap hid what it had just revealed) and **the sync/slow badge is hidden** under `html.rs-focus`.
-6. **Cards** — session-band language on Studio/Visualise/Settings cards (3 px edge + 0.09 wash), band stacked over a brushed `strip.webp` plate under a 90% scrim on **both** devices; Quick-pick chips and pressed toggles take the band they sit in.
-7. **Palette** — dark surfaces are the plate's warm brown/silver (`bg #0F0C0A`, `s1 #1B1714`, warm ink/lines); the band family lost its greens (teal → **silver `#B6AFA3`**, emerald → **sage `#8E9E6B`**). Teal accent untouched. Full mode only for all of it.
-8. **Cleanups** — idle timer stops with the chamber; `aria-valuetext` written only on change; one cached `matchMedia`; Back takes focus on open.
-9. **Control audit** — 253 interactive elements across the five screens; all 6 `data-act` and 7 `data-rs` values wired; 33 with no own listener are delegated rows/anchors/submit-read inputs; behaviour spot-checks pass.
+harness **215/0** · contrast **0** · tablet **82/0** · eslint **0 problems** · lint **0/0** ·
+JVM **26/26** · device gate **19/0** · apk_identity **34/41** (the seven byte-identity legs cannot pass on a
+minified release). Pass `--site` a **native** path (`C:/Users/...`); an MSYS `/c/...` path silently fails
+nine source legs.
 
-Gates on the final bytes: **harness 199/0**, **contrast 0** (5 accents × 2 themes), tablet pass 82/0, lint 0/0, JVM 26/26, device gate 19/0. `apk_identity` 36/43 — its seven byte-identity legs can never pass on a minified release (app.js 38,185 → 21,932 B); tool fix, not an app fault.
+## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-## NEXT — in order
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 719,759 B bytes.
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 719759 / `a0218311…`; feed = file = card
+  verified equal by script (size **and** sha **and** the card's own `<code>`).
+- `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
+  line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
+- Backups: `%LOCALAPPDATA%/Temp/rs-publish-backup-20261108-055518`.
+- Upload (on his word): `cd /c/Users/Moddy/radio-browser && python3 upload-site.py --only downloads/resonance-studio-v2.0.6-beta.apk updates.json moddys-downloads.html` then `--verify --only` with the same list →
+  expect `0 file(s) not in sync.`
+- Then the untested chain: curl the live APK → sha256 vs feed → install those bytes → code 14 and no update
+  offered.
 
-1. **His eye** on the chamber, the cards and the focus view — then the publish above.
-2. **Visualise restructure (agreed, NOT built).** `Follow the tone` + the scene/medium chips are chamber controls but sit beside the **Ambient panels** card, and that card has its own Scene menu — two "Scene" controls, confusing placement. Plan: move the Follow switch, `#rsScenes`, `#rsMedia`, `#rsVisToggles` and the `#rsMap` line **into the chamber card** above its Open button; leave Ambient panels as its own entry using the page's Scene menu; Focus card unchanged. Move existing nodes, no new art, updates live.
-3. Play track: privacy page live, AAB, 12-tester/14-day closed test.
-4. VizGL step 3: mask the field to the plate, move the simulation.
-5. Robolectric follow-ups; Error Prone / JaCoCo / StrictMode / Perfetto / MobSF.
-6. Track F features. Do not build accounts/cloud/social/Wear.
+## NEXT, in order
 
-## OPEN, not fixed
+1. **His eye** on the Studio (mix, add-a-sound chapters, a layer's editor), then the upload above.
+2. **Play track**: privacy page, AAB, 12-tester/14-day closed test.
+3. VizGL step 3: mask the field to the plate, move the simulation.
+4. Robolectric follow-ups; Error Prone / JaCoCo / StrictMode / Perfetto / MobSF.
+5. Track F features. Do not build accounts/cloud/social/Wear.
 
-- The site's `resonance/app` tree is **8 files behind** the page bundled in the APK (noise pack + vizgl work never deployed to moddys.net/resonance) — the biggest consistency gap.
-- `apk_identity`'s minified-asset legs (above).
-- Chamber and `#rsFsVol` fader CSS duplicate ~30 lines.
-- Drag gestures are gated to ≤820 px, so a landscape tablet keeps the page's side rail.
-- No CI leg for the drags — Playwright's synthetic mouse cannot drive pointer capture; `adb input swipe` can (scale CSS→device px by `wm size / innerWidth`).
+## OPEN
+
+- The site's `resonance/app` tree is still behind the page bundled in the APK (noise pack + vizgl work never
+  deployed to moddys.net/resonance) — the biggest consistency gap, unchanged this session.
+- `apk_identity`'s minified-asset legs; the duplicated chamber/`#rsFsVol` fader CSS; drags gated to ≤820 px;
+  no CI leg for the drags (Playwright cannot drive pointer capture; `adb input swipe` can).
+- The Studio's files card is 382 px of the phone screen; if it feels long, fold the pack row.
 
 ## TRAPS paid for (do not re-learn)
 
-Stray `}` in the shim's CSS string array silently kills every later rule · `!important` + higher specificity beats a later rule · a flex item in `overflow:auto` shrinks below its height (`flex:0 0 54px`) · clamp the visual drag delta but keep the **raw** delta for thresholds · Playwright mouse cannot drive the pointer drags · **never regex the first 64-hex on the downloads page** · two Gradle builds of the same source can hash differently (zip timestamps) — always make devices, staged APK, feed and card agree on one artifact by hash, not size.
+- **`.rs-mrow` was already taken** by the More sheet's rows (`display:flex;align-items:center`), so the mix's
+  first rows rendered as a squeezed column at 104 px. Shell class names must be checked against the sheet's;
+  the mix rows are `.rs-lay` now.
+- **A page rule that sets `display` beats the `hidden` attribute** on `<details>`: hide chapters with a shell
+  class (`!important`), never `hidden`.
+- **An ID rule beats `.rs-screen{display:none}`** — every `#scr-*` display must be scoped to `.rs-on`, and the
+  600 and 900 rules must carry the same specificity or the earlier one wins.
+- **`b.firstChild` guard**: an icon painted only when `aria-label` changes leaves the key blank when the markup
+  already ships the right label.
+- Stray `}` in the shim's CSS string array silently kills every later rule · `!important` + higher specificity
+  beats a later rule · a flex item in `overflow:auto` shrinks below its height (`flex:0 0 54px`) · clamp the
+  visual drag delta but keep the **raw** delta for thresholds · never regex the first 64-hex on the downloads
+  page · two Gradle builds of one source can hash differently — make devices, staged APK, feed and card agree
+  by **hash**, not size.
 
 ---
 
