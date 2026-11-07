@@ -2729,10 +2729,17 @@
         if (s && s.nearest !== undefined) mode = s.nearest;
       }
     } catch (e) { }
+    /* the chamber's own prefs are the truth once a person has picked a medium: the
+       session plan only owns the look while Follow is on. Reading plan.medium here
+       repainted the row back to the session's medium every tick, so every chip click
+       looked dead while the plate underneath had actually changed. */
+    var curMed = "";
+    if (!follow && c) { try { curMed = (c.getPrefs() || {}).medium || ""; } catch (e) { } }
+    var med = curMed || plan.medium;
     map.innerHTML = "carrier <b>" + shape.carrier.toFixed(0) + " Hz</b> · rate <b>" +
-      shape.beat.toFixed(1) + " Hz</b> · " + plan.band + " on " + plan.medium + " · mode " + mode;
+      shape.beat.toFixed(1) + " Hz</b> · " + plan.band + " on " + esc(med) + " · mode " + mode;
     $$("#rsMedia button").forEach(function (b) {
-      b.setAttribute("aria-pressed", b.getAttribute("data-medium") === plan.medium ? "true" : "false");
+      b.setAttribute("aria-pressed", b.getAttribute("data-medium") === med ? "true" : "false");
     });
   }
 

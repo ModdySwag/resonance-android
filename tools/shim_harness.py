@@ -557,6 +557,16 @@ def main():
         page.click("#rsMedia button[data-medium=water]")
         suite.check("a medium chip applies too", page.evaluate(
             "window.ResonanceCymatics.api.getPrefs().medium === 'water'"))
+        # the reported bug: the chip row and the readout were repainted from the session
+        # plan each tick, so every medium click looked dead while the plate did change
+        page.click("#rsMedia button[data-medium=drum]")
+        page.wait_for_timeout(1200)
+        pm = page.evaluate("""(() => { const p = window.ResonanceCymatics.api.getPrefs();
+          const lit = [...document.querySelectorAll('#rsMedia button[aria-pressed=true]')]
+            .map(b => b.getAttribute('data-medium'));
+          return {med: p.medium, lit: lit, map: document.getElementById('rsMap').textContent}; })()""")
+        suite.check("a picked medium stays picked, in the chip and in the readout",
+                    pm["med"] == "drum" and pm["lit"] == ["drum"] and "on drum" in pm["map"], pm)
         suite.check("picking a chip takes manual control, and the Follow switch says so",
                     page.evaluate(
                 "(() => { const sw = document.getElementById('rsFollow');"
