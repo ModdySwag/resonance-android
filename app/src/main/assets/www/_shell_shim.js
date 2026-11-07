@@ -674,12 +674,17 @@
     "#rsScrim{position:fixed;top:0;right:0;bottom:0;left:0;z-index:85;background:rgba(6,9,8,.55);" +
     "  opacity:0;pointer-events:none;transition:opacity .22s var(--rs-ease)}" +
     "html.rs-sheet #rsScrim{opacity:1;pointer-events:auto}" +
-    "#rsSheet{position:fixed;left:0;right:0;bottom:0;z-index:86;display:flex;flex-direction:column;",
+    "#rsSheet{position:fixed;left:0;right:0;bottom:var(--rs-sheet-lift,0px);z-index:86;display:flex;",
+    "  flex-direction:column;",
     "  background:var(--rs-s2);color:var(--rs-ink);border-radius:var(--rs-r-sheet) var(--rs-r-sheet) 0 0;",
     "  border-top:1px solid var(--rs-line);box-shadow:0 -18px 44px rgba(0,0,0,.45);",
-    "  transform:translateY(110%);transition:transform .26s var(--rs-ease);",
+    /* 110% clears a sheet that sits on the bottom edge; a lifted one needs the lift too,
+       and a hidden dialog must not keep taking taps or focus */
+    "  transform:translateY(calc(110% + var(--rs-sheet-lift,0px)));",
+    "  visibility:hidden;transition:transform .26s var(--rs-ease),visibility 0s linear .26s;",
     "  padding-bottom:calc(8px + " + SAFE_B + ");max-height:82vh}",
-    "#rsSheet.rs-open{transform:none}",
+    "#rsSheet.rs-open{transform:none;visibility:visible;",
+    "  transition:transform .26s var(--rs-ease)}",
     "#rsSheet.rs-drag{transition:none}",
     "#rsSheet .rs-grab{height:26px;display:flex;align-items:center;justify-content:center;",
     "  touch-action:none;cursor:grab}",
@@ -884,6 +889,31 @@
     "  .rs-screen{animation:none} #rsSheet{transition:none}",
     "  html.rs-playing .rs-fab::after{animation:none;opacity:.5}",
     "  #rsNav button .rs-npill{transition:none}",
+    "}",
+    /* ------------------------------------------------------------- tablets --- */
+    /* A phone screen stretched to a tablet reads as a bug: the hero becomes a banner, the
+       module cards 4:1, a select 1000 px wide and an overlay line 100 characters long.
+       One rail carries the bar, the screens and the mini player, so everything shares a
+       single left edge; the module grid gains columns instead of growing cards. Layers
+       that are meant to be full bleed (chamber, fullscreen, focus) are untouched. */
+    "@media (min-width: 600px){",
+    "  html{--rs-rail:720px;--rs-sheet-lift:16px}",
+    "  #rsTop,#rsMini{width:100%;max-width:var(--rs-rail);margin-left:auto;margin-right:auto}",
+    "  #rsBody .rs-screen{max-width:var(--rs-rail);margin-left:auto;margin-right:auto}",
+    /* eight modules over three columns leaves two on the last row: flex with a fixed
+       basis centres that row instead of leaving a hole at the right */
+    "  .rs-states{display:flex;flex-wrap:wrap;justify-content:center}",
+    "  .rs-states .rs-tile{flex:0 0 calc((100% - 20px) / 3)}",
+    /* a 560 px sheet flush to the bottom edge of a tablet reads half-dialog: lift it */
+    "  #rsSheet{width:min(560px,100%);margin-left:auto;margin-right:auto;",
+    "    border-radius:var(--rs-r-sheet);border:1px solid var(--rs-line)}",
+    /* an overlay is prose: it gets a document measure, not the app rail */
+    "  .rs-ov .rs-ov-head,.rs-ov .rs-ov-body{width:100%;max-width:min(var(--rs-rail),640px);",
+    "    margin-left:auto;margin-right:auto;box-sizing:border-box}",
+    "}",
+    "@media (min-width: 900px){",
+    "  html{--rs-rail:960px}",
+    "  .rs-states .rs-tile{flex-basis:calc((100% - 30px) / 4)}",
     "}"
   ].join("\n");
 
@@ -2061,6 +2091,14 @@
 
     var y = 0, dragging = false, startY = 0, startOff = 0;
     function height() { return sheetEl.offsetHeight || Math.round(window.innerHeight * 0.6); }
+    /* a tablet lifts the sheet off the bottom edge, so "closed" has to travel that much
+       further or a strip of it stays over the nav bar. Read the offset back from the
+       element rather than from the variable: a boot-time read can land before the
+       stylesheet's media query applies. */
+    function closedOffset() {
+      var b = parseFloat(getComputedStyle(sheetEl).bottom);
+      return height() + (isNaN(b) ? 0 : b);
+    }
     function apply(off, animate) {
       sheetEl.classList.toggle("rs-drag", animate === false);
       sheetEl.style.transform = "translateY(" + off + "px)";
@@ -2070,13 +2108,16 @@
       SHEET.open = !!open;
       sheetEl.classList.toggle("rs-open", SHEET.open);
       doc.documentElement.classList.toggle("rs-sheet", SHEET.open);
-      apply(SHEET.open ? 0 : height(), true);
+      apply(SHEET.open ? 0 : closedOffset(), true);
       doc.documentElement.classList.toggle("rs-locked", SHEET.open);
       var ov = $id("rsOverflow");
       if (ov) ov.setAttribute("aria-expanded", SHEET.open ? "true" : "false");
       if (SHEET.open) markBack();
     }
     openSheet = function (open) { if (!open && !SHEET.open) return; setOpen(open); };
+    function park() { if (!SHEET.open) apply(closedOffset(), false); }
+    if (window.requestAnimationFrame) requestAnimationFrame(park);
+    window.addEventListener("resize", park);
 
     function down(ev) {
       if (ev.isPrimary === false) return;
@@ -2085,7 +2126,7 @@
     }
     function move(ev) {
       if (!dragging) return;
-      var next = Math.min(height(), Math.max(0, startOff + (ev.clientY - startY)));
+      var next = Math.min(closedOffset(), Math.max(0, startOff + (ev.clientY - startY)));
       apply(next, false);
       ev.preventDefault();
     }
@@ -2376,7 +2417,9 @@
     var bub = TOUR.bub, hole = TOUR.hole, ring = TOUR.hole2;
     var tgt = st.sel ? doc.querySelector(st.sel) : null;
     if (tgt && !tgt.getClientRects().length) tgt = null;
-    var bw = Math.min(340, vw - 28);
+    /* a tablet has the room for a wider bubble; the width lives here because the
+       placement code measures the bubble right after setting it */
+    var bw = Math.min(vw >= 600 ? 400 : 340, vw - 28);
     bub.style.width = Math.round(bw) + "px";
     var bh = bub.offsetHeight, margin = 16, x, y, w, h, top, left, below, above;
     var caret = bub.querySelector(".rs-t-caret");
@@ -2422,9 +2465,11 @@
     doc.documentElement.classList.remove("rs-navhide");
     armNav();
     TOUR.bub.classList.remove("rs-t-show");
+    /* fill now, place later: the bubble must never be on screen empty while the
+       120 ms placement timer runs */
+    tourFill();
     TOUR.timer = window.setTimeout(function () {
       if (gen !== TOUR.gen || !TOUR.on) return;
-      tourFill();
       var tgt = st.sel ? doc.querySelector(st.sel) : null, scrolled = false;
       if (tgt) {
         var r = tgt.getBoundingClientRect();
