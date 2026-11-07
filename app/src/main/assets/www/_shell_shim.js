@@ -567,6 +567,16 @@
     "html[data-rs-ui=full] .rs-hero .rs-transport{margin-top:0}",
     "html[data-rs-ui=full] .rs-hero h1{color:#F7FBF8}",
     "html[data-rs-ui=full] .rs-hero p,html[data-rs-ui=full] .rs-hero #meta,",
+    /* the hero's counter line reads as the amplifier's own little display: centred
+       under the schedule picture, smoked glass, amber digits */
+    "html[data-rs-ui=full] .rs-hero #meta{display:block;text-align:center;margin:10px auto 0 !important;",
+    "  font:600 12.5px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;",
+    "  letter-spacing:.09em;color:#FFB454;background-color:#120D07;",
+    "  background-image:linear-gradient(180deg,#0C0906,#1B1309 60%,#0A0704);",
+    "  border:1px solid #3B2C15;border-radius:8px;padding:8px 12px;max-width:100%;",
+    "  box-shadow:inset 0 2px 7px rgba(0,0,0,.95),0 1px 0 rgba(255,255,255,.05);",
+    "  text-shadow:0 0 7px rgba(255,150,40,.55),0 0 2px rgba(255,200,120,.85)}",
+    "html[data-rs-ui=full] .rs-hero #meta b{color:#FFD08A;font-weight:700}",
     "html[data-rs-ui=full] .rs-hero #rsClock{color:#D2DBD6}",
     "html[data-rs-ui=full] .rs-hero .rs-vol small{color:#C7D2CC}",
     "html[data-rs-ui=full] .rs-hero .rs-sw{color:#D2DBD6}",
