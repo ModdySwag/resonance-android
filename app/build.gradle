@@ -194,3 +194,18 @@ tasks.register("lintRelease") {
     description = "Lint both release variants (sideload and play)."
     dependsOn "lintSideloadRelease", "lintPlayRelease"
 }
+
+// JVM tests: no emulator, seconds to run. Robolectric is here so activity/service tests
+// can follow without another build change; the first suite deliberately needs no device.
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+}
+
+// Same reason as lintRelease above: the flavours give one test task per variant, so the
+// obvious `:app:testUnitTests` name has to be defined as "both channels".
+tasks.register("testUnitTests") {
+    group = "verification"
+    description = "Run the JVM test suites for both channels (no emulator)."
+    dependsOn "testSideloadDebugUnitTest", "testPlayDebugUnitTest"
+}
