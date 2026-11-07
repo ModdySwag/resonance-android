@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `6165232`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `7e33a6d`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **721,875 B, sha256 `e9615596d1582c9ca4cdb3b73909a9f6bd4fdd00d333a700afb4e9e64c6aceb8`**.
+- Signed release APK: **721,967 B, sha256 `9442c86a7117d59f2aeadcb76c10ba0e06634db5bf3315ea7383e948d61648e4`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 721,875 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 721,967 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -44,7 +44,8 @@
     **play, pause and stop** as three separate keys (ui/amp-play, amp-pause, amp-stop; play rings live while
     running, pause dims when idle) and a **master fader** — sunk slot, 28 px track, knurled brass thumb at
     `#rsStuVol`, painted by the one `paintLevel` and written through `setMaster`. Clock and Loop moved to a
-    second row under the keys.
+    second row under the keys, and the Loop switch is brass too (a collar in a sunk slot, not the app accent)
+    so the transport is one piece of hardware.
 11. **Every option carries a mark of its own.** Chamber scenes get a swatch in the colours that scene
     actually renders (palette -> rim+line from `cymrender.js`); mediums get a shape (plate, bolted, disc,
     drum, water, bubbles); the ambient card's backdrops and overlays get shape marks (tide, phasefield,
@@ -61,8 +62,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 721,875 B bytes (re-staged in place; 2.0.6 was never uploaded).
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 721875 / `e9615596…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 721,967 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 721967 / `9442c86a…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
