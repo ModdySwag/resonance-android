@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `a44c141`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `6165232`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **719,759 B, sha256 `a02183114e2938a7978fc5f8d4ed3f092d33845d2045fa84dc50bcbc35c3a5d3`**.
+- Signed release APK: **721,875 B, sha256 `e9615596d1582c9ca4cdb3b73909a9f6bd4fdd00d333a700afb4e9e64c6aceb8`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 719,759 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 721,875 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -40,6 +40,17 @@
    `#rsVoices`, both folded away, which stranded its bubble off-screen), and its copy describes the mix.
 9. The Studio's own transport means the **mini player no longer shows on Studio** (it would be a second
    transport on the same glass).
+10. **The Studio transport is amplifier hardware**, the same family as the hero and the chamber: brass
+    **play, pause and stop** as three separate keys (ui/amp-play, amp-pause, amp-stop; play rings live while
+    running, pause dims when idle) and a **master fader** — sunk slot, 28 px track, knurled brass thumb at
+    `#rsStuVol`, painted by the one `paintLevel` and written through `setMaster`. Clock and Loop moved to a
+    second row under the keys.
+11. **Every option carries a mark of its own.** Chamber scenes get a swatch in the colours that scene
+    actually renders (palette -> rim+line from `cymrender.js`); mediums get a shape (plate, bolted, disc,
+    drum, water, bubbles); the ambient card's backdrops and overlays get shape marks (tide, phasefield,
+    drift, rainfall, score, aurora; pulse, phasors, traces, orbits, ripples, harmonograph, weave, meters);
+    ambient palettes get a swatch from `vizpal.js`'s own stops. Decorative only — the label still names it,
+    and `decorateSwatches()` is idempotent so a re-adopted card cannot double-mark.
 
 ## Gates on these bytes
 
@@ -50,8 +61,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 719,759 B bytes.
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 719759 / `a0218311…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 721,875 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 721875 / `e9615596…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
