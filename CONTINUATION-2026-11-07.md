@@ -7,10 +7,11 @@
   session 11 plus this session's fix. **Nothing pushed, nothing published.**
 - **`harness7.log` does not exist in the tree** (session 11's log was never written to disk); the failure
   it described was reproduced from the code and is **understood — it was not a history bug**.
-- Release APK built and installed this session: **956,063 B, sha256
-  `6fff9919dcced4e93bc802b05e2212d123a99810b0ad559b8d1bfa86ec2bdc02`** (the loop-key follow-up below
-  rebuilt it; the first build of the session was 956,019 B / `1f3a1808…`), versionCode 14 / 2.0.6-beta,
-  on the phone `192.168.1.95:33139` and the Tab A9+ `adb-R92XB0RWN3B-67B1Tm`.
+- Release APK built and installed this session: **956,259 B, sha256
+  `9b81d86990422eeeb944f47116828ddf1e149c7723caf4de4efa7c5d94e7727f`** (rebuilt after the readouts,
+  toast and dark-only theme work below; the first build of the session was 956,019 B / `1f3a1808…`),
+  versionCode 14 / 2.0.6-beta, on the phone `192.168.1.95:33139` and the Tab A9+
+  `adb-R92XB0RWN3B-67B1Tm`.
 - Eye-gate evidence from session 11 is still in `cache/focus-eye-2026-11-08/` (outside `tools/`).
 
 ## The lead was wrong — what actually happened
@@ -91,6 +92,37 @@ left of it**.
 - **Measured on his phone (433 CSS px, dpr 2.8125):** row `33..401`, key `355..401` (flush with the row and
   with Stop above it), lamp `337..347` — and two real CDP touch taps leave the face on `amp-loop.webp` while
   `loops` goes `Infinity → 1 → Infinity`.
+
+## Follow-up 2: the player's readouts, the scramble toast, and a dark-only theme
+
+Owner's asks in one pass: the Volume % follows the amp language; Surprise me and the idle readout do too;
+pressing Scramble in Visualise puts an empty pill at the top-left for a few seconds; and Light/System/Dark
+should go away in favour of dark only.
+
+- **Volume**: the `70%` now sits in a small smoked-glass window (`.rs-ledmini`, `min-width:42px`, amber
+  `#FFB454` on a solid `#120D07`, 11 px tabular monospace) under a warm-grey `Volume` caption — the clock's
+  LED language one size down. The label row is `.rs-vollab` (flex, value flush right). Pixel-read at 390
+  and 433 px: 545 amber pixels in the window at both widths, warm plate behind it.
+- **Surprise me / idle**: `#rsSurprise` is a brass-edged key (44 px, `#5A4526` edge over a
+  `#2B2115→#0F0A06` plate) and `#rsMode` is a smoked LED window with a `::before` pilot lamp that turns red
+  (`rgba(255,60,64,.85)` glow) while `html.rs-playing`. Both are declared for `:hover/:active/:focus` —
+  the page's `button:hover` shorthand trap, again. The old leg that pinned the pill's `999px` radius was
+  rewritten to the new contract (button carries the plate, the window is rounded 6 px and flush right).
+- **The empty pill was the page's own `#toast`.** viz's `scramble()` calls `toastViz()`, which writes the
+  message and adds `.show`; the shell moves `#toast` to the top by pinning `left/right:16px`, but the page's
+  `.toast` also centres itself with `left:50%; transform:translateX(-50%)` — so the bar was pushed half its
+  width off the glass (`x=-159` on a 390 px viewport) and the only visible part was the empty right end of
+  the pill. Fix: `transform:none !important` on `html.rs-app #toast` **and** `#toast.show`. Measured on the
+  phone: `x=16, right=406` of 433, text `Scrambled: …`.
+- **Dark only**: the System/Dark/Light segment is gone from Settings (markup, wiring and the `mqDark`
+  listener removed). `applyTheme()` now forces `data-rs-theme="dark"`, calls `native("chrome",[false])`, and
+  **rewrites a stored non-dark `prefs.theme`**, so an update from a phone that had Light selected cannot boot
+  half-themed. Proven on the phone: store `theme:"light"` → reload → dark, and the stored value reads `dark`.
+- **Legs added**: the scramble toast is on the glass with its message and fades by itself; the state window
+  reads live with a lit lamp and leaves live when stopped (wait for the tick — an instant read fails);
+  the Surprise key keeps its plate through the press; there is no theme switcher; a stored light preference
+  boots dark and is rewritten. **Harness 246/0**, contrast 0 (the probe now walks dark only), tablet 82/0,
+  eslint 0, device gate 19/0.
 
 ## What is left, in order
 

@@ -180,8 +180,6 @@
   try { prefs = JSON.parse(localStorage.getItem(THEME_KEY) || "{}") || {}; } catch (e) { prefs = {}; }
   function savePrefs() { try { localStorage.setItem(THEME_KEY, JSON.stringify(prefs)); } catch (e) { } }
 
-  var mqDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-
   function systemPalette() {
     try {
       var raw = native("palette", []);
@@ -192,20 +190,19 @@
   }
 
   function applyTheme() {
-    /* dark is the house look: the brushed finish is a dark room, and a tablet at full
-       brightness in the light scheme is hard on the eyes. System and Light stay one tap
-       away in Settings. */
-    var want = prefs.theme || "dark";
-    var dark = want === "dark" || (want === "system" && (!mqDark || mqDark.matches));
+    /* One look, by owner decision: the app is dark, always. System and Light were removed —
+       they read badly against the shell's own warm surfaces — and a stored light preference
+       from an older build is rewritten here, so an update cannot boot into a half-themed screen. */
     var html = doc.documentElement;
-    html.setAttribute("data-rs-theme", dark ? "dark" : "light");
+    if (prefs.theme !== "dark") { prefs.theme = "dark"; savePrefs(); }
+    html.setAttribute("data-rs-theme", "dark");
     /* the page's own canvases and skin tokens follow the app theme */
     var skin = $id("skin");
     if (skin && skin.value !== "forge") {
       skin.value = "forge";
       try { skin.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { }
     }
-    native("chrome", [!dark]);
+    native("chrome", [false]);          /* always the dark chrome */
     var chosen = prefs.theme2 || "calm";
     if (chosen === "calm") html.removeAttribute("data-rs-accent");
     else html.setAttribute("data-rs-accent", chosen);
@@ -220,9 +217,6 @@
        old palette baked in until the next edit, so redraw it */
     try { var A = api(); if (A && A.drawGraph) window.setTimeout(A.drawGraph, 60); } catch (e) { }
   }
-
-  if (mqDark && mqDark.addEventListener) mqDark.addEventListener("change", applyTheme);
-  else if (mqDark && mqDark.addListener) mqDark.addListener(applyTheme);
 
   /* the art layer: "full" wears the vintage face, "minimal" keeps the plain controls */
   function applyUi() {
@@ -578,11 +572,36 @@
     "  text-shadow:0 0 7px rgba(255,150,40,.55),0 0 2px rgba(255,200,120,.85)}",
     "html[data-rs-ui=full] .rs-hero #meta b{color:#FFD08A;font-weight:700}",
     "html[data-rs-ui=full] .rs-hero #rsClock{color:#D2DBD6}",
-    "html[data-rs-ui=full] .rs-hero .rs-vol small{color:#C7D2CC}",
+    "html[data-rs-ui=full] .rs-hero .rs-vol small{color:#C9BFAC}",
     "html[data-rs-ui=full] .rs-hero .rs-sw{color:#D2DBD6}",
     "html[data-rs-ui=full] .rs-hero .rs-sw span{color:#D2DBD6}",
     "html[data-rs-ui=full] .rs-hero .pill{background:#3A332A;color:#F0E7D7}",
     "html[data-rs-ui=full] .rs-hero .rs-pill{background:#3A332A;color:#F0E7D7}",
+    /* The two readouts in the hero's top row wear the same hardware as the transport: Surprise
+       me is a brass-edged key, the state is a smoked LED window with a pilot lamp. Both faces
+       are re-declared for hover/active/focus because the page's own button:hover shorthand
+       (background: color-mix(...)) resets background-image — a tap leaves that hover on. */
+    "html[data-rs-ui=full] .rs-hero #rsSurprise,html[data-rs-ui=full] .rs-hero #rsSurprise:hover,",
+    "html[data-rs-ui=full] .rs-hero #rsSurprise:active,html[data-rs-ui=full] .rs-hero #rsSurprise:focus{",
+    "  display:inline-flex;align-items:center;min-height:44px;padding:0 13px;margin:0;border-radius:9px;",
+    "  border:1px solid #5A4526;background-color:#1B140C;",
+    "  background-image:linear-gradient(180deg,#2B2115,#17110B 60%,#0F0A06);",
+    "  box-shadow:inset 0 1px 0 rgba(255,226,180,.16),0 2px 6px rgba(0,0,0,.55)}",
+    "html[data-rs-ui=full] .rs-hero #rsSurprise:active{transform:translateY(1px)}",
+    "html[data-rs-ui=full] .rs-hero #rsSurprise .rs-pill{padding:0;border-radius:0;background:none;",
+    "  color:#E8D6B4;font:700 10.5px/1 var(--rs-sans);letter-spacing:.13em}",
+    "html[data-rs-ui=full] .rs-hero #rsMode{display:inline-flex;align-items:center;gap:7px;",
+    "  padding:6px 9px;border-radius:6px;border:1px solid #3B2C15;background-color:#120D07;",
+    "  background-image:linear-gradient(180deg,#0B0805,#171008 62%,#0A0704);",
+    "  box-shadow:inset 0 1px 4px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.04);color:#FFB454;",
+    "  font:700 10.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;",
+    "  letter-spacing:.14em;text-shadow:0 0 5px rgba(255,150,40,.45)}",
+    "html[data-rs-ui=full] .rs-hero #rsMode::before{content:'';width:6px;height:6px;border-radius:50%;",
+    "  background:radial-gradient(circle at 35% 30%,#5A1612,#2A0B09 70%);",
+    "  box-shadow:inset 0 0 1px #000,inset 0 0 0 1px rgba(0,0,0,.7)}",
+    "html[data-rs-ui=full].rs-playing .rs-hero #rsMode::before{",
+    "  background:radial-gradient(circle at 35% 30%,#FF6B5A,#E0241A 60%,#8C0F0A);",
+    "  box-shadow:0 0 8px rgba(255,60,64,.85),inset 0 0 1px rgba(0,0,0,.3)}",
     /* The transport is a BUTTON, not a knob. The faceplate used to lay knob-calm.webp
      * here and hide the svg, so play read as a rotary dial (knurled rim, pointer slot
      * at 12 o'clock) and stop carried no symbol at all. Now each control is its own
@@ -633,6 +652,17 @@
     ".rs-loopled.on{background:radial-gradient(circle at 35% 30%,#ff6b5a,#e0241a 60%,#8c0f0a);",
     "  box-shadow:0 0 9px rgba(255,60,40,.85),0 0 2px rgba(255,220,200,.9),inset 0 0 2px rgba(0,0,0,.4)}",
     ".rs-loopcap{font:600 10.5px/1 var(--rs-sans);letter-spacing:.14em;text-transform:uppercase;color:#C9BFAC}",
+    /* The level readout is the clock's LED language one size down: a smoked-glass window
+       with amber digits, so the number reads as part of the faceplate rather than as prose
+       next to it. Discreet by size, not by being dim. */
+    ".rs-vollab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:3px}",
+    ".rs-vollab small{margin:0}",
+    ".rs-ledmini{display:inline-flex;align-items:center;justify-content:flex-end;min-width:42px;",
+    "  padding:3px 6px 2px;border-radius:5px;border:1px solid #3B2C15;background-color:#120D07;",
+    "  background-image:linear-gradient(180deg,#0B0805,#1A1208 62%,#0A0704);",
+    "  box-shadow:inset 0 1px 4px rgba(0,0,0,.95),0 1px 0 rgba(255,255,255,.04);",
+    "  font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#FFB454;",
+    "  letter-spacing:.06em;font-variant-numeric:tabular-nums;text-shadow:0 0 5px rgba(255,150,40,.45)}",
     "html[data-rs-ui=full] .rs-transport #rsStop{width:52px;height:52px;border:0;border-radius:50%;",
     "  background-image:url(ui/amp-stop.webp);background-size:cover;background-position:center;",
     "  background-color:#100e0c;box-shadow:0 4px 12px rgba(0,0,0,.5)}",
@@ -908,8 +938,14 @@
     ".rs-sw input:focus-visible + .rs-track{outline:2.5px solid var(--rs-pri);outline-offset:2px}",
 
     /* --------------------------------------------------------------- toast --- */
-    "html.rs-app #toast{bottom:auto !important;top:calc(10px + " + SAFE_T + ") !important;",
-    "  left:16px !important;right:16px !important;z-index:120 !important;border-radius:var(--rs-r-sm)}",
+    /* The page's .toast centres itself with left:50% + translateX(-50%). The shell turns it
+       into a top banner by pinning left/right — and left the transform in place, so the bar
+       was pushed half its width off the glass (-159 px on a 390 px viewport) and the only
+       thing on screen was the empty right end of the pill. Drop the transform with it. */
+    "html.rs-app #toast{left:16px !important;right:16px !important;bottom:auto !important;",
+    "  top:calc(10px + " + SAFE_T + ") !important;transform:none !important;",
+    "  z-index:120 !important;border-radius:var(--rs-r-sm)}",
+    "html.rs-app #toast.show{transform:none !important}",
     "html.rs-app #prog:not([hidden]){display:block !important;position:fixed;left:14px;right:14px;",
     "  bottom:calc(150px + " + SAFE_B + ");height:8px;z-index:78;accent-color:var(--rs-pri)}",
 
@@ -1608,7 +1644,8 @@
       '    <span class="rs-pill rs-live" id="rsMode">idle</span></div>' +
       '  <div class="rs-transport rs-amp">' +
       '    <button class="rs-fab rs-tbtn" id="rsPlay" aria-label="Play">' + svgFill("play") + '</button>' +
-      '    <div class="rs-vol rs-amp-vol"><small>Volume <output id="rsVolPct">70%</output></small>' +
+      '    <div class="rs-vol rs-amp-vol"><div class="rs-vollab"><small>Volume</small>' +
+      '      <output id="rsVolPct" class="rs-ledmini">70%</output></div>' +
       '      <div class="rs-volrow">' +
       '        <button class="rs-mute" id="rsMute" aria-label="Mute" aria-pressed="false">' + svgFill("vol") + '</button>' +
       '        <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div></div>' +
@@ -3165,9 +3202,6 @@
       '  <h3 id="rsApprH">Appearance</h3>' +
       '  <div class="rs-seg" id="rsUi" role="group" aria-label="Interface">' +
       '    <button data-u="full" aria-pressed="true">Full</button><button data-u="minimal" aria-pressed="false">Minimal</button></div>' +
-      '  <div class="rs-seg" id="rsTheme" role="group" aria-label="Theme">' +
-      '    <button data-t="system" aria-pressed="true">System</button><button data-t="dark" aria-pressed="false">Dark</button>' +
-      '    <button data-t="light" aria-pressed="false">Light</button></div>' +
       '  <div class="rs-swatches" id="rsAccents" role="group" aria-label="Theme colour"></div>' +
       '  <label class="rs-sw"><span class="rs-swt"><b>Accent from wallpaper</b>' +
       '    <span>Android 12 and later. Off uses the Resonance teal.</span></span>' +
@@ -3200,17 +3234,6 @@
   }
 
   function wireSettings() {
-    function paintTheme() {
-      $$("#rsTheme button").forEach(function (b) {
-        b.setAttribute("aria-pressed", (prefs.theme || "dark") === b.getAttribute("data-t") ? "true" : "false");
-      });
-    }
-    $$("#rsTheme button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        prefs.theme = b.getAttribute("data-t"); savePrefs(); applyTheme(); paintTheme();
-      });
-    });
-    paintTheme();
     $$("#rsUi button").forEach(function (b) {
       b.addEventListener("click", function () {
         prefs.ui = b.getAttribute("data-u"); savePrefs(); applyUi();

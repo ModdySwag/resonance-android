@@ -385,18 +385,25 @@ def main():
 
         # ---- Surprise me lives in the player -----------------------------------------
         sur = page.evaluate("""(() => {
-          const s = document.getElementById('rsSurprise'),
-                m = document.getElementById('rsMode');
+          const s = document.getElementById('rsSurprise'), m = document.getElementById('rsMode');
           if (!s || !m) return null;
           const a = s.getBoundingClientRect(), b = m.getBoundingClientRect();
+          const h = document.querySelector('.rs-hero-top').getBoundingClientRect();
+          const cs = getComputedStyle(s);
           return { h: Math.round(a.height), w: Math.round(a.width),
                    beside: Math.abs(a.right - b.left) < 30 && Math.abs(a.top - b.top) < 26,
                    inHero: !!s.closest('.rs-hero'),
-                   pill: getComputedStyle(s.querySelector('.rs-pill')).borderRadius };
+                   plate: cs.backgroundColor, plateImg: cs.backgroundImage.slice(0, 30),
+                   modeBg: getComputedStyle(m).backgroundColor,
+                   modeRadius: getComputedStyle(m).borderRadius,
+                   flush: Math.abs((b.left + b.width) - (h.left + h.width)) <= 2 };
         })()""")
-        suite.check("Surprise me is a pill beside the live pill in the player",
+        suite.check("Surprise me is a hardware key beside the LED state window",
                     sur is not None and sur["inHero"] and sur["beside"] and sur["h"] >= 44
-                    and sur["pill"] == "999px", sur)
+                    and sur["plate"] not in ("rgba(0, 0, 0, 0)", "transparent")
+                    and "gradient" in sur["plateImg"]
+                    and sur["modeBg"] not in ("rgba(0, 0, 0, 0)", "transparent")
+                    and sur["modeRadius"] != "999px" and sur["flush"], sur)
         suite.check("the library no longer shows its own Surprise me button",
                     page.evaluate("getComputedStyle(document.getElementById('randomBtn')).display") == "none")
         page.click("#rsSurprise")
@@ -405,8 +412,31 @@ def main():
         rolled = page.evaluate("document.getElementById('rsNowTitle').textContent")
         suite.check("...and the player names what it rolled",
                     bool(rolled) and rolled != "Pick a session", rolled)
+        # the mode text and the lamp are painted by the 250 ms tick, so wait for the flip
+        # instead of reading the instant after the click (an instant read passes/fails by luck)
+        suite.check("the state window reads live", suite.wait_until(
+            "document.getElementById('rsMode').textContent.trim() === 'live'", 4))
+        lamp = page.evaluate("""(() => {
+          const m = document.getElementById('rsMode'), s = document.getElementById('rsSurprise');
+          const cs = getComputedStyle(s);
+          return { text: m.textContent.trim(), lamp: getComputedStyle(m, '::before').boxShadow,
+                   plate: cs.backgroundImage.slice(0, 20), plateBg: cs.backgroundColor };
+        })()""")
+        suite.check("the state window reads live and its pilot lamp is lit",
+                    lamp["text"] == "live" and "255, 60, 64" in lamp["lamp"], lamp)
+        suite.check("the Surprise key keeps its plate through the press",
+                    "gradient" in lamp["plate"]
+                    and lamp["plateBg"] not in ("rgba(0, 0, 0, 0)", "transparent"), lamp)
         page.click("#rsStop")
         suite.wait_until("window.__gnauralAPI.state.playing === false", 8)
+        suite.check("the state window leaves live when the session stops", suite.wait_until(
+            "document.getElementById('rsMode').textContent.trim() !== 'live'", 5))
+        idle = page.evaluate("""(() => {
+          const m = document.getElementById('rsMode');
+          return { text: m.textContent.trim(), lamp: getComputedStyle(m, '::before').boxShadow };
+        })()""")
+        suite.check("the lamp goes dark again when the session stops",
+                    idle["text"] != "live" and "255, 60, 64" not in idle["lamp"], idle)
 
         # ---- the map reads the loaded session --------------------------------------
         label = page.evaluate("document.getElementById('rsSched').getAttribute('aria-label')")
@@ -689,6 +719,26 @@ def main():
             "   && !c.querySelector('#rsFollow'); })()"))
         suite.check("Focus view has its own way in",
                     page.evaluate("!!document.getElementById('rsFocusGo')"))
+        # the Visualise Scramble toggle toasts through the page's own #toast, which the shell
+        # moves to the top of the glass — and used to leave half its width off-screen (its own
+        # translateX(-50%) centring survived the move), so the only thing visible was the empty
+        # right end of the pill. The bar must sit inside the viewport and carry the message.
+        page.click("#vizScramble")
+        page.wait_for_timeout(400)
+        tst = page.evaluate("""(() => {
+          const t = document.getElementById('toast');
+          if (!t) return null;
+          const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
+          return { txt: t.textContent.trim(), on: t.classList.contains('show'),
+                   op: parseFloat(cs.opacity), x: Math.round(r.x), right: Math.round(r.right),
+                   w: Math.round(r.width), vw: innerWidth };
+        })()""")
+        suite.check("the scramble toast is on the glass, with its message",
+                    tst is not None and tst["on"] and tst["op"] > 0.5 and tst["txt"]
+                    and tst["x"] >= 0 and tst["right"] <= tst["vw"], tst)
+        page.wait_for_timeout(2900)
+        suite.check("and it fades away by itself", page.evaluate(
+            "!document.getElementById('toast').classList.contains('show')"))
         page.click("#scr-vis [data-act=focus], #rsFocusGo")
         suite.check("Focus view opens full screen", suite.wait_until(
             "document.documentElement.classList.contains('rs-focus')", 8))
@@ -971,13 +1021,9 @@ def main():
 
         # ---- settings ---------------------------------------------------------------
         suite.tab("settings")
-        page.click("#rsTheme button[data-t=light]")
-        suite.check("choosing Light repaints in the light theme",
-                    page.evaluate("document.documentElement.getAttribute('data-rs-theme')") == "light")
-        suite.click = None
-        page.click("#rsTheme button[data-t=dark]")
-        suite.check("choosing Dark goes back", page.evaluate(
-            "document.documentElement.getAttribute('data-rs-theme')") == "dark")
+        suite.check("there is no theme switcher — the app is dark, by owner decision",
+                    page.evaluate("!document.getElementById('rsTheme') && "
+                                  "document.documentElement.getAttribute('data-rs-theme') === 'dark'"))
         page.click("#rsAccent")
         suite.check("wallpaper accent takes the system palette",
                     page.evaluate("document.documentElement.style.getPropertyValue('--rs-pri')") == "#8AD8C8")
@@ -1374,6 +1420,19 @@ def main():
             over = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
             suite.check("no horizontal overflow at %d px" % w, over <= 0, over)
         page.set_viewport_size({"width": 390, "height": 844})
+
+        # ---- a light preference from an older build must not survive the update ---------
+        # The theme switcher is gone; a phone that had Light (or System) stored has to boot
+        # dark and have its stored value rewritten, or the update lands half-themed.
+        page.evaluate("(() => { const k = 'resonance.app.theme.v1';"
+                      " const p = JSON.parse(localStorage.getItem(k) || '{}');"
+                      " p.theme = 'light'; p.tour = 'done'; localStorage.setItem(k, JSON.stringify(p)); })()")
+        page.reload(wait_until="load")
+        page.add_script_tag(content=SHIM)
+        suite.check("a stored light preference boots dark anyway", suite.wait_until(
+            "document.documentElement.getAttribute('data-rs-theme') === 'dark'", 10))
+        suite.check("and the stored preference is rewritten to dark", page.evaluate(
+            "JSON.parse(localStorage.getItem('resonance.app.theme.v1')).theme") == "dark")
 
         # ---- the welcome tour ---------------------------------------------------------
         page.evaluate("localStorage.removeItem('resonance.app.theme.v1')")
