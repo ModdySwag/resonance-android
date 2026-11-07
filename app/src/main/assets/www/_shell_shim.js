@@ -626,6 +626,17 @@
     "html[data-rs-ui=full] #plist .item[data-band=other]{box-shadow:inset 3px 0 0 #5FBFAE;",
     "  background-image:linear-gradient(92deg,rgba(95,191,174,.12),rgba(95,191,174,0) 52%)}",
     /* the same banding on the rail cards, a touch lighter because they are small */
+    /* the session row's band, carried onto the app's cards: a 3 px edge and a wash that
+       dies inside the first half of the box. Quieter than a row because a card is four
+       times the area - the colour marks the section, it does not become the section. */
+    "html[data-rs-ui=full] .rs-screen .card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band]{background-image:",
+    "  linear-gradient(100deg,var(--rs-band-wash2,rgba(95,191,174,.08)),rgba(0,0,0,0) 52%)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash2:rgba(108,129,190,.09)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=focus]{--rs-band:#D2A659;--rs-band-wash2:rgba(210,166,89,.09)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=relax]{--rs-band:#6FA678;--rs-band-wash2:rgba(111,166,120,.09)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash2:rgba(216,180,92,.09)}",
+    "html[data-rs-ui=full] .rs-screen .card[data-band=other]{--rs-band:#5FBFAE;--rs-band-wash2:rgba(95,191,174,.08)}",
     "html[data-rs-ui=full] .rs-card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#5FBFAE);",
     "  background-image:linear-gradient(100deg,var(--rs-band-wash,transparent),transparent 70%)}",
     "html[data-rs-ui=full] .rs-card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash:rgba(108,129,190,.18)}",
@@ -1381,7 +1392,7 @@
       '  </div>' +
       '</div>' +
       '<div class="rs-states" id="rsStates"></div>' +
-      '<section class="card rs-build" id="rsBuild" aria-labelledby="rsBuildH">' +
+      '<section class="card rs-build" data-band="focus" id="rsBuild" aria-labelledby="rsBuildH">' +
       '  <h3 id="rsBuildH">Build a tone</h3>' +
       '  <div class="rs-field"><label for="rsCarrier">Carrier <output id="rsCarrierOut">220 Hz</output></label>' +
       '    <input id="rsCarrier" type="range" min="90" max="560" step="5" value="220" aria-label="Carrier frequency">' +
@@ -1797,7 +1808,7 @@
       : /focus|study|alpha|work/i.test(title) ? "focus"
       : /relax|calm|theta|medit|breath/i.test(title) ? "relax"
       : /wake|morning|gamma|beta|energ/i.test(title) ? "wake"
-      : /short|under/i.test(title) ? "other" : "";
+      : /short|under|speaker|pulse|room|iso/i.test(title) ? "other" : "";
     items.slice(0, 12).forEach(function (hit) {
       var b = doc.createElement("button");
       b.className = "rs-card";
@@ -1848,13 +1859,13 @@
   function buildSessions() {
     screenEls.sessions.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<section class="card" id="rsBrowse" aria-labelledby="rsBrowseH">' +
+      '<section class="card" data-band="other" id="rsBrowse" aria-labelledby="rsBrowseH">' +
       '  <h3 id="rsBrowseH" class="sr-only">Sessions</h3>' +
       '  <div id="rsModules"></div>' +
       '  <div class="rs-searchrow"><button class="rs-chipbtn" id="rsFilterBtn" aria-expanded="false" ' +
       '    aria-controls="rsFilterWrap">Filters</button></div>' +
       '  <div id="rsFilterWrap"></div></section>' +
-      '<section class="card" id="rsQuick" aria-labelledby="rsQuickH">' +
+      '<section class="card" data-band="other" id="rsQuick" aria-labelledby="rsQuickH">' +
       '  <h3 id="rsQuickH">Quick picks</h3></section>' +
       '<div class="rs-pad"></div>';
   }
@@ -1878,7 +1889,7 @@
     screenEls.studio.innerHTML =
       '<div class="rs-pad"></div>' +
       '<div class="rs-stats" id="rsStats" aria-live="polite"></div>' +
-      '<section class="card" id="rsVoices" aria-labelledby="rsVoicesH">' +
+      '<section class="card" data-band="focus" id="rsVoices" aria-labelledby="rsVoicesH">' +
       '  <h3 id="rsVoicesH">The sound</h3></section>' +
       '<details class="tool rs-mod" id="rsLiveDet"><summary>Live tools</summary>' +
       '  <div class="body"><section class="card" id="rsLive" aria-label="Live tools"></section></div>' +
@@ -1952,19 +1963,19 @@
   function buildVis() {
     screenEls.vis.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<section class="card rs-cta" data-art="chamber" aria-labelledby="rsCymH">' +
+      '<section class="card rs-cta" data-band="focus" data-art="chamber" aria-labelledby="rsCymH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
       '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
       '    <p class="rs-cta-sub">Full visual experience</p></div></div>' +
       '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
-      '<section class="card rs-cta" data-art="focus" aria-labelledby="rsFocusH">' +
+      '<section class="card rs-cta" data-band="relax" data-art="focus" aria-labelledby="rsFocusH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("moon", 26) + '</span>' +
       '    <div><h3 id="rsFocusH">Focus view</h3>' +
       '    <p class="rs-cta-sub">Gentle visuals</p></div></div>' +
       '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
       '</section>' +
-      '<section class="card" aria-labelledby="rsFollowH">' +
+      '<section class="card" data-band="other" aria-labelledby="rsFollowH">' +
       '  <label class="rs-sw"><span class="rs-swt">' +
       '    <b id="rsFollowH">Follow the tone</b></span>' +
       '    <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
@@ -1976,7 +1987,7 @@
       '    <button data-k="lines" aria-pressed="true">Lines</button>' +
       '    <button data-k="dust" aria-pressed="true">Dust</button></div>' +
       '</section>' +
-      '<section class="card" id="rsVizCard" aria-labelledby="rsVizH">' +
+      '<section class="card" data-band="other" id="rsVizCard" aria-labelledby="rsVizH">' +
       '  <h3 id="rsVizH">Ambient panels</h3>' +
       '  <p class="rs-hint">Under the flash threshold.</p></section>' +
       '<div class="rs-pad"></div>';
@@ -2407,7 +2418,7 @@
   function buildSettings() {
     screenEls.settings.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<section class="card" aria-labelledby="rsApprH">' +
+      '<section class="card" data-band="wake" aria-labelledby="rsApprH">' +
       '  <h3 id="rsApprH">Appearance</h3>' +
       '  <div class="rs-seg" id="rsUi" role="group" aria-label="Interface">' +
       '    <button data-u="full" aria-pressed="true">Full</button><button data-u="minimal" aria-pressed="false">Minimal</button></div>' +
@@ -2421,7 +2432,7 @@
       '  <button class="rs-mrow" data-act="focus">' + svg("moon", 22) +
       '    <span class="rs-mtxt"><b>Focus view</b><span id="rsFocusSub">An ambient screen, gently following the tone</span></span>' + svg("chev", 18) + '</button>' +
       '</section>' +
-      '<section class="card" aria-labelledby="rsHelpH">' +
+      '<section class="card" data-band="other" aria-labelledby="rsHelpH">' +
       '  <h3 id="rsHelpH">Help &amp; about</h3>' +
       '  <button class="rs-mrow" data-act="guide">' + svg("book", 22) +
       '    <span class="rs-mtxt"><b>Quick guide</b><span>How to use all of this</span></span>' + svg("chev", 18) + '</button>' +
@@ -2436,7 +2447,7 @@
       '  <button class="rs-mrow" data-act="upd">' + svg("down", 22) +
       '    <span class="rs-mtxt"><b>Check for updates</b><span>Asks moddys.net</span></span>' + svg("chev", 18) + '</button>' +
       '</section>' +
-      '<section class="card" aria-labelledby="rsDataH">' +
+      '<section class="card" data-band="relax" aria-labelledby="rsDataH">' +
       '  <h3 id="rsDataH">Data</h3>' +
       '  <div class="rs-kv"><b>Saved files</b><span>Downloads/Resonance Studio</span></div>' +
       '  <div class="rs-kv"><b>Network</b><span>update check + help pages</span></div>' +
