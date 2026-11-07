@@ -1,3 +1,35 @@
+# Resonance Studio 2.0.5-beta
+
+**The chamber becomes an instrument.** The cymatic chamber now wears the same amplifier
+hardware as the rest of the app, and the scenes you pick stay picked.
+
+## What changed
+
+- **The chamber has a real faceplate.** Play/Pause and Stop are the same machined brass keys
+  as the home player, with a master fader between them; Back, ? and LIVE sit on the row above.
+  The redundant Close key is gone — Back already leaves.
+- **The panels move.** Drag the player's lip up to put it away, pull it back down; the lower
+  panel is a drawer you can slide shut or open from its handle. Eight seconds of quiet puts
+  both away on their own, and any touch brings the player back.
+- **Scenes stick.** Picking Cathedral, Cold Forge or Solar Disc used to be erased a beat later —
+  the shell re-derived the look from the session and repainted the chip row from its own plan.
+  A chip is now a manual decision: it turns "Follow the tone" off, stays lit, and survives
+  reopening the chamber.
+- **Focus view and the fullscreen visualiser share one panel** — the visualisation row stacked
+  over transport and fader, same brass, same fader, no loose pill rows.
+- **Every session holds its level.** The fade-out entry now repeats the level instead of
+  ramping into silence, so a hold is a hold. Measured across the library: 92 of 130 sessions
+  change, no voice changes its peak or its length.
+
+## Install
+
+Release assets are signed with the same key as 1.1.x, so 2.0.5 installs straight over it.
+`resonance-studio-v2.0.5-beta.apk` is the sideload build (versionCode 13).
+
+Cheers Moddy !
+
+---
+
 # Resonance Studio 2.0.0-beta
 
 **The redesign.** The app is no longer the desktop studio page with a bar under it. It is a

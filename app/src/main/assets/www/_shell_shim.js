@@ -102,8 +102,13 @@
   function paintLevel(v) {
     var off = !(v > 0.001);
     var a = $id("rsVol"), b = $id("rsMiniVol"), p = $id("rsVolPct");
+    var more = [$id("rsCymVol"), $id("rsFsVol")];
     if (a && Math.abs(parseFloat(a.value) - v) > 0.004) a.value = String(v);
     if (b && Math.abs(parseFloat(b.value) - v) > 0.004) b.value = String(v);
+    more.forEach(function (el) {
+      if (el && Math.abs(parseFloat(el.value) - v) > 0.004) el.value = String(v);
+      if (el) el.setAttribute("aria-valuetext", Math.round(v * 100) + "%");
+    });
     if (p) p.textContent = Math.round(v * 100) + "%";
     ["rsMute", "rsMiniMute"].forEach(function (id) {
       var el = $id(id);
@@ -660,11 +665,8 @@
     "html[data-rs-ui=full] #rsNav button[aria-selected=true]{background:rgba(224,185,111,.14)}",
     "html[data-rs-ui=full] #rsNav button{color:#C9D3CE}",
     "html[data-rs-ui=full] #rsNav button[aria-selected=true]{color:#F8F1E1}",
-    "html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button{background-image:url(ui/knob-calm.webp);",
-    "  background-size:cover;background-position:center;border:0}",
-    "html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button svg,html[data-rs-ui=full] #rsFsCtl .rs-fs-btns button{",
-    "  font-size:0}",
-    "html[data-rs-ui=full] #rsFsCtl .rs-fs-stop{background-image:url(ui/btn-stop.webp)}",
+    "html[data-rs-ui=full] #rsFsCtl .rs-fs-play{font-size:0;border:0;background-color:#100e0c;",
+    "  background-image:url(ui/amp-play.webp);background-size:cover;background-position:center}",
 
     /* --------------------------------------------------------------- tiles --- */
     ".rs-states{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 16px 12px}",
@@ -896,48 +898,135 @@
     "html[data-rs-theme=\"light\"][data-rs-accent=\"slate\"]{--rs-pri:#405C6B;--rs-on-pri:#FFFFFF;--rs-pri-c:#D3E3EA;--rs-on-pri-c:#16262E}",
     /* ------------------------------------------------------------- chamber --- */
     /* the chamber's own header sat under the status bar (env() is 0 here) */
-    ".rs-app .cym .cym-top{padding-top:calc(10px + " + SAFE_T + ") !important;",
+    ".rs-app .cym .cym-top{padding-top:calc(10px + " + SAFE_T + ") !important}",
     /* the header is a faceplate: title and controls sit inside one panel */
-    "html[data-rs-ui=full] .rs-app .cym .cym-top{background-image:url(ui/strip.webp);",
+    "html[data-rs-ui=full] .cym .cym-top{background-image:url(ui/strip.webp);",
     "  background-size:cover;background-position:center;border-bottom:1px solid #4A3D2B;",
     "  box-shadow:0 4px 14px rgba(0,0,0,.5);padding:calc(8px + " + SAFE_T + ") 10px 8px !important}",
-    "html[data-rs-ui=full] .rs-app .cym .cym-top h2,html[data-rs-ui=full] .rs-app .cym .cym-top b{",
+    "html[data-rs-ui=full] .cym .cym-top h2,html[data-rs-ui=full] .cym .cym-top b{",
     "  color:#F6EFE0;letter-spacing:.06em;text-transform:uppercase;font-size:12px}",
     /* the wording goes; the plate keeps the room for the controls */
     ".rs-app .cym .cym-top .cym-brand{display:none}",
-    "  align-items:center !important}",
+    ".rs-app .cym .cym-top{justify-content:flex-start !important;align-items:center !important}",
+    ".rs-app .cym .cym-actions{width:100% !important;margin-left:0 !important}",
     ".rs-app .cym .cym-dock{bottom:calc(12px + " + SAFE_B + ") !important}",
-    ".rs-app .cym .cym-actions{gap:8px !important;flex-wrap:wrap;justify-content:flex-end}",
-    ".rs-app .cym .cym-actions > button{min-height:44px;min-width:44px;border-radius:12px;",
-    "  font-size:13px;padding:0 12px}",
-    ".rs-app .cym .cym-back{order:-1;display:inline-flex;align-items:center;gap:6px;",
-    "  background:rgba(20,17,13,.55) !important;color:#fff !important;border-color:rgba(255,255,255,.3) !important}",
+    /* ---- the chamber's faceplate ------------------------------------------------
+       The same amplifier hardware as the rest of the app, arranged as two rows of
+       hardware rather than a row of pills:
+
+         phone                       wide (600 px and up)
+         back  · live ·   ?  close   back [live] · play stop [fader] Controls ? close
+         play stop [fader] Controls
+
+       Navigation keeps its own line so the transport never wraps mid-cluster, and the
+       master fader is the only element that grows, so play and stop stay put. */
+    ".rs-app .cym .cym-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;",
+    "  flex:1 1 auto;width:auto;min-width:0;max-width:100%;padding-right:2px;box-sizing:border-box}",
+    ".rs-app .cym .rs-cym-nav,.rs-app .cym .rs-cym-tr{display:flex;align-items:center;gap:8px;min-width:0}",
+    ".rs-app .cym .rs-cym-nav{flex:1 1 100%}",
+    ".rs-app .cym .rs-cym-tr{flex:1 1 100%}",
+    ".rs-app .cym .rs-cym-nav > button,.rs-app .cym .rs-cym-tr > button{min-height:44px;height:44px;",
+    "  min-width:44px;padding:0 10px;box-sizing:border-box;flex:0 0 auto;border-radius:999px;",
+    "  font:600 12px/1 var(--rs-sans);letter-spacing:.06em;text-transform:uppercase;",
+    "  background:rgba(18,14,10,.62);color:#F2E6D8;border:1px solid rgba(255,255,255,.22)}",
+    ".rs-app .cym .cym-back{padding:0;font-size:0}",
+    ".rs-app .cym .cym-nav-live{flex:1 1 auto;display:flex;justify-content:center;min-width:0}",
+    ".rs-app .cym .cym-live{display:inline-flex;align-items:center;gap:6px;",
+    "  font:600 10px/1 var(--rs-sans);letter-spacing:.18em;text-transform:uppercase;",
+    "  color:#D9C6A6;white-space:nowrap}",
+    ".rs-app .cym #rsCymInfo{padding:0;font-size:0}",
+    ".rs-app .cym #cymPlay{width:56px;height:56px;min-width:56px;padding:0;",
+    "  border-radius:50%;font-size:0;background-color:#100e0c;border:0;",
+    "  box-shadow:0 5px 14px rgba(0,0,0,.55)}",
+    ".rs-app .cym #rsCymStop{width:48px;height:48px;min-width:48px;padding:0;",
+    "  border-radius:50%;font-size:0;background-color:#100e0c;border:0;",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    /* the master fader: a sunk slot with a knurled thumb, the same hardware as the
+       hero and the mini player, sized to stay a 44 px target on a 320 px glass */
+    ".rs-app .cym .rs-cym-vol{display:flex;align-items:center;margin:0;flex:1 1 auto;",
+    "  min-width:84px;max-width:260px;height:48px}",
+    ".rs-app .cym .rs-cym-vol input{width:100%;height:44px;margin:0;-webkit-appearance:none;",
+    "  background:transparent}",
+    ".rs-app .cym .rs-cym-vol input::-webkit-slider-runnable-track{height:28px;border-radius:7px;",
+    "  background:linear-gradient(180deg,#2B231A,#14100C);border:1px solid rgba(0,0,0,.8);",
+    "  box-shadow:inset 0 2px 6px rgba(0,0,0,.8)}",
+    ".rs-app .cym .rs-cym-vol input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:34px;",
+    "  margin-top:-4px;border-radius:5px;border:1px solid rgba(0,0,0,.7);",
+    "  background:linear-gradient(180deg,#E7C98A,#8A6A33 58%,#3B2C15);",
+    "  box-shadow:0 2px 5px rgba(0,0,0,.65)}",
     ".rs-app .cym .cym-tempo{min-width:44px;font-size:16px !important;line-height:1}",
-    /* the chamber's own controls wear the same faceplate metal as the player */
-    "html[data-rs-ui=full] .rs-app .cym .cym-actions > button{background-image:url(ui/strip.webp);",
-    "  background-size:cover;background-position:center;border:1px solid #4A3D2B;color:#F2E9D8;",
-    "  box-shadow:0 3px 9px rgba(0,0,0,.5)}",
-    "html[data-rs-ui=full] .rs-app .cym .cym-actions > button:active{background-color:#2A2318}",
-    "html[data-rs-ui=full] .rs-app .cym #play{background-image:url(ui/knob-calm.webp);",
-    "  background-size:cover;background-position:center;border:0;box-shadow:0 5px 14px rgba(0,0,0,.55)}",
-    "html[data-rs-ui=full][data-rs-accent=dusk] .rs-app .cym #play{background-image:url(ui/knob-dusk.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sage] .rs-app .cym #play{background-image:url(ui/knob-sage.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sand] .rs-app .cym #play{background-image:url(ui/knob-sand.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=slate] .rs-app .cym #play{background-image:url(ui/knob-slate.webp)}",
-    "html[data-rs-ui=full] .rs-app .cym #play{font-size:0}",
+    /* the generated brass faces, only in the Full interface (Minimal stays typographic) */
+    "html[data-rs-ui=full] .cym #cymPlay{background-image:url(ui/amp-play.webp);",
+    "  background-size:cover;background-position:center}",
+    "html[data-rs-ui=full].rs-playing .cym #cymPlay{background-image:url(ui/amp-pause.webp)}",
+    "html[data-rs-ui=full] .cym #rsCymStop{background-image:url(ui/amp-stop.webp);",
+    "  background-size:cover;background-position:center}",
+    "html[data-rs-ui=full] .cym .cym-back{background-image:url(ui/amp-back.webp);",
+    "  background-size:cover;background-position:center;border:0}",
+    "html[data-rs-ui=full] .cym #rsCymInfo{background-image:url(ui/amp-info.webp);",
+    "  background-size:cover;background-position:center;border:0}",
+    "html[data-rs-ui=full] .cym .rs-cym-vol input::-webkit-slider-runnable-track{",
+    "  background-image:url(ui/amp-vol-track.webp);background-size:100% 100%;background-repeat:no-repeat}",
+    "html[data-rs-ui=full] .cym .rs-cym-vol input::-webkit-slider-thumb{",
+    "  background-image:url(ui/amp-vol-knob.webp);background-size:cover;background-position:center}",
+    /* the one labelled key: brass plate, engraved dark lettering, the same metal as
+       the faces beside it - a dark pill with white type read as a different family */
+    "html[data-rs-ui=full] .cym #cymCtl{background-image:linear-gradient(180deg,#E2C489,#B58C4C 56%,#7E5C2E);",
+    "  background-color:#B58C4C;border-color:#5E4623;color:#241A0F;font-size:11px;",
+    "  letter-spacing:.10em;text-shadow:0 1px 0 rgba(255,244,220,.35);",
+    "  box-shadow:inset 0 1px 0 rgba(255,248,230,.45),inset 0 -2px 4px rgba(0,0,0,.35),0 3px 9px rgba(0,0,0,.45)}",
     ".rs-app .cym .cym-tone{display:none}",
-    /* the top-right row: even 44px pills, one line, and it must fit 320 px too */
-    ".rs-app .cym .cym-actions{gap:6px !important;flex-wrap:wrap !important;justify-content:flex-end;",
-    "  max-width:100%;padding-right:2px;box-sizing:border-box}",
-    ".rs-app .cym .cym-actions > button{min-height:44px;height:44px;min-width:44px;padding:0 9px;",
-    "  box-sizing:border-box;flex:0 0 auto;",
-    "  border-radius:999px;font:600 12.5px/1 var(--rs-sans);background:rgba(18,14,10,.55) !important;",
-    "  color:#F2E6D8 !important;border:1px solid rgba(255,255,255,.22) !important}",
-    ".rs-app .cym .cym-live{display:none}",
+    /* wide: one panel row, navigation at the left, the transport cluster at the right */
+    "@media (min-width: 600px){",
+    "  .rs-app .cym .rs-cym-nav{flex:0 0 auto}",
+    "  .rs-app .cym .rs-cym-tr{flex:1 1 auto;justify-content:flex-end}",
+    "  .rs-app .cym .rs-cym-tr .rs-cym-vol{flex:0 1 220px}",
+    "}",
+    /* narrow: keep the transport on one line, and give the fader room */
+    "@media (max-width: 359px){",
+    "  .rs-app .cym #cymCtl{padding:0 7px;font-size:10.5px}",
+    "  .rs-app .cym .rs-cym-vol{min-width:64px}",
+    "}",
+    /* the panels start under the two-row faceplate on a phone */
+    /* the lower panel is a drawer on a phone: a grab handle stays on the glass when
+       it is put away, so it can be pulled back up instead of hunted for in the top bar */
+    "@media (max-width: 820px){",
+    /* the top player slides up out of the way from its lip, and the lip stays on the
+       glass (just under the status bar) so the panel can be pulled back down */
+    "  .rs-app .cym .cym-top{transition:transform .26s cubic-bezier(.22,.61,.36,1)}",
+    "  .rs-app .cym .cym-top.rs-cym-hid{transform:translateY(calc(var(--rs-safe-t,0px) - 100%)) !important}",
+    "  .rs-app .cym .cym-top.rs-dragging{transition:none !important}",
+    "  .rs-app .cym .rs-cym-lip{position:absolute;left:0;right:0;bottom:-30px;height:30px;",
+    "    display:flex;align-items:center;justify-content:center;gap:8px;pointer-events:auto;",
+    "    background:linear-gradient(180deg,rgba(10,8,6,0),rgba(10,8,6,.55));",
+    "    border-radius:0 0 12px 12px;touch-action:none;cursor:grab}",
+    "  .rs-app .cym .rs-cym-lip i{width:44px;height:4px;border-radius:2px;display:block;",
+    "    background:linear-gradient(90deg,#8A6A33,#E7C98A,#8A6A33)}",
+    "  .rs-app .cym .rs-cym-lip em{font-style:normal;color:#C9B48C;font-size:11px;line-height:1}",
+    "  .rs-app .cym .rs-cym-lip:focus-visible{outline:2px solid #E0B96F;outline-offset:-2px}",
+    "  .rs-app .cym .cym-left.rs-cym-sheet{transform:translateY(calc(100% - 46px)) !important;",
+    "    transition:transform .26s cubic-bezier(.22,.61,.36,1)}",
+    "  .rs-app .cym .cym-left.rs-cym-sheet.open{transform:translateY(0) !important}",
+    "  .rs-app .cym .cym-left.rs-cym-sheet.rs-dragging{transition:none !important}",
+    "  .rs-app .cym .rs-cym-grab{position:sticky;top:0;z-index:3;display:flex;align-items:center;",
+    "    gap:10px;flex:0 0 46px;height:46px;margin:-14px -16px 10px;padding:0 16px;box-sizing:border-box;",
+    "    background:linear-gradient(180deg,rgba(28,22,15,.99),rgba(18,13,9,.97));",
+    "    border-bottom:1px solid rgba(224,185,111,.20);touch-action:none;cursor:grab}",
+    "  .rs-app .cym .rs-cym-grab i{display:flex;justify-content:center;width:44px;flex:0 0 44px}",
+    "  .rs-app .cym .rs-cym-grab i::before{content:'';width:44px;height:4px;border-radius:2px;",
+    "    background:linear-gradient(90deg,#8A6A33,#E7C98A,#8A6A33);display:block}",
+    "  .rs-app .cym .rs-cym-grab b{flex:1 1 auto;font:600 10px/1 var(--rs-sans);letter-spacing:.16em;",
+    "    text-transform:uppercase;color:#D9C6A6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    "  .rs-app .cym .rs-cym-grab em{font-style:normal;color:#E0B96F;font-size:13px;line-height:1}",
+    "  .rs-app .cym .rs-cym-grab:focus-visible{outline:2px solid #E0B96F;outline-offset:-2px}",
+    "}",
+    "@media (max-width: 599px){",
+    "  .rs-app .cym .cym-panel{top:calc(132px + " + SAFE_T + ") !important}",
+    "}",
     ".rs-app .cym .cym-tone{max-width:44vw}",
     /* the gesture hint lives behind a ? */
     ".rs-app .cym .cym-note{display:none}",
-    ".rs-cym-info{position:absolute;right:12px;top:calc(64px + " + SAFE_T + ");z-index:6;",
+    ".rs-cym-info{position:absolute;right:12px;top:calc(126px + " + SAFE_T + ");z-index:6;",
     "  width:min(300px,78vw);padding:12px 14px;border-radius:14px;background:rgba(16,12,9,.94);",
     "  border:1px solid rgba(255,255,255,.22);color:#E6DCCB;font:12.5px/1.5 var(--rs-sans);display:none}",
     ".rs-cym-info.on{display:block}",
@@ -1830,7 +1919,22 @@
     return { medium: "water", scene: "black-water", band: "gamma", why: "gamma drives a tight, bright ripple" };
   }
 
-  var follow = true;
+  var follow = prefs.follow !== false;
+
+  /* Choosing a chip is a decision, not a temporary override: it stops the chamber
+     re-deriving the look from the session, and it says so on the Follow switch. The
+     old code let the 1 Hz plan re-apply over the choice, which is why Cathedral /
+     Cold Forge / Solar Disc read as dead buttons. */
+  function setFollow(on, quiet) {
+    follow = !!on;
+    prefs.follow = follow; savePrefs();
+    var cb = $id("rsFollow");
+    if (cb) cb.checked = follow;
+    var c = cymApi();
+    try { if (c && c.setPrefs) c.setPrefs({ src: follow ? "session" : "manual" }); } catch (e) { }
+    if (follow) syncVis(); else markScenes();
+    if (!quiet) toast(follow ? "Following the tone" : "Manual — the scene stays put");
+  }
 
   function buildVis() {
     screenEls.vis.innerHTML =
@@ -1870,11 +1974,25 @@
     return c && (c.api || c);
   }
 
+  /* Which chip is lit: the plan's scene while the chamber follows the session, the
+     chamber's own preset the moment a person has picked one. Reading the preset back
+     from the page is what keeps the row honest after a reload or a session change. */
+  function markScenes(plan) {
+    var c = cymApi(), cur = "";
+    try { if (c && c.getPrefs) cur = (c.getPrefs() || {}).preset || ""; } catch (e) { }
+    $$("#rsScenes button").forEach(function (b) {
+      var on = follow ? (!!plan && b.getAttribute("data-scene") === plan.scene)
+                      : b.getAttribute("data-scene") === cur;
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
   function syncVis() {
     var map = $id("rsMap");
     if (!map) return;
     var shape = sessionShape();
     var plan = planFor(shape);
+    markScenes(plan);
     if (!plan) { map.textContent = "No session."; return; }
     var mode = "—";
     var c = cymApi();
@@ -1886,9 +2004,6 @@
     } catch (e) { }
     map.innerHTML = "carrier <b>" + shape.carrier.toFixed(0) + " Hz</b> · rate <b>" +
       shape.beat.toFixed(1) + " Hz</b> · " + plan.band + " on " + plan.medium + " · mode " + mode;
-    $$("#rsScenes button").forEach(function (b) {
-      b.setAttribute("aria-pressed", b.getAttribute("data-scene") === plan.scene ? "true" : "false");
-    });
     $$("#rsMedia button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-medium") === plan.medium ? "true" : "false");
     });
@@ -1923,22 +2038,27 @@
       });
     });
     $id("rsFollow").addEventListener("change", function () {
-      follow = this.checked;
-      if (follow) syncVis();
+      setFollow(this.checked);
     });
     $id("rsChamber").addEventListener("click", openChamber);
   }
 
   function applyVis(o) {
     var c = cymApi(); if (!c) return;
+    /* A scene or a medium chip is a manual decision: it must stop the look being
+       re-derived from the session on the next tick, or the chip reads as dead. */
+    var manual = !!(o.scene || o.medium);
     try {
       if (o.scene) c.scene(o.scene);
       var p = {};
       if (o.medium) p.medium = o.medium;
       ["sand", "lines", "dust"].forEach(function (k) { if (o[k] !== undefined) p[k] = o[k]; });
-      if (follow) p.src = "session";
+      if (manual) { follow = false; prefs.follow = false; savePrefs(); p.src = "manual"; }
+      else if (follow) p.src = "session";
       c.setPrefs(p);
     } catch (e) { }
+    var cb = $id("rsFollow");
+    if (cb) cb.checked = follow;
     syncVis();
   }
 
@@ -1950,13 +2070,39 @@
     var act = root.querySelector(".cym-actions");
     if (!act) return;
     cymHooked = true;
+    /* The faceplate is placed by grid areas in the stylesheet, so these keys only have
+       to exist and carry their own geometry: navigation on the top row, the transport
+       on the row beneath it, one master fader between play and stop. */
     var back = doc.createElement("button");
     back.id = "rsCymBack";
     back.className = "cym-back";
-    back.innerHTML = "\u2039 Back";
     back.setAttribute("aria-label", "Back to Resonance Studio");
     back.onclick = function () { closeChamber(false); };
     act.insertBefore(back, act.firstChild);
+
+    var playBtn = doc.getElementById("cymPlay");
+    if (playBtn) playBtn.setAttribute("aria-label", "Play or pause the session");
+
+    var stop = doc.createElement("button");
+    stop.id = "rsCymStop";
+    stop.textContent = "Stop";
+    stop.setAttribute("aria-label", "Stop and rewind the session");
+    stop.onclick = function () { pageStop(); pushState(true); };
+    act.appendChild(stop);
+
+    /* one master level: the same fader hardware as the hero and the mini player, and
+       the same paintLevel() drives it, so a change here is already right everywhere */
+    var vol = doc.createElement("label");
+    vol.className = "rs-cym-vol";
+    var range = doc.createElement("input");
+    range.type = "range";
+    range.id = "rsCymVol";
+    range.min = "0"; range.max = "1"; range.step = "0.01";
+    range.value = String(masterNow());
+    range.setAttribute("aria-label", "Volume");
+    range.addEventListener("input", function () { setMaster(parseFloat(this.value)); });
+    vol.appendChild(range);
+    act.appendChild(vol);
 
     var slower = doc.createElement("button");
     slower.className = "cym-tempo"; slower.textContent = "\u2212";
@@ -1969,6 +2115,7 @@
 
     /* ? : the gesture hints, hidden but findable */
     var info = doc.createElement("button");
+    info.id = "rsCymInfo";
     info.textContent = "?";
     info.setAttribute("aria-label", "Gestures");
     info.setAttribute("aria-expanded", "false");
@@ -1997,12 +2144,174 @@
       row.appendChild(slower); row.appendChild(lbl); row.appendChild(faster);
       leftPanel.insertBefore(row, leftPanel.firstChild);
     }
-    var stop = doc.createElement("button");
-    stop.textContent = "Stop";
-    stop.setAttribute("aria-label", "Stop and rewind the session");
-    stop.onclick = function () { pageStop(); pushState(true); };
-    act.insertBefore(stop, act.querySelector("#cymClose"));
     act.insertBefore(info, act.querySelector("#cymClose"));
+
+    /* Two rows of hardware. Navigation (back / status / help / close) on the first,
+       the transport (play, stop, fader, Controls) on the second; on a wide glass the
+       two groups sit on one line with the transport at the right edge. */
+    var nav = doc.createElement("div"), tr = doc.createElement("div");
+    nav.className = "rs-cym-nav"; tr.className = "rs-cym-tr";
+    var live = act.querySelector(".cym-live");
+    var ctl = act.querySelector("#cymCtl");
+    /* Back owns leaving the chamber, so the page's Close button is redundant here:
+       two keys doing one job is one key too many. It stays in the page for desktop. */
+    var close = act.querySelector("#cymClose");
+    if (close && close.parentNode) close.parentNode.removeChild(close);
+    close = null;
+    var liveBox = doc.createElement("span");
+    liveBox.className = "cym-nav-live";
+    nav.appendChild(back);
+    if (live) { liveBox.appendChild(live); nav.appendChild(liveBox); }
+    nav.appendChild(info);
+    if (close) nav.appendChild(close);
+    if (playBtn) tr.appendChild(playBtn);
+    tr.appendChild(stop);
+    tr.appendChild(vol);
+    if (ctl) tr.appendChild(ctl);
+    act.appendChild(nav);
+    act.appendChild(tr);
+
+    /* The lower panel becomes a drawer with a handle: drag it down to put it away,
+       drag it up to bring it back, or tap it. Wide screens keep the side rail. */
+    var setSheet = null;
+    var sheet = root.querySelector(".cym-left");
+    if (sheet) {
+      sheet.classList.add("rs-cym-sheet");
+      var grab = doc.createElement("div");
+      grab.className = "rs-cym-grab";
+      grab.setAttribute("role", "button");
+      grab.setAttribute("tabindex", "0");
+      grab.setAttribute("aria-label", "Tone tempo and scenes");
+      grab.innerHTML = "<i></i><b>Tone tempo &amp; scenes</b><em>▾</em>";
+      sheet.insertBefore(grab, sheet.firstChild);
+      setSheet = function (on) {
+        sheet.classList.toggle("open", on);
+        grab.setAttribute("aria-expanded", on ? "true" : "false");
+        var em = grab.querySelector("em");
+        if (em) em.textContent = on ? "▾" : "▴";
+        var sc = doc.getElementById("cymScrim");
+        if (sc) sc.classList.toggle("on", on);
+      };
+      setSheet(sheet.classList.contains("open"));
+      var isPhone = function () {
+        try { return window.matchMedia("(max-width: 820px)").matches; } catch (e) { return false; }
+      };
+      var drag = null;
+      grab.addEventListener("pointerdown", function (e) {
+        if (!isPhone()) return;
+        drag = { id: e.pointerId, y: e.clientY, dy: 0, raw: 0 };
+        try { grab.setPointerCapture(e.pointerId); } catch (err) { }
+        sheet.classList.add("rs-dragging");
+        e.preventDefault();
+      });
+      grab.addEventListener("pointermove", function (e) {
+        if (!drag || e.pointerId !== drag.id) return;
+        drag.raw = e.clientY - drag.y;
+        drag.dy = Math.max(-24, drag.raw);
+        sheet.style.transform = sheet.classList.contains("open")
+          ? "translateY(" + Math.max(0, drag.dy) + "px)"
+          : "translateY(calc(100% - 46px + " + Math.min(0, drag.dy) + "px))";
+      });
+      var endDrag = function () {
+        if (!drag) return;
+        var dy = drag.raw, open = sheet.classList.contains("open");
+        drag = null;
+        sheet.classList.remove("rs-dragging");
+        sheet.style.transform = "";
+        if (Math.abs(dy) < 6) setSheet(!open);
+        else if (open) setSheet(!(dy > 56));
+        else setSheet(dy < -26);
+      };
+      grab.addEventListener("pointerup", endDrag);
+      grab.addEventListener("pointercancel", endDrag);
+      grab.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          setSheet(!sheet.classList.contains("open"));
+        }
+      });
+    }
+
+    /* The top player panel gets the same gesture from its lip: slide up to put the
+       player away, slide down to bring it back, tap to toggle. */
+    var topbar = root.querySelector(".cym-top");
+    if (topbar) {
+      var lip = doc.createElement("div");
+      lip.className = "rs-cym-lip";
+      lip.setAttribute("role", "button");
+      lip.setAttribute("tabindex", "0");
+      lip.setAttribute("aria-label", "Player controls");
+      lip.innerHTML = "<i></i><em>▴</em>";
+      topbar.appendChild(lip);
+      var setTop = function (on) {
+        topbar.classList.toggle("rs-cym-hid", !on);
+        lip.setAttribute("aria-expanded", on ? "true" : "false");
+        var em = lip.querySelector("em");
+        if (em) em.textContent = on ? "▴" : "▾";
+      };
+      setTop(true);
+      var isPhoneT = function () {
+        try { return window.matchMedia("(max-width: 820px)").matches; } catch (e) { return false; }
+      };
+      var tdrag = null;
+      lip.addEventListener("pointerdown", function (e) {
+        if (!isPhoneT()) return;
+        tdrag = { id: e.pointerId, y: e.clientY, dy: 0, raw: 0 };
+        try { lip.setPointerCapture(e.pointerId); } catch (err) { }
+        topbar.classList.add("rs-dragging");
+        e.preventDefault();
+      });
+      lip.addEventListener("pointermove", function (e) {
+        if (!tdrag || e.pointerId !== tdrag.id) return;
+        tdrag.raw = e.clientY - tdrag.y;
+        tdrag.dy = Math.max(-24, Math.min(140, tdrag.raw));
+        var shown = !topbar.classList.contains("rs-cym-hid");
+        topbar.style.transform = shown
+          ? "translateY(" + Math.min(0, tdrag.dy) + "px)"
+          : "translateY(calc(var(--rs-safe-t,0px) - 100% + " + Math.max(0, tdrag.dy) + "px))";
+      });
+      var endDragTop = function () {
+        if (!tdrag) return;
+        var dy = tdrag.raw, shown = !topbar.classList.contains("rs-cym-hid");
+        tdrag = null;
+        topbar.classList.remove("rs-dragging");
+        topbar.style.transform = "";
+        if (Math.abs(dy) < 6) setTop(!shown);
+        else if (shown) setTop(!(dy < -24));
+        else setTop(dy > 24);
+      };
+      lip.addEventListener("pointerup", endDragTop);
+      lip.addEventListener("pointercancel", endDragTop);
+      lip.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+          e.preventDefault();
+          setTop(topbar.classList.contains("rs-cym-hid"));
+        }
+      });
+
+      /* Quiet chrome: eight seconds without a touch puts the player and the drawer
+         away together, so the plate is the whole screen. Any touch brings the player
+         back (the drawer only when its handle is used, so a stray tap on the glass
+         cannot spring a panel over the instrument). */
+      var idleT = null;
+      var armIdle = function () {
+        window.clearTimeout(idleT);
+        if (!isPhoneT()) return;
+        idleT = window.setTimeout(function () {
+          if (!doc.documentElement.classList.contains("cym-open") || doc.hidden) { armIdle(); return; }
+          setTop(false);
+          if (setSheet) setSheet(false);
+        }, 8000);
+      };
+      root.addEventListener("pointerdown", function (e) {
+        var t = e.target;
+        var onHandle = t && t.closest && t.closest(".rs-cym-lip,.rs-cym-grab");
+        if (!onHandle && topbar.classList.contains("rs-cym-hid")) setTop(true);
+        armIdle();
+      }, true);
+      root.addEventListener("keydown", armIdle, true);
+      armIdle();
+    }
   }
 
   /* Tempo scales every binaural/iso entry's beat rate. The untouched beat is kept on the
@@ -2062,7 +2371,9 @@
     if (!c) { toast("The chamber is still starting — try again."); return; }
     var plan = planFor(sessionShape());
     try {
-      if (plan && c.api && c.api.scene) c.api.scene(plan.scene);
+      /* Only a following chamber takes the plan's scene; a scene a person picked is
+         theirs, and opening the chamber must not overwrite it. */
+      if (follow && plan && c.api && c.api.scene) c.api.scene(plan.scene);
       if (c.api && c.api.setPrefs) c.api.setPrefs({ src: follow ? "session" : "manual" });
     } catch (e) { }
     c.open();
@@ -2846,7 +3157,6 @@
       /* the panel's own wrappers must stretch too, or the canvas keeps its inline height */
       "html.rs-fs .rs-fs-host .viz-inline,html.rs-fs .rs-fs-host .viz-frame,html.rs-fs .rs-fs-host > div{",
       "  height:100% !important;max-height:none !important;display:block !important}",
-      "#rsFsCtl .rs-fs-meta{gap:18px}",
       "#rsFsTop{position:absolute;top:calc(10px + " + SAFE_T + ");left:14px;right:12px;display:flex;",
       "  align-items:center;gap:10px;color:rgba(255,255,255,.75);font:13px/1.3 inherit;",
       "  pointer-events:none;transition:opacity .25s;z-index:2}",
@@ -2855,35 +3165,75 @@
       "#rsFsTop button{pointer-events:auto;width:48px;height:48px;border-radius:50%;",
       "  border:1px solid rgba(255,255,255,.28);background:rgba(20,17,13,.42);color:#fff;",
       "  font-size:17px;cursor:pointer}",
-      "#rsFsCtl{position:absolute;left:0;right:0;bottom:calc(14px + " + SAFE_B + ");display:flex;",
-      "  flex-direction:column;align-items:center;gap:10px;z-index:2;pointer-events:none;",
-      "  transition:opacity .25s}",
-      "#rsFsCtl .rs-fs-meta{pointer-events:auto;display:flex;align-items:center;gap:12px;",
-      "  width:min(340px,84vw);color:rgba(255,255,255,.8);font:13px/1 inherit}",
-      "#rsFsCtl #rsFsTime{font-variant-numeric:tabular-nums;flex:0 0 auto}",
-      "#rsFsCtl #rsFsVol{flex:1 1 auto;height:32px;-webkit-appearance:none;background:transparent}",
-      "#rsFsCtl #rsFsVol::-webkit-slider-runnable-track{height:4px;border-radius:2px;",
-      "  background:rgba(255,255,255,.32)}",
-      "#rsFsCtl #rsFsVol::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;",
-      "  margin-top:-7px;border-radius:50%;background:#fff}",
-      "#rsFsCtl .rs-fs-btns{display:flex;gap:16px;pointer-events:none}",
-      "#rsFsCtl button{pointer-events:auto;border-radius:50%;border:1px solid rgba(255,255,255,.28);",
-      "  background:rgba(20,17,13,.42);color:#fff;cursor:pointer}",
-      "#rsFsCtl .rs-fs-play{width:58px;height:58px;font-size:20px}",
+      "html[data-rs-ui=full] #rsFsTop button{font-size:0;border:0;background-color:#100e0c;",
+      "  background-image:url(ui/amp-close.webp);background-size:cover;background-position:center;",
+      "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+      /* the viewer's control panel: one faceplate, two rows. Transport + master fader
+         on the bottom row; in focus view the visualisation picker stacks above it in
+         the same panel, so the screen has one piece of hardware instead of two loose
+         pill rows. Widths are shared, so the rows line up exactly. */
+      "#rsFsCtl{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(12px + " + SAFE_B + ");",
+      "  width:min(420px,94vw);box-sizing:border-box;display:flex;flex-direction:column;gap:8px;",
+      "  padding:10px 12px;border-radius:18px;background:rgba(10,8,6,.66);",
+      "  border:1px solid rgba(255,255,255,.14);box-shadow:0 10px 30px rgba(0,0,0,.45);",
+      "  z-index:2;pointer-events:none;transition:opacity .25s}",
+      "html[data-rs-ui=full] #rsFsCtl{background-image:linear-gradient(180deg,rgba(12,9,7,.90),rgba(12,9,7,.95)),",
+      "  url(ui/strip.webp);background-size:cover;background-position:center;border-color:#4A3D2B;",
+      "  box-shadow:0 12px 34px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07)}",
+      "#rsFsCtl .rs-fs-row{display:flex;align-items:center;gap:10px;pointer-events:auto}",
+      "#rsFsCtl button{pointer-events:auto;flex:0 0 auto;border-radius:50%;",
+      "  border:1px solid rgba(255,255,255,.28);background:rgba(20,17,13,.42);color:#fff;cursor:pointer}",
+      "#rsFsCtl .rs-fs-play{width:56px;height:56px;font-size:20px}",
       "#rsFsCtl .rs-fs-stop{width:46px;height:46px;font-size:14px}",
-      /* focus view: the same stage, but with a way to change the visualisation */
-      "#rsFocusBar{position:absolute;left:0;right:0;bottom:calc(132px + " + SAFE_B + ");display:none;z-index:2;",
-      "  align-items:center;justify-content:center;gap:6px;padding:0 14px;pointer-events:none}",
+      /* the same brass faces as the hero: the picture is the state */
+      "html[data-rs-ui=full] #rsFsCtl .rs-fs-play{font-size:0;border:0;background-color:#100e0c;",
+      "  background-image:url(ui/amp-play.webp);background-size:cover;background-position:center;",
+      "  box-shadow:0 5px 14px rgba(0,0,0,.55)}",
+      "html[data-rs-ui=full].rs-playing #rsFsCtl .rs-fs-play{background-image:url(ui/amp-pause.webp)}",
+      "html[data-rs-ui=full] #rsFsCtl .rs-fs-stop{font-size:0;border:0;background-color:#100e0c;",
+      "  background-image:url(ui/amp-stop.webp);background-size:cover;background-position:center;",
+      "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+      "#rsFsCtl #rsFsTime{font:600 11px/1 var(--rs-sans);font-variant-numeric:tabular-nums;",
+      "  color:rgba(255,255,255,.84);flex:0 0 auto;min-width:74px;text-align:right}",
+      "#rsFsCtl #rsFsVol{flex:1 1 auto;min-width:70px;height:44px;margin:0;",
+      "  -webkit-appearance:none;background:transparent}",
+      "#rsFsCtl #rsFsVol::-webkit-slider-runnable-track{height:26px;border-radius:7px;",
+      "  background:linear-gradient(180deg,#2B231A,#14100C);border:1px solid rgba(0,0,0,.8);",
+      "  box-shadow:inset 0 2px 6px rgba(0,0,0,.8)}",
+      "#rsFsCtl #rsFsVol::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:34px;",
+      "  margin-top:-5px;border-radius:5px;border:1px solid rgba(0,0,0,.7);",
+      "  background:linear-gradient(180deg,#E7C98A,#8A6A33 58%,#3B2C15);box-shadow:0 2px 5px rgba(0,0,0,.65)}",
+      "html[data-rs-ui=full] #rsFsCtl #rsFsVol::-webkit-slider-runnable-track{",
+      "  background-image:url(ui/amp-vol-track.webp);background-size:100% 100%;background-repeat:no-repeat}",
+      "html[data-rs-ui=full] #rsFsCtl #rsFsVol::-webkit-slider-thumb{",
+      "  background-image:url(ui/amp-vol-knob.webp);background-size:cover;background-position:center}",
+      /* focus view: the visualisation row, inside the same panel */
+      "#rsFocusBar{display:none;align-items:center;gap:8px;pointer-events:auto}",
       "html.rs-focus #rsFocusBar{display:flex}",
-      "#rsFocusBar button{pointer-events:auto;min-width:48px;height:48px;border-radius:999px;",
-      "  border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.42);color:#F2F6F4;",
-      "  font:600 15px/1 var(--rs-sans);-webkit-appearance:none}",
-      "#rsFocusBar #rsFocusName{pointer-events:auto;min-width:0;max-width:46%;padding:0 12px;height:48px;",
-      "  display:flex;align-items:center;justify-content:center;border-radius:999px;background:rgba(0,0,0,.42);",
-      "  color:#F2F6F4;font:600 13px/1 var(--rs-sans);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-      "#rsFocusBar #rsFocusPick{min-width:0;padding:0 16px;font-size:13px}",
+      "#rsFocusBar button{pointer-events:auto;min-width:44px;height:44px;border-radius:999px;",
+      "  border:1px solid rgba(255,255,255,.24);background:rgba(0,0,0,.42);color:#F2F6F4;",
+      "  font:600 13px/1 var(--rs-sans);-webkit-appearance:none;flex:0 0 auto}",
+      "#rsFocusBar .rs-fs-prev,#rsFocusBar .rs-fs-next{width:44px;padding:0;font-size:0;border:0;",
+      "  background-color:#100e0c}",
+      "html[data-rs-ui=full] #rsFocusBar .rs-fs-prev{background-image:url(ui/amp-back.webp);",
+      "  background-size:cover;background-position:center}",
+      "html[data-rs-ui=full] #rsFocusBar .rs-fs-next{background-image:url(ui/amp-next.webp);",
+      "  background-size:cover;background-position:center}",
+      "#rsFocusBar #rsFocusName{pointer-events:auto;flex:1 1 auto;min-width:0;padding:0 12px;height:44px;",
+      "  display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(0,0,0,.42);",
+      "  color:#F6EAD2;font:600 12px/1 var(--rs-sans);letter-spacing:.04em;white-space:nowrap;",
+      "  overflow:hidden;text-overflow:ellipsis}",
+      "html[data-rs-ui=full] #rsFocusBar #rsFocusName{background-image:",
+      "  linear-gradient(180deg,rgba(12,9,7,.84),rgba(20,15,10,.9)),url(ui/strip.webp);",
+      "  background-size:cover;background-position:center;border:1px solid #4A3D2B}",
+      "#rsFocusBar #rsFocusPick{padding:0 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}",
+      "html[data-rs-ui=full] #rsFocusBar #rsFocusPick{background-image:",
+      "  linear-gradient(180deg,#E2C489,#B58C4C 56%,#7E5C2E);background-color:#B58C4C;",
+      "  border-color:#5E4623;color:#241A0F;text-shadow:0 1px 0 rgba(255,244,220,.35);",
+      "  box-shadow:inset 0 1px 0 rgba(255,248,230,.45),0 3px 9px rgba(0,0,0,.45)}",
       "html.rs-fs .rs-fs-host .viz-badge{bottom:calc(92px + " + SAFE_B + ") !important;opacity:1;",
       "  color:#fff !important;background:rgba(10,8,6,.72) !important;padding:4px 9px;border-radius:999px}",
+      "html.rs-focus .rs-fs-host .viz-badge{bottom:calc(164px + " + SAFE_B + ") !important}",
       "html.rs-fs-hide #rsFsTop,html.rs-fs-hide #rsFsCtl{opacity:0}",
       "html.rs-fs-hide #rsFocusBar{opacity:0;pointer-events:none}",
       "html.rs-fs-hide #rsFsTop button,html.rs-fs-hide #rsFsCtl button{pointer-events:none}",
@@ -2899,15 +3249,16 @@
       '<div id="rsFsStage" data-rs="fsStage"></div>' +
       '<div id="rsFsTop"><span class="rs-fs-title" id="rsFsTitle"></span>' +
       '<button data-rs="fsExit" aria-label="Close the visualiser">✕</button></div>' +
-      '<div id="rsFocusBar"><button data-rs="fPrev" aria-label="Previous visualisation">\u2039</button>' +
+      '<div id="rsFsCtl">' +
+      '<div id="rsFocusBar"><button class="rs-fs-prev" data-rs="fPrev" aria-label="Previous visualisation"></button>' +
       '<span id="rsFocusName">Visualisation</span>' +
-      '<button data-rs="fNext" aria-label="Next visualisation">\u203a</button>' +
-      '<button data-rs="fPick">Change</button></div>' +
-      '<div id="rsFsCtl"><div class="rs-fs-meta"><span id="rsFsTime" aria-live="polite">0:00 / 0:00</span>' +
-      '<input id="rsFsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>' +
-      '<div class="rs-fs-btns">' +
+      '<button class="rs-fs-next" data-rs="fNext" aria-label="Next visualisation"></button>' +
+      '<button class="rs-fs-pick" data-rs="fPick">Change</button></div>' +
+      '<div class="rs-fs-row">' +
       '<button class="rs-fs-play" data-rs="fsPlay" aria-label="Play or pause">▶</button>' +
-      '<button class="rs-fs-stop" data-rs="fsStop" aria-label="Stop">■</button></div></div>';
+      '<button class="rs-fs-stop" data-rs="fsStop" aria-label="Stop">■</button>' +
+      '<input id="rsFsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume">' +
+      '<span id="rsFsTime" aria-live="polite">0:00 / 0:00</span></div></div>';
     doc.body.appendChild(fs);
     fs.querySelector("#rsFsVol").addEventListener("input", function () {
       setMaster(parseFloat(this.value));

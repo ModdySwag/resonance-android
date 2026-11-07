@@ -480,8 +480,30 @@ def main():
         page.click("#rsMedia button[data-medium=water]")
         suite.check("a medium chip applies too", page.evaluate(
             "window.ResonanceCymatics.api.getPrefs().medium === 'water'"))
-        suite.check("follow keeps the chamber reading the session", page.evaluate(
-            "window.ResonanceCymatics.api.getPrefs().src === 'session'"))
+        suite.check("picking a chip takes manual control, and the Follow switch says so",
+                    page.evaluate(
+                "(() => { const sw = document.getElementById('rsFollow');"
+                " return !sw.checked && window.ResonanceCymatics.api.getPrefs().src === 'manual'; })()"))
+        page.click("#rsFollow")
+        suite.check("Follow puts the chamber back on the session", page.evaluate(
+            "(() => { const sw = document.getElementById('rsFollow');"
+            " return sw.checked && window.ResonanceCymatics.api.getPrefs().src === 'session'; })()"))
+        page.click("#rsScenes button[data-scene=cathedral]")
+        suite.check("the chip a person picked stays lit", page.evaluate(
+            "(() => { const b = document.querySelector('#rsScenes button[data-scene=cathedral]');"
+            " return !!b && b.getAttribute('aria-pressed') === 'true'; })()"))
+        # the reported bug: opening the chamber re-applied the plan's scene, so every
+        # chip click was erased a beat later. The pick must survive the open.
+        page.click("#rsChamber")
+        suite.wait_until("!!document.getElementById('cymRoot') && "
+                         "!document.getElementById('cymRoot').hidden", 8)
+        suite.check("opening the chamber keeps the scene a person picked", page.evaluate(
+            "window.ResonanceCymatics.api.getPrefs().preset") == "cathedral")
+        page.evaluate("window.ResonanceCymatics.close()")
+        page.wait_for_timeout(250)
+        page.click("#rsFollow")
+        suite.check("Follow is back on for the rest of the run", page.evaluate(
+            "document.getElementById('rsFollow').checked"))
 
         # ---- visualise layout + the gentle focus view ------------------------------
         suite.check("the chamber card leads the section",
@@ -548,6 +570,80 @@ def main():
             suite.check("the chamber is on-screen (not a zero-size fixed layer)",
                         page.evaluate("(() => { const r = document.getElementById('cymRoot').getBoundingClientRect();"
                                       " return r.width > 200 && r.height > 200; })()"))
+            chrome = page.evaluate("""() => {
+                const q = (id) => document.getElementById(id);
+                const bg = (el) => el ? getComputedStyle(el).backgroundImage : '';
+                return { back: !!q('rsCymBack'), stop: !!q('rsCymStop'), vol: !!q('rsCymVol'),
+                         info: !!q('rsCymInfo'), play: !!q('cymPlay'),
+                         playBg: bg(q('cymPlay')), stopBg: bg(q('rsCymStop')), backBg: bg(q('rsCymBack')),
+                         volH: q('rsCymVol') ? q('rsCymVol').getBoundingClientRect().height : 0 };
+            }""")
+            suite.check("the chamber carries Play, Stop, a fader, Back and ?",
+                        chrome["back"] and chrome["stop"] and chrome["vol"] and chrome["info"] and chrome["play"],
+                        chrome)
+            suite.check("the chamber's transport wears the brass faces",
+                        "amp-play" in chrome["playBg"] and "amp-stop" in chrome["stopBg"]
+                        and "amp-back" in chrome["backBg"], chrome)
+            page.evaluate("(() => { const v = document.getElementById('rsCymVol'); v.value = '0.42';"
+                          " v.dispatchEvent(new Event('input', { bubbles: true })); })()")
+            page.wait_for_timeout(200)
+            suite.check("the chamber fader drives the studio master gain",
+                        abs(page.evaluate("parseFloat(document.getElementById('master').value)") - 0.42) < 0.02)
+            suite.check("the hero and mini faders follow the chamber fader",
+                        page.evaluate("(() => Math.abs(parseFloat(document.getElementById('rsVol').value) - 0.42) < 0.02"
+                                      " && Math.abs(parseFloat(document.getElementById('rsMiniVol').value) - 0.42) < 0.02)()"))
+            page.click("#rsCymStop")
+            page.wait_for_timeout(250)
+            suite.check("the chamber Stop stops the session", page.evaluate(
+                "!document.documentElement.classList.contains('rs-playing')"))
+            page.evaluate("(() => { const v = document.getElementById('rsCymVol'); v.value = '0.7';"
+                          " v.dispatchEvent(new Event('input', { bubbles: true })); })()")
+            # the lower panel is a drawer with a handle that stays on the glass
+            draw = page.evaluate("""() => {
+                const g = document.querySelector('.rs-cym-grab'), sh = document.querySelector('.cym-left');
+                const gb = g && g.getBoundingClientRect(), sb = sh && sh.getBoundingClientRect();
+                return { has: !!g, role: g && g.getAttribute('role'), expanded: g && g.getAttribute('aria-expanded'),
+                         grabTop: gb ? Math.round(gb.top) : null, grabH: gb ? Math.round(gb.height) : 0,
+                         sheetTop: sb ? Math.round(sb.top) : null, vh: innerHeight,
+                         open: !!(sh && sh.classList.contains('open')) };
+            }""")
+            suite.check("the lower panel keeps a grab handle on the glass",
+                        draw["has"] and draw["role"] == "button" and draw["grabH"] >= 40, draw)
+            suite.check("the drawer starts put away, handle on screen",
+                        not draw["open"] and draw["grabTop"] is not None
+                        and 0 <= draw["grabTop"] < draw["vh"], draw)
+            page.click(".rs-cym-grab")
+            page.wait_for_timeout(400)
+            opened_sheet = page.evaluate(
+                "(() => { const sh = document.querySelector('.cym-left'); return sh.classList.contains('open')"
+                " && document.querySelector('.rs-cym-grab').getAttribute('aria-expanded') === 'true'; })()")
+            suite.check("tapping the handle opens the drawer", opened_sheet)
+            page.click(".rs-cym-grab")
+            page.wait_for_timeout(400)
+            suite.check("tapping it again puts it away", page.evaluate(
+                "!document.querySelector('.cym-left').classList.contains('open')"))
+            # the top player slides up from its own lip
+            lip = page.evaluate("""() => {
+                const l = document.querySelector('.rs-cym-lip'), t = document.querySelector('.cym-top');
+                const lb = l && l.getBoundingClientRect(), tb = t && t.getBoundingClientRect();
+                return { has: !!l, role: l && l.getAttribute('role'), expanded: l && l.getAttribute('aria-expanded'),
+                         lipTop: lb ? Math.round(lb.top) : null, topY: tb ? Math.round(tb.top) : null };
+            }""")
+            suite.check("the player panel has a grab lip", lip["has"] and lip["role"] == "button", lip)
+            page.click(".rs-cym-lip")
+            page.wait_for_timeout(450)
+            hid = page.evaluate("""() => {
+                const t = document.querySelector('.cym-top'), l = document.querySelector('.rs-cym-lip');
+                return { hid: t.classList.contains('rs-cym-hid'), lipTop: Math.round(l.getBoundingClientRect().top),
+                         playVisible: document.getElementById('cymPlay').getBoundingClientRect().bottom > 0 };
+            }""")
+            suite.check("the lip slides the player away and stays on the glass",
+                        hid["hid"] and hid["lipTop"] < 40 and not hid["playVisible"], hid)
+            page.click(".rs-cym-lip")
+            page.wait_for_timeout(450)
+            suite.check("the lip brings the player back", page.evaluate(
+                "(() => { const t = document.querySelector('.cym-top');"
+                " return !t.classList.contains('rs-cym-hid') && document.getElementById('cymPlay').getBoundingClientRect().bottom > 60; })()"))
             suite.check("the chamber follows the session carrier",
                         page.evaluate("window.ResonanceCymatics.debugState().src === 'session'"))
             # tempo: steps the label, scales the schedule, and survives a session change
@@ -611,7 +707,8 @@ def main():
                         "getComputedStyle(document.querySelector('.rs-tile[data-rs-tile=sleep]')).backgroundImage"))
         art = page.evaluate("""() => Promise.all(["knob-calm","knob-dusk","knob-sage","knob-sand",
             "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate","strip",
-            "amp-play","amp-pause","amp-stop","amp-vol-knob","amp-vol-track"]
+            "amp-play","amp-pause","amp-stop","amp-vol-knob","amp-vol-track",
+            "amp-back","amp-next","amp-info","amp-close"]
             .map(n => fetch("ui/" + n + ".webp").then(r => r.ok)))""")
         suite.check("every piece of art actually loads", bool(art) and all(art), art)
         page.click("#rsUi button[data-u=minimal]")
