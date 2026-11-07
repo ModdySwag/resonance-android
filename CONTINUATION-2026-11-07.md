@@ -6,15 +6,15 @@ Read this block first; everything below it is history.
 
 ### STATE
 
-- HEAD `b885a81`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
-- **Signed release APK: 714,735 B, sha256 `0c99cecac05d0d6bf8dd8da854b15037b0f31120f1d4028bb092bf770b508d4b`**,
+- HEAD `ba53731`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
+- **Signed release APK: 714,843 B, sha256 `8724078eff88fcb4052b3ce45a70135159f00054657b8b84789e16cd65ac72f6`**,
   installed on the phone (`192.168.1.95:33139`) over the 683,566 B / code-12 build: cold start
   **454 ms**, `page: shim ready` in logcat, crash buffer empty.
 - Debug build (`com.moddys.resonance.debug`) on the phone — device_gate and CDP need it.
 - **Publish payload staged locally in `radio-browser`, NOT uploaded** (house rule: his review
   first): `deploy/downloads/resonance-studio-v2.0.5-beta.apk` (same bytes as the release APK),
-  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714735 /
-  `0c99ceca…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
+  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714843 /
+  `8724078e…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
   certutil line, GitHub link → `/releases`, "New in 2.0.5", 130 sessions). Backups of the two
   site files: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
 
@@ -42,6 +42,9 @@ pin it, including "opening the chamber keeps the scene a person picked".
 - **Layout is placed, not wrapped:** two flex rows; navigation on top, transport beneath (phone),
   one row on ≥600 px. Measured 320/390/800: no overlaps, everything inside the glass, 44 px floor,
   fader grows (84–197 px) and nothing else moves. The labelled key is brass with dark engraving.
+- **The bottom drawer is a real bottom sheet** (`top:auto` — it had inherited the panel's desktop top
+  offset and floated above the gesture bar), with a 54 px handle lifted clear of the safe area and a
+  **40 px brass expand key at the far right** whose aria-label flips Hide/Show.
 - **Gestures, verified on the phone with real `adb shell input swipe`:** drag the player's lip up →
   panel away (lip parks under the status bar, `y≈60` CSS); drag it down → back; tap the drawer
   handle → open; drag it down → closed; drag it up → open.
