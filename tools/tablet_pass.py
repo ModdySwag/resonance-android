@@ -98,7 +98,7 @@ def run_viewport(browser, url, label, w, h, shots):
     metrics = page.evaluate("""(() => {
       const q = s => { const e = document.querySelector(s); if (!e) return null;
         const r = e.getBoundingClientRect(); return { w: Math.round(r.width), x: Math.round(r.x),
-          h: Math.round(r.height) }; };
+          y: Math.round(r.y), h: Math.round(r.height) }; };
       const tiles = Array.from(document.querySelectorAll('.rs-tile')).map(t => {
         const r = t.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y),
           w: Math.round(r.width) };
@@ -112,29 +112,48 @@ def run_viewport(browser, url, label, w, h, shots):
       const lastRow = rows[keys[keys.length - 1]] || [];
       const centred = lastRow.length === cols ? null
         : Math.round((lastRow[0].x + lastRow[lastRow.length - 1].x + lastRow[0].w) / 2);
-      const rail = getComputedStyle(document.documentElement).getPropertyValue('--rs-rail').trim();
+      const cs = getComputedStyle(document.documentElement);
+      const rail = cs.getPropertyValue('--rs-rail').trim();
+      const nrail = cs.getPropertyValue('--rs-nrail').trim();
       return { body: q('#rsBody'), states: q('#rsStates'), hero: q('.rs-hero'),
-               screen: q('.rs-screen.rs-on'), top: q('#rsTop'), cols: cols, rail: rail,
+               screen: q('.rs-screen.rs-on'), top: q('#rsTop'), nav: q('#rsNav'),
+               appPad: getComputedStyle(document.getElementById('rsApp')).paddingLeft,
+               cols: cols, rail: rail, nrail: nrail,
                rows: keys.length, lastRow: lastRow.length, centred: centred, mid: Math.round(innerWidth / 2),
+               contentMid: Math.round((parseFloat(nrail) || 0)
+                          + (innerWidth - (parseFloat(nrail) || 0)) / 2),
                tiles: tiles, title: getComputedStyle(document.querySelector('#rsTop h1')).fontSize };
     })()""")
     print("  metrics %s home: %s" % (label, json.dumps(metrics)))
     rail = int((metrics["rail"] or "0px").replace("px", "") or 0)
-    want_rail = min(w, rail) if rail else w
-    suite.check("[%s] the screens sit on one centred rail" % label,
+    nrail = int((metrics["nrail"] or "0px").replace("px", "") or 0)
+    want_rail = min(w - nrail, rail) if rail else w
+    want_x = nrail + (w - nrail - want_rail) / 2
+    suite.check("[%s] the tab bar runs across the bottom, as on a phone" % label,
+                metrics["nav"] is not None and metrics["nav"]["x"] == 0
+                and metrics["nav"]["w"] >= w - 2
+                and 50 <= metrics["nav"]["h"] <= 130
+                and abs(metrics["nav"]["y"] + metrics["nav"]["h"] - h) <= 2,
+                metrics["nav"])
+    suite.check("[%s] the screens sit on one centred rail beyond it" % label,
                 metrics["screen"] is not None
                 and abs(metrics["screen"]["w"] - want_rail) <= 2
-                and abs(metrics["screen"]["x"] - (w - want_rail) / 2) <= 2, metrics["screen"])
+                and abs(metrics["screen"]["x"] - want_x) <= 2, metrics["screen"])
     suite.check("[%s] the app bar shares the rail's left edge" % label,
-                metrics["top"] is not None
-                and abs(metrics["top"]["x"] - (w - want_rail) / 2) <= 2, metrics["top"])
+                metrics["top"] is not None and abs(metrics["top"]["x"] - want_x) <= 2,
+                metrics["top"])
     suite.check("[%s] the module grid counts its columns, not its card width" % label,
-                metrics["cols"] == (4 if w >= 900 else 3), metrics["cols"])
+                metrics["cols"] == 2, metrics["cols"])
+    suite.check("[%s] the player and the modules share the screen at tablet width" % label,
+                (metrics["hero"]["x"] + metrics["hero"]["w"] <= metrics["states"]["x"] + 2)
+                if w >= 900 else (metrics["states"]["y"] >= metrics["hero"]["y"] + metrics["hero"]["h"] - 2),
+                {"hero": metrics["hero"], "states": metrics["states"]})
     suite.check("[%s] a short last row is centred, not left hanging" % label,
-                metrics["centred"] is None or abs(metrics["centred"] - metrics["mid"]) <= 2,
-                {"centre": metrics["centred"], "mid": metrics["mid"], "row": metrics["lastRow"]})
+                metrics["centred"] is None or abs(metrics["centred"] - metrics["contentMid"]) <= 2,
+                {"centre": metrics["centred"], "mid": metrics["contentMid"], "row": metrics["lastRow"]})
     suite.check("[%s] module cards keep a card shape, not a banner" % label,
-                all(t["w"] <= 260 for t in metrics["tiles"]), [t["w"] for t in metrics["tiles"]])
+                all(150 <= t["w"] <= 380 for t in metrics["tiles"]),
+                [t["w"] for t in metrics["tiles"]])
 
 
     # ---- the More sheet -------------------------------------------------------------

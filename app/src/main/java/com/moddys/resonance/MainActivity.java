@@ -118,9 +118,9 @@ public class MainActivity extends Activity {
             Window w = getWindow();
             if (Build.VERSION.SDK_INT >= 30) {
                 w.setDecorFitsSystemWindows(false);
-                boolean night0 = (getResources().getConfiguration().uiMode
-                        & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                        == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+                /* the app's own theme, not the phone's: the shell reports it through
+                   chrome() and the house default is the dark room */
+                boolean night0 = true;
                 w.setStatusBarColor(Color.TRANSPARENT);
                 /* the nav bar carries the app's own surface: the shell pads its nav by the
                    same inset, so a transparent bar showed the system scrim as a seam. */
@@ -153,9 +153,24 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** The shell is asked first: it marks a history entry per layer, and on Android 16 the
+     *  WebView's own canGoBack() reports false for those same-document entries, which used
+     *  to send a Back straight past an open tour or sheet and finish the activity. Only a
+     *  shell that says it has nothing to close lets the activity go. */
     private void goBackOrFinish() {
-        if (web != null && web.canGoBack()) web.goBack();
-        else finish();
+        if (web == null) { finish(); return; }
+        try {
+            web.evaluateJavascript(
+                    "(window.__rs && window.__rs.back) ? String(window.__rs.back()) : 'false'",
+                    new ValueCallback<String>() {
+                        @Override public void onReceiveValue(String value) {
+                            if (value == null || !value.contains("true")) finish();
+                        }
+                    });
+        } catch (Throwable t) {
+            Log.w(TAG, "back: " + t);
+            if (web.canGoBack()) web.goBack(); else finish();
+        }
     }
 
     /** Build the WebView and its client. False when this device has no usable one. */
@@ -182,10 +197,7 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        boolean night = (getResources().getConfiguration().uiMode
-                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
-                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-        web.setBackgroundColor(Color.parseColor(night ? "#0E1211" : "#F5FAF8"));
+        web.setBackgroundColor(Color.parseColor("#0E1211"));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new Bridge(), "ResonanceJs");
         web.setWebChromeClient(new Chrome());
@@ -648,6 +660,15 @@ public class MainActivity extends Activity {
                                           : (flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
                         }
                         d.setSystemUiVisibility(flags);
+                        /* the window behind the page has to agree with it, or a light
+                           scheme flashes a dark edge and a dark scheme a white one */
+                        if (web != null) {
+                            web.setBackgroundColor(Color.parseColor(light ? "#F5FAF8" : "#0E1211"));
+                        }
+                        Window win = getWindow();
+                        if (win != null && Build.VERSION.SDK_INT >= 30) {
+                            win.setNavigationBarColor(Color.parseColor(light ? "#EEF5F2" : "#171D1B"));
+                        }
                     } catch (Throwable t) {
                         Log.w(TAG, "chrome: " + t);
                     }

@@ -153,7 +153,10 @@
   }
 
   function applyTheme() {
-    var want = prefs.theme || "system";
+    /* dark is the house look: the brushed finish is a dark room, and a tablet at full
+       brightness in the light scheme is hard on the eyes. System and Light stay one tap
+       away in Settings. */
+    var want = prefs.theme || "dark";
     var dark = want === "dark" || (want === "system" && (!mqDark || mqDark.matches));
     var html = doc.documentElement;
     html.setAttribute("data-rs-theme", dark ? "dark" : "light");
@@ -890,6 +893,19 @@
     "  html.rs-playing .rs-fab::after{animation:none;opacity:.5}",
     "  #rsNav button .rs-npill{transition:none}",
     "}",
+    /* the house look at full screen: the same brushed plate the faders sit on, darkened
+       enough that the ink keeps its contrast, so the app reads as one old amplifier face
+       rather than dark cards floating on a pale page */
+    "html[data-rs-ui=full][data-rs-theme=dark] #rsApp{background-color:#0E1211;",
+    "  background-image:linear-gradient(180deg,rgba(12,9,7,.88),rgba(14,11,8,.93)),",
+    "  url(ui/plate.webp);background-size:cover;background-position:center top}",
+    "html[data-rs-ui=full][data-rs-theme=dark] #rsTop{background:transparent}",
+
+    /* the page's adopted controls: a rate box, a mute key and a chip were all under the
+       44 px tap floor — the shell's own controls were already there */
+    "#scr-studio input:not([type=range]),#scr-studio select,#scr-studio button,",
+    "#scr-vis button{min-height:44px !important}",
+
     /* ------------------------------------------------------------- tablets --- */
     /* A phone screen stretched to a tablet reads as a bug: the hero becomes a banner, the
        module cards 4:1, a select 1000 px wide and an overlay line 100 characters long.
@@ -897,13 +913,17 @@
        single left edge; the module grid gains columns instead of growing cards. Layers
        that are meant to be full bleed (chamber, fullscreen, focus) are untouched. */
     "@media (min-width: 600px){",
-    "  html{--rs-rail:720px;--rs-sheet-lift:16px}",
+    /* the bar stays at the bottom on a tablet: same shape as the phone, just a wider
+       glass, so the app keeps one navigation language everywhere */
+    "  html{--rs-rail:720px;--rs-sheet-lift:16px;--rs-nrail:0px}",
     "  #rsTop,#rsMini{width:100%;max-width:var(--rs-rail);margin-left:auto;margin-right:auto}",
     "  #rsBody .rs-screen{max-width:var(--rs-rail);margin-left:auto;margin-right:auto}",
-    /* eight modules over three columns leaves two on the last row: flex with a fixed
-       basis centres that row instead of leaving a hole at the right */
-    "  .rs-states{display:flex;flex-wrap:wrap;justify-content:center}",
-    "  .rs-states .rs-tile{flex:0 0 calc((100% - 20px) / 3)}",
+    /* the home fills the glass: the modules take every pixel the player leaves, so a
+       tablet does not end in a band of empty background */
+    "  #scr-home{display:flex;flex-direction:column;min-height:100%}",
+    "  #scr-home .rs-hero,#scr-home .rs-build{flex:0 0 auto}",
+    "  #scr-home #rsStates{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;",
+    "    grid-auto-rows:minmax(120px,1fr);gap:10px}",
     /* a 560 px sheet flush to the bottom edge of a tablet reads half-dialog: lift it */
     "  #rsSheet{width:min(560px,100%);margin-left:auto;margin-right:auto;",
     "    border-radius:var(--rs-r-sheet);border:1px solid var(--rs-line)}",
@@ -913,7 +933,15 @@
     "}",
     "@media (min-width: 900px){",
     "  html{--rs-rail:960px}",
-    "  .rs-states .rs-tile{flex-basis:calc((100% - 30px) / 4)}",
+    /* two panes: the player and Build a tone on the left, the modules filling the right
+       column top to bottom — the width and the height are both used */
+    "  #scr-home{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(0,1.05fr);",
+    "    grid-template-rows:auto 1fr;grid-template-areas:'hero states' 'build states';",
+    "    column-gap:14px;row-gap:14px;align-items:start;padding:0 16px;min-height:100%}",
+    "  #scr-home .rs-hero{grid-area:hero;margin:0}",
+    "  #scr-home .rs-build{grid-area:build;margin:0;align-self:start}",
+    "  #scr-home #rsStates{grid-area:states;margin:0;align-self:stretch;height:100%;",
+    "    grid-template-columns:1fr 1fr}",
     "}"
   ].join("\n");
 
@@ -1991,7 +2019,7 @@
   function wireSettings() {
     function paintTheme() {
       $$("#rsTheme button").forEach(function (b) {
-        b.setAttribute("aria-pressed", (prefs.theme || "system") === b.getAttribute("data-t") ? "true" : "false");
+        b.setAttribute("aria-pressed", (prefs.theme || "dark") === b.getAttribute("data-t") ? "true" : "false");
       });
     }
     $$("#rsTheme button").forEach(function (b) {
@@ -2263,6 +2291,22 @@
   var backStack = 0;
   function markBack() {
     try { history.pushState({ rsLayer: ++backStack }, ""); } catch (e) { }
+  }
+  /* What Android's Back button asks before it finishes the activity: true means the shell
+     had a layer to close. It walks the same history entry the system Back would, so the
+     popstate handler stays the only place that closes a layer. */
+  function shellBack() {
+    if (history.state && history.state.rsLayer) {
+      try { history.back(); return true; } catch (e) { }
+    }
+    if (TOUR.on) { tourEnd(false); return true; }
+    if (SHEET.open) { openSheet(false); return true; }
+    for (var i = overlays.length - 1; i >= 0; i--) {
+      if (overlays[i].classList.contains("rs-ov-on")) { closeOverlay(overlays[i]); return true; }
+    }
+    if (doc.documentElement.classList.contains("cym-open")) { closeChamber(true); return true; }
+    if (FS.on) { exitFullscreen(true); return true; }
+    return false;
   }
   function unmarkBackTop() {
     if (history.state && history.state.rsLayer) { try { history.back(); } catch (e) { } }
@@ -3507,6 +3551,7 @@
     stop: function () { pageStop(); pushState(true); },
     toggle: function () { if (isPlaying()) pagePause(); else pagePlay(); pushState(true); },
     info: info,
+    back: function () { return shellBack(); },
     sheet: function () { return SHEET; },
     menu: function () { openSheet(true); return true; },
     nav: function (id) { go(id); return true; },
