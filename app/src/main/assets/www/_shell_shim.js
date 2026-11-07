@@ -588,6 +588,30 @@
     "html[data-rs-ui=full] .rs-fab::after{content:\"\";position:absolute;left:50%;bottom:-7px;width:8px;height:8px;",
     "  margin-left:-4px;border-radius:50%;background:var(--rs-s4);border:1px solid rgba(0,0,0,.5)}",
     "html[data-rs-ui=full].rs-playing .rs-fab::after{background:var(--rs-live);box-shadow:0 0 10px var(--rs-live)}",
+    /* the amplifier's pilot lamp and counter window: a red lens beside a brass key,
+       and the clock behind smoked glass with amber digits */
+    ".rs-amprow{display:flex;align-items:center;gap:12px}",
+    ".rs-ledpanel{display:inline-flex;align-items:center;justify-content:center;min-width:112px;",
+    "  padding:7px 11px;border-radius:8px;border:1px solid #3B2C15;background-color:#120D07;",
+    "  background-image:linear-gradient(180deg,#0C0906,#1B1309 60%,#0A0704);",
+    "  box-shadow:inset 0 2px 7px rgba(0,0,0,.95),0 1px 0 rgba(255,255,255,.05)}",
+    "#rsClock{font:700 15px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;",
+    "  color:#FFB454;letter-spacing:.08em;font-variant-numeric:tabular-nums;",
+    "  text-shadow:0 0 7px rgba(255,150,40,.6),0 0 2px rgba(255,200,120,.9)}",
+    ".rs-loopunit{display:none;align-items:center;gap:7px;margin-left:auto}",
+    "html[data-rs-ui=full] .rs-loopunit{display:inline-flex}",
+    "html[data-rs-ui=full] .rs-loopswitch{display:none}",
+    ".rs-loopkey{width:46px;height:46px;border-radius:50%;border:0;padding:0;cursor:pointer;",
+    "  background-image:url(ui/amp-loop.webp);background-size:cover;background-position:center;",
+    "  background-color:#100e0c;box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .12s var(--rs-ease)}",
+    ".rs-loopkey:active{transform:scale(.95)}",
+    ".rs-loopled{width:10px;height:10px;border-radius:50%;flex:0 0 10px;",
+    "  background:radial-gradient(circle at 35% 30%,#5a1612,#2a0b09 70%);",
+    "  box-shadow:inset 0 0 2px #000,inset 0 0 0 1px rgba(0,0,0,.7);",
+    "  transition:background .15s,box-shadow .15s}",
+    ".rs-loopled.on{background:radial-gradient(circle at 35% 30%,#ff6b5a,#e0241a 60%,#8c0f0a);",
+    "  box-shadow:0 0 9px rgba(255,60,40,.85),0 0 2px rgba(255,220,200,.9),inset 0 0 2px rgba(0,0,0,.4)}",
+    ".rs-loopcap{font:600 10.5px/1 var(--rs-sans);letter-spacing:.14em;text-transform:uppercase;color:#C9BFAC}",
     "html[data-rs-ui=full] .rs-transport #rsStop{width:52px;height:52px;border:0;border-radius:50%;",
     "  background-image:url(ui/amp-stop.webp);background-size:cover;background-position:center;",
     "  background-color:#100e0c;box-shadow:0 4px 12px rgba(0,0,0,.5)}",
@@ -998,12 +1022,12 @@
        or a shape for the looks that have no colour of their own. Small and quiet — the
        chip's label still says the name; the mark only has to be recognisable. */
     ".rs-swb{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;",
-    "  vertical-align:-1px;flex:0 0 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}",
+    "  vertical-align:-1px;flex:0 0 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.34)}",
     ".rs-mk{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;",
     "  flex:0 0 16px;opacity:.85;color:currentColor}",
     ".rs-mk svg{width:16px;height:16px;display:block}",
     "#vizBackdrops .chip,#vizOverlays .chip,#vizPalettes .chip{display:inline-flex;align-items:center;gap:0}",
-    "#rsScenes button{display:inline-flex;align-items:center}",
+    "#rsScenes button,#cymPal .cym-chip{display:inline-flex;align-items:center}",
     "#vizBackdrops .chip .rs-mk,#vizOverlays .chip .rs-mk{margin-right:6px}",
     /* ---------------------------------------------------- visualise section --- */
     ".rs-map{font-variant-numeric:tabular-nums;font-size:13px;line-height:19px;color:var(--rs-ink2);",
@@ -1561,9 +1585,16 @@
       '        <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div></div>' +
       '    <button class="rs-ico rs-tbtn rs-stopbtn" id="rsStop" aria-label="Stop and rewind">' + svg("stop") + '</button>' +
       '  </div>' +
-      '  <div class="rs-transport" style="margin-top:10px">' +
-      '    <span id="rsClock" aria-live="polite">0:00 / 0:00</span>' +
-      '    <label class="rs-sw" style="flex:1 1 auto;min-height:40px;padding:0">' +
+      '  <div class="rs-transport rs-amprow" style="margin-top:10px">' +
+      /* the timer sits in an amber LED window, and Loop is a brass key with a pilot
+         lamp: the same hardware language as the transport above it */
+      '    <span class="rs-ledpanel"><span id="rsClock" aria-live="polite">0:00 / 0:00</span></span>' +
+      '    <span class="rs-loopunit">' +
+      '      <button class="rs-loopkey" id="rsLoopBtn" aria-pressed="true" aria-label="Loop"></button>' +
+      '      <i class="rs-loopled" id="rsLoopLed" aria-hidden="true"></i>' +
+      '      <b class="rs-loopcap" aria-hidden="true">Loop</b>' +
+      '    </span>' +
+      '    <label class="rs-sw rs-loopswitch" style="flex:1 1 auto;min-height:40px;padding:0">' +
       '      <span class="rs-swt"><span style="font-size:12.5px">Loop</span></span>' +
       '      <input type="checkbox" id="rsLoop" checked><span class="rs-track" aria-hidden="true"></span></label>' +
       '  </div>' +
@@ -1882,6 +1913,13 @@
       tiles.appendChild(b);
     });
 
+    var loopBtn = $id("rsLoopBtn");
+    if (loopBtn) loopBtn.addEventListener("click", function () {
+      var l = $id("loop"); if (!l) return;
+      l.checked = !l.checked;
+      l.dispatchEvent(new Event("change", { bubbles: true }));
+      syncHero();
+    });
     $id("rsPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
     $id("rsStop").addEventListener("click", function () { pageStop(); pushState(true); });
 
@@ -2516,7 +2554,7 @@
      the colours that option actually renders (extracted from cymrender.js' palette
      table and vizpal.js' stops); backdrops and overlays have no colour of their own, so
      they get a shape mark instead. Decorative only: the label still carries the name. */
-  var RS_SW = {"cym": {"champagne": ["rgb(249,228,177)", "rgb(255,236,189)"], "ion": ["rgb(136,237,255)", "rgb(158,246,255)"], "copper": ["rgb(255,194,143)", "rgb(255,202,156)"], "verdigris": ["rgb(158,249,228)", "rgb(194,255,238)"], "ice": ["rgb(217,237,255)", "rgb(230,243,255)"], "mono": ["rgb(237,237,237)", "rgb(253,253,253)"], "ember": ["rgb(255,176,104)", "rgb(255,205,128)"], "magma": ["rgb(255,133,176)", "rgb(255,172,189)"], "orchid": ["rgb(228,152,255)", "rgb(238,189,255)"], "ultraviolet": ["rgb(172,133,255)", "rgb(196,183,255)"], "toxic": ["rgb(160,238,104)", "rgb(189,246,138)"], "candy": ["rgb(255,168,220)", "rgb(255,202,238)"], "aurora": ["rgb(123,250,220)", "rgb(172,255,236)"], "solar": ["rgb(255,228,104)", "rgb(255,241,156)"], "neon": ["rgb(128,205,255)", "rgb(176,222,255)"], "blood": ["rgb(246,104,123)", "rgb(255,156,160)"], "lagoon": ["rgb(104,233,238)", "rgb(156,248,250)"], "blossom": ["rgb(255,156,189)", "rgb(255,189,211)"], "cobalt": ["rgb(143,199,248)", "rgb(205,233,255)"], "gunmetal": ["rgb(189,211,233)", "rgb(222,233,246)"], "abyss": ["rgb(90,230,249)", "rgb(148,253,255)"]}, "viz": {"auto": ["hsl(205, 4%, 34%)", "hsl(214, 6%, 76%)"], "ember": ["hsl(34, 8%, 36%)", "hsl(46, 10%, 78%)"], "moss": ["hsl(128, 7%, 34%)", "hsl(144, 9%, 74%)"], "ice": ["hsl(240, 6%, 32%)", "hsl(250, 6%, 73%)"], "dusk": ["hsl(299, 8%, 34%)", "hsl(312, 8%, 75%)"], "rose": ["hsl(12, 9%, 35%)", "hsl(25, 12%, 76%)"], "mono": ["hsl(210, 0%, 32%)", "hsl(210, 0%, 78%)"]}, "scenePal": {"cold-forge": "gunmetal", "ember-grid": "ember", "ultraviolet-room": "ultraviolet", "salt-flat": "solar", "toxic-bloom": "toxic", "cathedral": "mono", "lagoon-drift": "lagoon", "orchid-field": "orchid", "blood-iron": "blood", "blossom": "blossom", "machine-room": "neon", "magma-bolt": "magma", "candy-rig": "candy", "aurora-bolt": "aurora", "iron-weather": "ice", "solar-disc": "solar", "deep-lagoon": "ice", "violet-vault": "ultraviolet", "neon-plate": "neon", "ash-coin": "mono", "skin-tight": "verdigris", "toxic-membrane": "toxic", "blood-drum": "blood", "candy-skin": "candy", "faraday-storm": "ion", "black-water": "mono", "ember-pool": "ember", "aurora-ripple": "aurora", "minnaert-cloud": "abyss", "orchid-fizz": "orchid"}};
+  var RS_SW = {"cym": {"champagne": ["rgb(249,228,177)", "rgb(255,236,189)"], "ion": ["rgb(136,237,255)", "rgb(158,246,255)"], "copper": ["rgb(255,194,143)", "rgb(255,202,156)"], "verdigris": ["rgb(158,249,228)", "rgb(194,255,238)"], "ice": ["rgb(217,237,255)", "rgb(230,243,255)"], "mono": ["rgb(237,237,237)", "rgb(253,253,253)"], "ember": ["rgb(255,176,104)", "rgb(255,205,128)"], "magma": ["rgb(255,133,176)", "rgb(255,172,189)"], "orchid": ["rgb(228,152,255)", "rgb(238,189,255)"], "ultraviolet": ["rgb(172,133,255)", "rgb(196,183,255)"], "toxic": ["rgb(160,238,104)", "rgb(189,246,138)"], "candy": ["rgb(255,168,220)", "rgb(255,202,238)"], "aurora": ["rgb(123,250,220)", "rgb(172,255,236)"], "solar": ["rgb(255,228,104)", "rgb(255,241,156)"], "neon": ["rgb(128,205,255)", "rgb(176,222,255)"], "blood": ["rgb(246,104,123)", "rgb(255,156,160)"], "lagoon": ["rgb(104,233,238)", "rgb(156,248,250)"], "blossom": ["rgb(255,156,189)", "rgb(255,189,211)"], "cobalt": ["rgb(143,199,248)", "rgb(205,233,255)"], "gunmetal": ["rgb(189,211,233)", "rgb(222,233,246)"], "abyss": ["rgb(90,230,249)", "rgb(148,253,255)"]}, "viz": {"auto": ["hsl(211, 26%, 62%)", "hsl(225, 20%, 36%)"], "ember": ["hsl(42, 37%, 64%)", "hsl(56, 27%, 38%)"], "moss": ["hsl(139, 34%, 60%)", "hsl(153, 24%, 34%)"], "ice": ["hsl(247, 27%, 58%)", "hsl(261, 20%, 32%)"], "dusk": ["hsl(308, 35%, 60%)", "hsl(322, 25%, 34%)"], "rose": ["hsl(20, 58%, 60%)", "hsl(34, 48%, 34%)"], "mono": ["hsl(210, 4%, 66%)", "hsl(210, 3%, 40%)"]}, "scenePal": {"cold-forge": "gunmetal", "ember-grid": "ember", "ultraviolet-room": "ultraviolet", "salt-flat": "solar", "toxic-bloom": "toxic", "cathedral": "mono", "lagoon-drift": "lagoon", "orchid-field": "orchid", "blood-iron": "blood", "blossom": "blossom", "machine-room": "neon", "magma-bolt": "magma", "candy-rig": "candy", "aurora-bolt": "aurora", "iron-weather": "ice", "solar-disc": "solar", "deep-lagoon": "ice", "violet-vault": "ultraviolet", "neon-plate": "neon", "ash-coin": "mono", "skin-tight": "verdigris", "toxic-membrane": "toxic", "blood-drum": "blood", "candy-skin": "candy", "faraday-storm": "ion", "black-water": "mono", "ember-pool": "ember", "aurora-ripple": "aurora", "minnaert-cloud": "abyss", "orchid-fizz": "orchid"}};
   var RS_MK = {"off": "<circle cx=\"8\" cy=\"8\" r=\"5.2\" stroke-dasharray=\"2 2.2\"/>", "tide": "<path d=\"M1.4 9.6c1.7-2.4 3.4-2.4 5.1 0s3.4 2.4 5.1 0 2.3-1.2 3-.1\"/><path d=\"M1.4 12.8c1.7-2.4 3.4-2.4 5.1 0s3.4 2.4 5.1 0\"/>", "phasefield": "<path d=\"M8 13.2a5.2 5.2 0 1 1 0-10.4\"/><path d=\"M8 11.2a3.2 3.2 0 1 1 0-6.4\"/><circle cx=\"8\" cy=\"8\" r=\"1\"/>", "drift": "<circle cx=\"3.4\" cy=\"5.4\" r=\".95\"/><circle cx=\"7\" cy=\"9.4\" r=\".95\"/><circle cx=\"11\" cy=\"4.6\" r=\".95\"/><circle cx=\"12.6\" cy=\"11\" r=\".95\"/><circle cx=\"5.4\" cy=\"12.2\" r=\".95\"/>", "rainfall": "<path d=\"M4 2.5 2.6 8.5\"/><path d=\"M8 2.5 6.6 8.5\"/><path d=\"M12 2.5 10.6 8.5\"/><path d=\"M6 10 4.6 14\"/><path d=\"M10 10 8.6 14\"/>", "score": "<path d=\"M2 11.6h4v-3h4v-3h4\"/>", "aurora": "<path d=\"M2 10.6c2.4-3.8 4.6-3.8 6 0s3.6 3.8 6 0\"/><path d=\"M2 6.2c2.4-3.8 4.6-3.8 6 0\"/>", "pulse": "<path d=\"M4 12.2V7\"/><path d=\"M8 12.2V4\"/><path d=\"M12 12.2V9\"/>", "phasors": "<circle cx=\"8\" cy=\"8\" r=\"5.2\"/><path d=\"M8 8 12.2 6\"/><circle cx=\"12.2\" cy=\"6\" r=\"1\"/>", "traces": "<path d=\"M1.6 10.4 5 6.6l2.6 3 2.6-5 3.6 2.6\"/>", "orbits": "<circle cx=\"8\" cy=\"8\" r=\"3\"/><ellipse cx=\"8\" cy=\"8\" rx=\"6.4\" ry=\"3.4\" transform=\"rotate(-24 8 8)\"/>", "ripples": "<circle cx=\"8\" cy=\"8\" r=\"2\"/><circle cx=\"8\" cy=\"8\" r=\"4\"/><circle cx=\"8\" cy=\"8\" r=\"6\"/>", "harmonograph": "<path d=\"M8 2.4c2.7 0 2.7 4.1 0 5.6s-2.7 5.6 0 5.6\"/><path d=\"M4.3 8c0-2.7 4.1-2.7 5.6 0\"/>", "weave": "<path d=\"M2.4 2.4 13.6 13.6\"/><path d=\"M13.6 2.4 2.4 13.6\"/><path d=\"M8 2v12\"/><path d=\"M2 8h12\"/>", "meters": "<path d=\"M3 12.4V8.6\"/><path d=\"M6.6 12.4V5.4\"/><path d=\"M10.2 12.4V7\"/><path d=\"M13.4 12.4V9.6\"/>", "plate": "<rect x=\"2.6\" y=\"2.6\" width=\"10.8\" height=\"10.8\" rx=\"1.4\"/>", "bolted": "<rect x=\"2.6\" y=\"2.6\" width=\"10.8\" height=\"10.8\" rx=\"1.2\"/><circle cx=\"4.6\" cy=\"4.6\" r=\".6\"/><circle cx=\"11.4\" cy=\"4.6\" r=\".6\"/><circle cx=\"4.6\" cy=\"11.4\" r=\".6\"/><circle cx=\"11.4\" cy=\"11.4\" r=\".6\"/>", "disc": "<circle cx=\"8\" cy=\"8\" r=\"5.6\"/><circle cx=\"8\" cy=\"8\" r=\"1.4\"/>", "drum": "<ellipse cx=\"8\" cy=\"8\" rx=\"5.6\" ry=\"3\"/><path d=\"M2.4 8v2.6c0 1.7 2.5 3 5.6 3s5.6-1.3 5.6-3V8\"/>", "water": "<path d=\"M1.8 6.6c1.6-2 3.1-2 4.7 0s3.1 2 4.7 0\"/><path d=\"M1.8 10.2c1.6-2 3.1-2 4.7 0s3.1 2 4.7 0\"/>", "bubbles": "<circle cx=\"5.4\" cy=\"10.4\" r=\"2.6\"/><circle cx=\"10.4\" cy=\"6.2\" r=\"1.6\"/><circle cx=\"9.6\" cy=\"11.6\" r=\"1\"/>"};
 
   function swatch(bg) {
@@ -2528,7 +2566,19 @@
       'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
       g + '</svg></i>' : '';
   }
+  function decorateChamberPalettes() {
+    var box = $id("cymPal");
+    if (!box) return;
+    $$(".cym-chip", box).forEach(function (c) {
+      if (c.getAttribute("data-rs-sw")) return;
+      c.setAttribute("data-rs-sw", "1");
+      var cols = RS_SW.cym[c.getAttribute("data-id")] || RS_SW.cym.champagne;
+      if (!cols) return;
+      c.insertAdjacentHTML("afterbegin", swatch("linear-gradient(135deg," + cols[0] + "," + cols[1] + ")"));
+    });
+  }
   function decorateSwatches() {
+    decorateChamberPalettes();
     var sc = $id("rsScenes");
     if (sc) $$("button[data-scene]", sc).forEach(function (b) {
       if (b.getAttribute("data-rs-sw")) return;
@@ -2550,7 +2600,10 @@
         var id = c.getAttribute("data-id") || "";
         if (pair[1]) {
           var cols = RS_SW.viz[id] || RS_SW.viz.mono || ["#8b8b8b", "#d0d0d0"];
-          c.insertAdjacentHTML("afterbegin", swatch("linear-gradient(135deg," + cols[0] + "," + cols[1] + ")"));
+          /* only the stops that exist: a missing one used to write ",undefined" into the
+             gradient, which is invalid and renders as an empty circle */
+          var ramp = cols.slice(0, 3).filter(function (x) { return !!x; }).join(",");
+          c.insertAdjacentHTML("afterbegin", swatch("linear-gradient(135deg," + ramp + ")"));
         } else {
           c.insertAdjacentHTML("afterbegin", mark(id));
         }
@@ -2750,6 +2803,7 @@
     var act = root.querySelector(".cym-actions");
     if (!act) return;
     cymHooked = true;
+    decorateChamberPalettes();
     /* The faceplate is placed by grid areas in the stylesheet, so these keys only have
        to exist and carry their own geometry: navigation on the top row, the transport
        on the row beneath it, one master fader between play and stop. */
@@ -4369,6 +4423,13 @@
     paintLevel(masterNow());
     var lp = $id("rsLoop"), lel = $id("loop");
     if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
+    var lbtn = $id("rsLoopBtn"), lled = $id("rsLoopLed");
+    if (lel && lbtn) {
+      var onL = !!lel.checked;
+      if (lbtn.getAttribute("aria-pressed") !== (onL ? "true" : "false"))
+        lbtn.setAttribute("aria-pressed", onL ? "true" : "false");
+      if (lled) lled.classList.toggle("on", onL);
+    }
     try { tempoGuard(); } catch (e) { }
   }
 
