@@ -10,8 +10,8 @@ android {
         applicationId "com.moddys.resonance"
         minSdk 26            // 2017+; also lets us use Notification.Builder(context, channel)
         targetSdk 36         // Play requires API 36 for new apps/updates since 2026-08-31
-        versionCode 13
-        versionName "2.0.5-beta"
+        versionCode 14
+        versionName "2.0.6-beta"
     }
 
     /* Two delivery channels from one code base, same application id.

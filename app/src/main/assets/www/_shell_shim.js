@@ -340,6 +340,10 @@
     "  justify-content:center;background:var(--rs-pri-c);color:var(--rs-on-pri-c)}",
     ".rs-cta h3{margin:2px 0 4px !important;font-size:19px !important}",
     ".rs-cta-sub{margin:0;font-size:13px;line-height:18px;color:var(--rs-dim)}",
+    /* the chamber's controls belong to the chamber: one hairline under the head, the
+       switch first, then the mapping and the three pickers, then the way in */
+    ".rs-cymctl{margin:0;padding:12px 0 0;border-top:1px solid var(--rs-line)}",
+    ".rs-cymctl .rs-sw{padding-top:0;padding-bottom:2px}",
     /* a quiet picture bleeds in at the head of each way in, and fades into the card */
     "html[data-rs-ui=full] .rs-cta{position:relative;overflow:hidden}",
     "html[data-rs-ui=full] .rs-cta::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
@@ -866,6 +870,101 @@
     "html.rs-app #prog:not([hidden]){display:block !important;position:fixed;left:14px;right:14px;",
     "  bottom:calc(150px + " + SAFE_B + ");height:8px;z-index:78;accent-color:var(--rs-pri)}",
 
+    /* ------------------------------------------------------------ studio --- */
+    /* the studio opens on what is loaded: a title, four numbers that each mean one
+       thing, and the transport. Everything else follows that reading order. */
+    ".rs-now-top{display:flex;align-items:center;gap:10px;margin:0 0 12px}",
+    ".rs-now-top h3{margin:0 !important;flex:1 1 auto;min-width:0;overflow:hidden;",
+    "  text-overflow:ellipsis;white-space:nowrap}",
+    ".rs-stpill{flex:0 0 auto;font:600 10.5px/1 var(--rs-sans);letter-spacing:.1em;",
+    "  text-transform:uppercase;padding:5px 9px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  color:var(--rs-dim)}",
+    ".rs-stpill[data-state=playing]{background:var(--rs-live);border-color:transparent;color:var(--rs-on-live)}",
+    ".rs-stpill[data-state=paused]{border-color:var(--rs-pri);color:var(--rs-pri)}",
+    ".rs-stpill[data-state=ready]{border-color:var(--rs-line2);color:var(--rs-ink2)}",
+    ".rs-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}",
+    ".rs-mtile{background:var(--rs-bg);border:1px solid var(--rs-line);border-radius:var(--rs-r-sm);",
+    "  padding:8px 5px;text-align:center;min-width:0}",
+    ".rs-mtile b{display:block;font:700 15px/1.15 var(--rs-sans);color:var(--rs-ink);",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".rs-mtile span{display:block;margin-top:3px;font:600 9.5px/1.15 var(--rs-sans);letter-spacing:0;",
+    "  text-transform:uppercase;color:var(--rs-dim);white-space:normal;overflow-wrap:anywhere}",
+    ".rs-nowtr{display:flex;align-items:center;gap:10px}",
+    ".rs-stuplay{width:56px;height:56px;flex:0 0 56px;border-radius:50%;border:1px solid var(--rs-pri);",
+    "  background:var(--rs-pri);color:var(--rs-on-pri);display:flex;align-items:center;",
+    "  justify-content:center;cursor:pointer;padding:0}",
+    ".rs-stuplay svg{display:block;width:26px;height:26px}",
+    ".rs-stuplay.rs-live{background:var(--rs-live);border-color:var(--rs-live);color:var(--rs-on-live)}",
+    ".rs-stustop{width:48px;height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:center;",
+    "  border-radius:50%;border:1px solid var(--rs-line2);background:var(--rs-s2);color:var(--rs-ink2);cursor:pointer}",
+    ".rs-stustop svg{width:20px;height:20px}",
+    ".rs-nowclock{flex:1 1 auto;text-align:center;font:600 12.5px/1 var(--rs-sans);",
+    "  font-variant-numeric:tabular-nums;color:var(--rs-ink2);white-space:nowrap}",
+    ".rs-stuloop{flex:0 0 auto;min-height:44px;padding:0;gap:8px}",
+    ".rs-stuloop .rs-swt span{font-size:12px;color:var(--rs-dim)}",
+    ".rs-nowneed{margin:10px 0 0;font-size:12.5px;line-height:17px;color:var(--rs-dim)}",
+    ".rs-nowneed:empty{display:none}",
+    /* the mix: one row per layer, and only the open row carries an editor */
+    ".rs-mix-top{display:flex;align-items:center;gap:8px;margin:0 0 2px}",
+    ".rs-mix-top h3{margin:0 !important;flex:1 1 auto}",
+    ".rs-cnt{font:600 12px/1 var(--rs-sans);color:var(--rs-dim)}",
+    ".rs-mrows{margin:10px 0 0}",
+    ".rs-lay{border:1px solid var(--rs-line);border-radius:var(--rs-r-sm);background:var(--rs-bg);",
+    "  margin:0 0 8px;overflow:hidden}",
+    ".rs-lay.open{border-color:var(--rs-line2);background:var(--rs-s1)}",
+    ".rs-mhead{display:flex;align-items:stretch}",
+    ".rs-mopen{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;min-height:56px;",
+    "  padding:8px 6px 8px 12px;border:0;background:transparent;color:var(--rs-ink);text-align:left;cursor:pointer}",
+    ".rs-mdot{flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:#D2A659}",
+    ".rs-mdot[data-d='1']{background:#8E9E6B}",
+    ".rs-mdot[data-d='2']{background:#6C81BE}",
+    ".rs-mdot[data-d='3']{background:#D8B45C}",
+    ".rs-mdot[data-d='4']{background:#B6AFA3}",
+    ".rs-mdot[data-d='5']{background:#C88A6A}",
+    ".rs-mtxt{flex:1 1 auto;min-width:0;display:block}",
+    ".rs-mtxt b{display:block;font:600 14.5px/1.25 var(--rs-sans);color:var(--rs-ink);",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".rs-mtxt span{display:block;font-size:12px;line-height:16px;color:var(--rs-dim);",
+    "  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".rs-mlvl{flex:0 0 auto;font:600 12px/1 var(--rs-sans);font-variant-numeric:tabular-nums;",
+    "  color:var(--rs-ink2)}",
+    ".rs-mopen svg{flex:0 0 18px;width:18px;height:18px;color:var(--rs-dim);transition:transform .18s}",
+    ".rs-lay.open .rs-mopen svg{transform:rotate(90deg)}",
+    ".rs-mmini{flex:0 0 auto;min-width:56px;padding:0 12px;border:0;border-left:1px solid var(--rs-line);",
+    "  background:transparent;color:var(--rs-dim);font:600 11.5px/1 var(--rs-sans);cursor:pointer}",
+    ".rs-mmini.on{color:var(--rs-bad);background:rgba(0,0,0,.25)}",
+    ".rs-medit{padding:2px 14px 12px;border-top:1px solid var(--rs-line)}",
+    ".rs-mfield{margin:10px 0 0}",
+    ".rs-mfield label{display:flex;align-items:baseline;gap:8px;font:600 12.5px/1.2 var(--rs-sans);",
+    "  color:var(--rs-ink2);margin:0 0 6px}",
+    ".rs-mfield output{margin-left:auto;font:600 12.5px/1 var(--rs-sans);color:var(--rs-pri);",
+    "  font-variant-numeric:tabular-nums}",
+    ".rs-mfield input[type=range]{width:100%;height:44px;margin:0;accent-color:var(--rs-pri)}",
+    ".rs-mfield .rs-sub{display:block;margin:2px 0 0;font-size:11.5px;line-height:16px;color:var(--rs-dim)}",
+    ".rs-medit-foot{display:flex;gap:8px;margin:12px 0 0;flex-wrap:wrap}",
+    ".rs-mini{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 12px/1 var(--rs-sans);cursor:pointer}",
+    ".rs-mini.rs-del{color:var(--rs-bad);border-color:rgba(200,90,80,.45)}",
+    ".rs-addbtn{margin:2px 0 0;width:100%}",
+    ".rs-addpane{margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--rs-line)}",
+    ".rs-chapters{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;-webkit-overflow-scrolling:touch}",
+    ".rs-chapters button{flex:0 0 auto;min-height:40px;padding:0 13px;border-radius:999px;",
+    "  border:1px solid var(--rs-line2);background:transparent;color:var(--rs-ink2);",
+    "  font:600 12px/1 var(--rs-sans);cursor:pointer}",
+    ".rs-chapters button[aria-selected='true']{background:var(--rs-pri-c);border-color:transparent;",
+    "  color:var(--rs-on-pri-c)}",
+    "#rsChapPanel .card,#rsChapPanel details{background:transparent !important;border:0 !important;",
+    "  padding:0 !important;margin:0 !important;box-shadow:none !important}",
+    "#rsChapPanel summary{display:none}",
+    "#rsChapPanel .rs-chapoff{display:none !important}",
+    "#rsChapPanel .hint{font-size:12px;line-height:17px;color:var(--rs-dim);margin:0 0 8px}",
+    "#rsChapPanel .chips{display:grid !important;grid-template-columns:1fr 1fr;gap:6px}",
+    "#rsChapPanel .chips button.chip{width:100%;min-height:44px;padding:0 10px;border-radius:999px;",
+    "  border:1px solid var(--rs-line2);background:transparent;color:var(--rs-ink2);",
+    "  font:600 12.5px/1 var(--rs-sans)}",
+    "#rsChapPanel #rsBuild{padding:0 !important}",
+    "#rsChapPanel #rsBuild h3{display:none}",
+
     /* ---------------------------------------------------- visualise section --- */
     ".rs-map{font-variant-numeric:tabular-nums;font-size:13px;line-height:19px;color:var(--rs-ink2);",
     "  background:var(--rs-bg);border:1px solid var(--rs-line);border-radius:var(--rs-r-sm);padding:12px;margin:10px 0}",
@@ -1133,7 +1232,9 @@
     "  #rsBody .rs-screen{max-width:var(--rs-rail);margin-left:auto;margin-right:auto}",
     /* the home fills the glass: the modules take every pixel the player leaves, so a
        tablet does not end in a band of empty background */
-    "  #scr-home{display:flex;flex-direction:column;min-height:100%}",
+    /* an id beats `.rs-screen{display:none}`, so Home's own display must be scoped to its
+       selected state or it stays pinned above whatever screen is open on a tablet */
+    "  #scr-home.rs-on{display:flex;flex-direction:column;min-height:100%}",
     "  #scr-home .rs-hero,#scr-home .rs-build{flex:0 0 auto}",
     "  #scr-home #rsStates{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;",
     "    grid-auto-rows:minmax(120px,1fr);gap:10px}",
@@ -1148,7 +1249,9 @@
     "  html{--rs-rail:960px}",
     /* two panes: the player and Build a tone on the left, the modules filling the right
        column top to bottom — the width and the height are both used */
-    "  #scr-home{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(0,1.05fr);",
+    /* the same id-level display as the 600 block: scoped to the selected state, and
+       written with the same specificity so this rule wins at 900+ instead of losing */
+    "  #scr-home.rs-on{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(0,1.05fr);",
     "    grid-template-rows:auto 1fr;grid-template-areas:'hero states' 'build states';",
     "    column-gap:14px;row-gap:14px;align-items:start;padding:0 16px;min-height:100%}",
     "  #scr-home .rs-hero{grid-area:hero;margin:0}",
@@ -1235,7 +1338,7 @@
     { id: "sessions", label: "Sessions", icon: "list", title: "Sessions",
       sub: function () { return ""; } },
     { id: "studio", label: "Studio", icon: "sliders", title: "Studio",
-      sub: function () { return "Shape the schedule"; } },
+      sub: function () { return "The sound you are building"; } },
     { id: "vis", label: "Visualise", icon: "vis", title: "Visualise",
       sub: function () { return "The tone made visible"; } },
     { id: "settings", label: "Settings", icon: "gear", title: "Settings",
@@ -1899,39 +2002,458 @@
       '  <div class="rs-searchrow"><button class="rs-chipbtn" id="rsFilterBtn" aria-expanded="false" ' +
       '    aria-controls="rsFilterWrap">Filters</button></div>' +
       '  <div id="rsFilterWrap"></div></section>' +
-      '<section class="card" data-band="other" id="rsQuick" aria-labelledby="rsQuickH">' +
-      '  <h3 id="rsQuickH">Quick picks</h3></section>' +
       '<div class="rs-pad"></div>';
   }
 
   /* ================================================================= studio === */
 
-  function syncStats() {
-    var box = $id("rsStats");
-    if (!box) return;
-    var st = pState(); if (!st) { box.innerHTML = ""; return; }
+  /* ------------------------------------------------------------------ studio --- */
+
+  /* A layer is a page "voice". The page's names are the truth (binaural beat, pink
+     noise); the shell only adds what each one means for the person holding the phone. */
+  function voiceEngine() { return window.GnauralEngine || {}; }
+  function isNoise(v) {
+    var GE = voiceEngine();
+    return v.type === GE.VOICE_PINK || v.type === GE.VOICE_BROWN || v.type === GE.VOICE_WHITE;
+  }
+  /* The page keeps its type names in a module-scope table, not on window, so the shell
+     carries its own copy of the same nine names (engine.js's type constants). */
+  var RS_TYPE_NAMES = {
+    0: "Binaural beat", 1: "Pink noise", 2: "Audio file", 3: "Isochronic pulses",
+    4: "Alt isochronic pulses", 5: "Water drops", 6: "Rain", 7: "White noise", 8: "Brown noise"
+  };
+  function voiceName(v) {
+    var GE = voiceEngine();
+    if (v.type === GE.VOICE_PINK) return "Pink noise";
+    if (v.type === GE.VOICE_BROWN) return "Brown noise";
+    if (v.type === GE.VOICE_WHITE) return "White noise";
+    if (v.mono && v.type === GE.VOICE_BINAURAL) return "Steady tone";
+    return RS_TYPE_NAMES[v.type] || "Tone";
+  }
+  function hzText(hz) {
+    hz = parseFloat(hz) || 0;
+    return (hz >= 10 ? Math.round(hz) : Math.round(hz * 10) / 10) + " Hz";
+  }
+  function voiceEntry(v) { return (v.entries && v.entries[0]) || {}; }
+  function voiceBeat(v) { return voiceEntry(v).beat || 0; }
+  function voiceBase(v) { return voiceEntry(v).basefreq || 0; }
+  function voiceLevel(v) {
+    var top = 0;
+    (v.entries || []).forEach(function (e) {
+      top = Math.max(top, e.volL || 0, e.volR || 0);
+    });
+    return top;
+  }
+  function voiceDetail(v) {
+    if (isNoise(v)) return "noise bed";
+    var b = voiceBeat(v);
+    if (!b) return hzText(voiceBase(v)) + " · steady";
+    return hzText(voiceBase(v)) + " · " + hzText(b) + " beat · " + bandOf(b)[0].toLowerCase();
+  }
+  function leadVoice(vs) {
+    for (var i = 0; i < (vs || []).length; i++) if (!isNoise(vs[i])) return vs[i];
+    return (vs || [])[0] || null;
+  }
+  function needsPhones(vs) {
+    var GE = voiceEngine();
+    return (vs || []).some(function (v) {
+      return v.type === GE.VOICE_BINAURAL && !v.mono && voiceBeat(v) > 0;
+    });
+  }
+
+  var mixOpen = -1;
+  var mixSig = "";
+
+  /* The rows carry the numbers, so the signature must too: a replaced schedule with the
+     same shape is a different mix. Edits write on change (not input), so a rebuild here
+     never lands in the middle of a drag. */
+  function mixStructure(vs) {
+    return (vs || []).map(function (v) {
+      return [v.type, (v.entries || []).length, v.mute ? 1 : 0,
+              Math.round(voiceBase(v)), Math.round(voiceBeat(v) * 10),
+              Math.round(voiceLevel(v) * 100)].join(":");
+    }).join("|");
+  }
+
+  /* The number that only ever means one thing: the level of the loudest entry, so a
+     layer that fades is still summarised by what it reaches. */
+  function setLayerLevel(v, level) {
+    var cur = voiceLevel(v);
+    (v.entries || []).forEach(function (e) {
+      if (cur > 0.0001) {
+        var r = level / cur;
+        e.volL = Math.max(0, Math.min(1, (e.volL || 0) * r));
+        e.volR = Math.max(0, Math.min(1, (e.volR || 0) * r));
+      } else { e.volL = e.volR = level; }
+    });
+  }
+
+  function mixEditor(v, i, count) {
+    var e = voiceEntry(v);
+    var multi = (v.entries || []).length > 1;
+    var noise = isNoise(v);
+    var lvl = Math.round(voiceLevel(v) * 100);
+    var h = '<div class="rs-medit" id="rsMedit' + i + '">';
+    if (!noise && !multi) {
+      h += '<div class="rs-mfield"><label for="rsEB' + i + '">Pitch' +
+        '<output id="rsEBO' + i + '">' + hzText(e.basefreq || 0) + '</output></label>' +
+        '<input id="rsEB' + i + '" type="range" min="40" max="600" step="1" value="' +
+        Math.round(e.basefreq || 0) + '" data-rs="mix-pitch" data-i="' + i + '" aria-label="Pitch in hertz">' +
+        '<span class="rs-sub">The tone you hear.</span></div>' +
+        '<div class="rs-mfield"><label for="rsET' + i + '">Beat' +
+        '<output id="rsETO' + i + '">' + hzText(e.beat || 0) +
+        ((e.beat || 0) ? " · " + bandOf(e.beat)[0].toLowerCase() : "") + '</output></label>' +
+        '<input id="rsET' + i + '" type="range" min="0" max="40" step="0.1" value="' + (e.beat || 0) +
+        '" data-rs="mix-beat" data-i="' + i + '" aria-label="Beat in hertz">' +
+        '<span class="rs-sub">Zero holds a steady tone.</span></div>';
+    } else if (multi) {
+      h += '<p class="rs-sub">A timeline of ' + (v.entries || []).length +
+        ' entries — pitch and beat follow its curve. Open the timeline to change them.</p>';
+    }
+    h += '<div class="rs-mfield"><label for="rsEL' + i + '">Level' +
+      '<output id="rsELO' + i + '">' + lvl + '%</output></label>' +
+      '<input id="rsEL' + i + '" type="range" min="0" max="100" step="1" value="' + lvl +
+      '" data-rs="mix-level" data-i="' + i + '" aria-label="Layer level in percent"></div>' +
+      '<div class="rs-medit-foot">' +
+      '<button class="rs-mini" data-rs="mix-timeline" data-i="' + i + '">Timeline · ' +
+      (v.entries || []).length + ' entries</button>' +
+      (count > 1 ? '<button class="rs-mini rs-del" data-rs="mix-remove" data-i="' + i +
+        '">Remove</button>' : '') +
+      '</div></div>';
+    return h;
+  }
+
+  function paintMix(vs) {
+    var box = $id("rsMixRows"); if (!box) return;
+    var count = (vs || []).length;
+    box.innerHTML = (vs || []).map(function (v, i) {
+      var on = i === mixOpen;
+      return '<div class="rs-lay' + (on ? " open" : "") + '" data-i="' + i + '">' +
+        '<div class="rs-mhead">' +
+        '<button class="rs-mopen" data-rs="mix-open" data-i="' + i + '" aria-expanded="' +
+        (on ? "true" : "false") + '" aria-controls="rsMedit' + i + '">' +
+        '<span class="rs-mdot" data-d="' + (i % 6) + '"></span>' +
+        '<span class="rs-mtxt"><b>' + esc(voiceName(v)) + '</b><span>' + esc(voiceDetail(v)) +
+        '</span></span>' +
+        '<span class="rs-mlvl">' + Math.round(voiceLevel(v) * 100) + '%</span>' +
+        svg("chev", 18) + '</button>' +
+        '<button class="rs-mmini' + (v.mute ? " on" : "") + '" data-rs="mix-mute" data-i="' + i +
+        '" aria-pressed="' + (v.mute ? "true" : "false") + '" aria-label="' +
+        (v.mute ? "Unmute " : "Mute ") + esc(voiceName(v)) + '">' +
+        (v.mute ? "muted" : "mute") + '</button></div>' +
+        (on ? mixEditor(v, i, count) : "") + '</div>';
+    }).join("");
+    var c = $id("rsMixCount");
+    if (c) c.textContent = String(count);
+    var hint = $id("rsMixHint");
+    if (hint) hint.textContent = count
+      ? "Every layer adds one sound. Tap a layer to tune it."
+      : "Nothing in the mix yet. Add a sound, or start a tone from scratch.";
+  }
+
+  function applyMix() {
+    var a = api(); if (!a) return;
+    try { a.rebuildEngine(); a.syncToWorklet(); a.refresh(); } catch (e) { }
+    mixSig = "";
+    syncStudio();
+    pushState(true);
+  }
+
+  function openTimeline(i) {
+    var adv = $id("rsAdvDet"); if (adv) adv.open = true;
+    var rows = $$("#voicelist .vrow");
+    if (rows[i] && rows[i].click) rows[i].click();
+    var card = $id("rsVoices");
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: "start" });
+  }
+
+  /* The add-a-sound catalogue is the page's own (rates.js), not a second copy: its six
+     groups become chapters, and the by-hand form and Build a tone join them so every
+     way of adding a sound starts in one place. */
+  var CHAP = [];
+  function shortChapter(t) {
+    if (/brainwave|band/i.test(t)) return "Bands";
+    if (/schumann/i.test(t)) return "Resonance";
+    if (/breath/i.test(t)) return "Breathing";
+    if (/focus.level/i.test(t)) return "Focus sets";
+    if (/solfeggio/i.test(t)) return "Solfeggio";
+    if (/noise/i.test(t)) return "Noise";
+    return String(t || "More").split(/[—(]/)[0].trim().slice(0, 14);
+  }
+  function buildChapters() {
+    var tabs = $id("rsChapters"), panel = $id("rsChapPanel");
+    var qp = $id("quickpick");
+    if (!tabs || !panel || !qp) return;
+    $$(":scope > p.hint", qp).forEach(function (h) { h.style.display = "none"; });
+    var groups = [];
+    $$("details", qp).forEach(function (d) {
+      var sm = d.querySelector("summary");
+      /* the group's first hint is its blurb; the rest are one line per chip, which is
+         the chip's own title in a pane this narrow - keep the catalogue readable */
+      var body = d.querySelector(".body");
+      if (body) $$(".hint", body).forEach(function (h, k) { if (k) h.style.display = "none"; });
+      groups.push({ label: shortChapter(sm ? text(sm) : ""), el: d, det: true });
+    });
+    var hand = $id("addvoicePane");
+    if (hand) groups.push({ label: "By hand", el: hand, det: true });
+    var scratch = $id("rsBuild");
+    if (scratch) groups.push({ label: "From scratch", el: scratch, det: false });
+    CHAP = groups;
+    tabs.innerHTML = groups.map(function (g, i) {
+      return '<button type="button" role="tab" data-chap="' + i + '" aria-selected="' +
+        (i === 0 ? "true" : "false") + '">' + esc(g.label) + '</button>';
+    }).join("");
+    groups.forEach(function (g, i) {
+      if (g.det) g.el.open = i === 0;
+      g.el.classList.toggle("rs-chapoff", i !== 0);
+    });
+  }
+  function pickChapter(i) {
+    CHAP.forEach(function (g, j) {
+      var on = i === j;
+      if (g.det && on) g.el.open = true;
+      g.el.classList.toggle("rs-chapoff", !on);
+      if (g.det) g.el.classList.toggle("on", on);
+    });
+    $$("#rsChapters [data-chap]").forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-chap") === String(i) ? "true" : "false");
+    });
+  }
+
+  function wireStudio() {
+    /* The page can replace the whole schedule (Build a tone, a quick pick, a preset).
+       Its API is the one place all of those pass through, so wrap it once: the mix then
+       repaints in the same beat instead of waiting for the 1 Hz tick. */
+    (function hookApi() {
+      var a = api();
+      if (!a) { window.setTimeout(hookApi, 250); return; }
+      if (a.__rsStudioHooked) return;
+      a.__rsStudioHooked = true;
+      ["loadSchedule", "loadPreset", "loadGnauralText", "addVoice", "removeVoice", "refresh"]
+        .forEach(function (k) {
+          var fn = a[k];
+          if (typeof fn !== "function") return;
+          a[k] = function () {
+            var out = fn.apply(a, arguments);
+            try { mixSig = ""; syncStudio(); } catch (e) { }
+            return out;
+          };
+        });
+    })();
+
+    var play = $id("rsStuPlay");
+    if (play) play.addEventListener("click", function () { pageToggle(); pushState(true); syncStudio(); });
+    var stop = $id("rsStuStop");
+    if (stop) stop.addEventListener("click", function () { pageStop(); pushState(true); syncStudio(); });
+    var lp = $id("rsStuLoop");
+    if (lp) lp.addEventListener("change", function () {
+      var l = $id("loop");
+      if (!l) return;
+      l.checked = this.checked;
+      l.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    var add = $id("rsMixAdd");
+    if (add) add.addEventListener("click", function () {
+      var pane = $id("rsAddPane"); if (!pane) return;
+      var open = pane.hidden;
+      if (open) buildChapters();
+      pane.hidden = !open;
+      this.setAttribute("aria-expanded", open ? "true" : "false");
+      this.classList.toggle("open", open);
+      if (open) {
+        var b = $id("rsBody");
+        if (b && pane.getBoundingClientRect().top > window.innerHeight - 140) {
+          pane.scrollIntoView({ block: "nearest" });
+        }
+      }
+    });
+
+    var tabs = $id("rsChapters");
+    if (tabs) tabs.addEventListener("click", function (ev) {
+      var b = ev.target.closest ? ev.target.closest("[data-chap]") : null;
+      if (!b) return;
+      pickChapter(parseInt(b.getAttribute("data-chap"), 10) || 0);
+    });
+
+    var rows = $id("rsMixRows");
+    if (rows && !rows.rsWired) {
+      rows.rsWired = true;
+      rows.addEventListener("click", function (ev) {
+        var b = ev.target.closest ? ev.target.closest("[data-rs]") : null;
+        if (!b || !rows.contains(b)) return;
+        var st = pState(); if (!st) return;
+        var vs = st.schedule.voices || [];
+        var i = parseInt(b.getAttribute("data-i"), 10) || 0;
+        var act = b.getAttribute("data-rs");
+        if (act === "mix-open") {
+          mixOpen = (mixOpen === i) ? -1 : i;
+          paintMix(vs);
+        } else if (act === "mix-mute") {
+          if (!vs[i]) return;
+          vs[i].mute = !vs[i].mute;
+          applyMix();
+        } else if (act === "mix-remove") {
+          var a = api();
+          if (a && a.removeVoice(i)) {
+            if (mixOpen >= vs.length - 1) mixOpen = -1;
+            applyMix();
+            toast("Layer removed");
+          } else toast("Keep at least one layer");
+        } else if (act === "mix-timeline") {
+          openTimeline(i);
+        }
+      });
+      rows.addEventListener("input", function (ev) {
+        var r = ev.target; if (!r || !r.getAttribute) return;
+        var k = r.getAttribute("data-rs"); if (!k) return;
+        var out = r.parentNode.querySelector("output");
+        if (!out) return;
+        if (k === "mix-level") out.textContent = r.value + "%";
+        else if (k === "mix-pitch") out.textContent = hzText(parseFloat(r.value));
+        else if (k === "mix-beat") {
+          var bv = parseFloat(r.value) || 0;
+          out.textContent = hzText(bv) + (bv ? " · " + bandOf(bv)[0].toLowerCase() : "");
+        }
+      });
+      /* write on release, not on every pixel of the drag: each write rebuilds the
+         engine, and the page's own editor edits on change for the same reason */
+      rows.addEventListener("change", function (ev) {
+        var r = ev.target; if (!r || !r.getAttribute) return;
+        var k = r.getAttribute("data-rs");
+        if (k !== "mix-pitch" && k !== "mix-beat" && k !== "mix-level") return;
+        var st = pState(); if (!st) return;
+        var i = parseInt(r.getAttribute("data-i"), 10) || 0;
+        var v = (st.schedule.voices || [])[i]; if (!v) return;
+        var val = parseFloat(r.value); if (!isFinite(val)) return;
+        if (k === "mix-level") setLayerLevel(v, val / 100);
+        else {
+          var e = v.entries && v.entries[0]; if (!e) return;
+          if (k === "mix-pitch") e.basefreq = Math.max(1, val);
+          else e.beat = Math.max(0, val);
+        }
+        applyMix();
+        if (k === "mix-pitch" || k === "mix-beat") paintMix(st.schedule.voices || []);
+      });
+    }
+  }
+
+  function syncStudio() {
+    var st = pState(); if (!st) return;
     var vs = (st.schedule && st.schedule.voices) || [];
-    var entries = vs.reduce(function (a, v) { return a + (v.entries ? v.entries.length : 0); }, 0);
-    var mode = st.playing ? "playing" : (st.mode || "idle");
-    var html = '<div class="rs-stat"><b>' + vs.length + '</b><span>voices</span></div>' +
-      '<div class="rs-stat"><b>' + entries + '</b><span>entries</span></div>' +
-      '<div class="rs-stat"><b>' + esc(mode) + '</b><span>state</span></div>';
-    if (box.dataset.k !== html) { box.dataset.k = html; box.innerHTML = html; }
+    var title = $id("rsStuTitle");
+    if (title) title.textContent = st.title || sessionTitle() || "Nothing loaded";
+
+    var clock = clockText();
+    var pill = $id("rsStuPill");
+    if (pill) {
+      var at = String(clock || "").split("/")[0].trim();
+      var m = isPlaying() ? "playing" : (at && at !== "0:00" ? "paused" : (vs.length ? "ready" : "idle"));
+      if (pill.textContent !== m) pill.textContent = m;
+      pill.setAttribute("data-state", m);
+    }
+    var cl = $id("rsStuClock");
+    if (cl) cl.textContent = clock || "0:00 / 0:00";
+    var b = $id("rsStuPlay");
+    if (b) {
+      var on = isPlaying();
+      /* the markup ships with the label already right, so the icon must not be guarded
+         on a label change alone or the first paint leaves a blank key */
+      if (b.getAttribute("aria-label") !== (on ? "Pause" : "Play") || !b.firstChild) {
+        b.setAttribute("aria-label", on ? "Pause" : "Play");
+        b.innerHTML = on ? svgFill("pause") : svgFill("play");
+        b.classList.toggle("rs-live", on);
+      }
+    }
+    var lp = $id("rsStuLoop"), lel = $id("loop");
+    if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
+
+    var lead = leadVoice(vs);
+    var beat = lead ? voiceBeat(lead) : 0;
+    var dur = 0;
+    try { dur = st.engine && st.engine.duration ? st.engine.duration() : 0; } catch (e) { }
+    var fmt = (api() && api().fmtTime) ? api().fmtTime(dur) : "";
+    var tiles = [
+      ["200", lead ? hzText(voiceBase(lead)) : "—", "carrier"],
+      ["200", beat ? hzText(beat) : "—", beat ? "beat · " + bandOf(beat)[0].toLowerCase() : "beat"],
+      ["200", dur ? fmt : "—", "length"],
+      ["200", String(vs.length), vs.length === 1 ? "layer" : "layers"]
+    ];
+    var metrics = $id("rsMetrics");
+    if (metrics) {
+      var html = tiles.map(function (t) {
+        return '<div class="rs-mtile"><b>' + esc(t[1]) + '</b><span>' + esc(t[2]) + '</span></div>';
+      }).join("");
+      if (metrics.dataset.k !== html) { metrics.dataset.k = html; metrics.innerHTML = html; }
+    }
+    var need = $id("rsStuNeed");
+    if (need) {
+      var n = !vs.length ? "" :
+        needsPhones(vs) ? "Headphones — the beat is made between your ears."
+          : "Speaker-safe — nothing here needs headphones.";
+      if (need.textContent !== n) need.textContent = n;
+    }
+
+    var sig = mixStructure(vs);
+    if (sig !== mixSig) { mixSig = sig; paintMix(vs); }
+    else if (mixOpen >= 0 && mixOpen < vs.length) {
+      /* keep the open row's summary text honest without rebuilding its sliders */
+      var row = $$("#rsMixRows .rs-lay")[mixOpen];
+      if (row) {
+        var lv = row.querySelector(".rs-mlvl");
+        if (lv) lv.textContent = Math.round(voiceLevel(vs[mixOpen]) * 100) + "%";
+        var dt = row.querySelector(".rs-mtxt span");
+        if (dt) dt.textContent = voiceDetail(vs[mixOpen]);
+      }
+    }
   }
 
   function buildStudio() {
     screenEls.studio.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<div class="rs-stats" id="rsStats" aria-live="polite"></div>' +
-      '<section class="card" data-band="focus" id="rsVoices" aria-labelledby="rsVoicesH">' +
-      '  <h3 id="rsVoicesH">The sound</h3></section>' +
-      '<details class="tool rs-mod" id="rsLiveDet"><summary>Live tools</summary>' +
-      '  <div class="body"><section class="card" id="rsLive" aria-label="Live tools"></section></div>' +
+      /* --- now: what is loaded, the numbers that matter, and the transport --- */
+      '<section class="card rs-now" data-band="focus" id="rsNow" aria-labelledby="rsNowH">' +
+      '  <div class="rs-now-top"><h3 id="rsNowH"><span id="rsStuTitle">Nothing loaded</span></h3>' +
+      '    <span class="rs-stpill" id="rsStuPill" data-state="idle">idle</span></div>' +
+      '  <div class="rs-metrics" id="rsMetrics" aria-live="polite"></div>' +
+      '  <div class="rs-nowtr">' +
+      '    <button class="rs-stuplay" id="rsStuPlay" aria-label="Play"></button>' +
+      '    <button class="rs-stustop" id="rsStuStop" aria-label="Stop">' + svgFill("stop") + '</button>' +
+      '    <span class="rs-nowclock" id="rsStuClock">0:00 / 0:00</span>' +
+      '    <label class="rs-sw rs-stuloop"><span class="rs-swt"><span>Loop</span></span>' +
+      '      <input type="checkbox" id="rsStuLoop" checked><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  </div>' +
+      '  <p class="rs-nowneed" id="rsStuNeed"></p>' +
+      '</section>' +
+      /* --- the mix: one row per layer, the place a person actually works --- */
+      '<section class="card" data-band="focus" id="rsMix" aria-labelledby="rsMixH">' +
+      '  <div class="rs-mix-top"><h3 id="rsMixH">The mix</h3>' +
+      '    <span class="rs-cnt" id="rsMixCount">0</span></div>' +
+      '  <p class="rs-hint" id="rsMixHint">Every layer adds one sound. Tap a layer to tune it.</p>' +
+      '  <div class="rs-mrows" id="rsMixRows"></div>' +
+      '  <button class="rs-btn rs-tonal rs-addbtn" id="rsMixAdd" aria-expanded="false" ' +
+      '    aria-controls="rsAddPane">+ Add a sound</button>' +
+      '  <div class="rs-addpane" id="rsAddPane" hidden>' +
+      '    <div class="rs-chapters" id="rsChapters" role="tablist" aria-label="Kinds of sound"></div>' +
+      '    <div class="rs-chap" id="rsChapPanel"></div>' +
+      '  </div>' +
+      '</section>' +
+      /* --- keep it: the page's own files card, unfolded --- */
+      '<details class="tool rs-mod" id="rsFilesDet" open><summary>Save, export &amp; share</summary>' +
+      '  <div class="body"><section class="card" id="rsFiles" aria-label="Save, export and share"></section></div>' +
       '</details>' +
-      '<details class="tool rs-mod" id="rsFilesDet"><summary>Files &amp; export</summary>' +
-      '  <div class="body"><section class="card" id="rsFiles" aria-label="Files and export"></section></div>' +
+      /* --- advanced: the raw schedule, then the meters --- */
+      '<details class="tool rs-mod" id="rsAdvDet"><summary>Advanced — the raw schedule</summary>' +
+      '  <div class="body"><section class="card" id="rsVoices" aria-labelledby="rsVoicesH">' +
+      '    <h3 id="rsVoicesH">Raw schedule</h3>' +
+      '    <p class="rs-hint">Each voice is a track; each entry is a segment that ramps into the next.</p>' +
+      '  </section></div>' +
+      '</details>' +
+      '<details class="tool rs-mod" id="rsLiveDet"><summary>Live meters &amp; tools</summary>' +
+      '  <div class="body"><section class="card" id="rsLive" aria-label="Live meters and tools"></section></div>' +
       '</details>' +
       '<div class="rs-pad"></div>';
+    wireStudio();
   }
 
   /* ==================================================================== vis === */
@@ -1997,10 +2519,26 @@
   function buildVis() {
     screenEls.vis.innerHTML =
       '<div class="rs-pad"></div>' +
-      '<section class="card rs-cta" data-band="focus" data-art="chamber" aria-labelledby="rsCymH">' +
+      '<section class="card rs-cta" id="rsCymCard" data-band="focus" data-art="chamber" aria-labelledby="rsCymH">' +
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
       '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
       '    <p class="rs-cta-sub">Full visual experience</p></div></div>' +
+      /* The chamber's own controls: follow, the mapping, the scene and medium chips, the
+         layer toggles. They used to sit in a card of their own beside the Ambient panels'
+         Scene menu, which put two "Scene" controls side by side and one of them three
+         controls away from the chamber it drives. */
+      '  <div class="rs-cymctl">' +
+      '    <label class="rs-sw"><span class="rs-swt">' +
+      '      <b id="rsFollowH">Follow the tone</b></span>' +
+      '      <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
+      '    <div class="rs-map" id="rsMap" aria-live="polite">No session.</div>' +
+      '    <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
+      '    <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
+      '    <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
+      '      <button data-k="sand" aria-pressed="true">Sand</button>' +
+      '      <button data-k="lines" aria-pressed="true">Lines</button>' +
+      '      <button data-k="dust" aria-pressed="true">Dust</button></div>' +
+      '  </div>' +
       '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
       '<section class="card rs-cta" data-band="relax" data-art="focus" aria-labelledby="rsFocusH">' +
@@ -2008,18 +2546,6 @@
       '    <div><h3 id="rsFocusH">Focus view</h3>' +
       '    <p class="rs-cta-sub">Gentle visuals</p></div></div>' +
       '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
-      '</section>' +
-      '<section class="card" data-band="other" aria-labelledby="rsFollowH">' +
-      '  <label class="rs-sw"><span class="rs-swt">' +
-      '    <b id="rsFollowH">Follow the tone</b></span>' +
-      '    <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
-      '  <div class="rs-map" id="rsMap" aria-live="polite">No session.</div>' +
-      '  <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
-      '  <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
-      '  <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
-      '    <button data-k="sand" aria-pressed="true">Sand</button>' +
-      '    <button data-k="lines" aria-pressed="true">Lines</button>' +
-      '    <button data-k="dust" aria-pressed="true">Dust</button></div>' +
       '</section>' +
       '<section class="card" data-band="other" id="rsVizCard" aria-labelledby="rsVizH">' +
       '  <h3 id="rsVizH">Ambient panels</h3>' +
@@ -2865,15 +3391,15 @@
       { nav: "home", sel: "#rsStates", title: "Eight sessions",
         body: "Deep sleep through Morning. One tap loads the session and starts it — the pulse " +
               "bands tell you what each one is aiming at." },
-      { nav: "studio", sel: "#rsBuild", title: "Build a tone",
-        body: "Carrier is the pitch you hear, beat is the pulse, and a bed softens the edges. " +
-              "\"Play this tone\" starts it straight away." },
+      { nav: "studio", sel: "#rsMix", title: "The mix",
+        body: "Every layer is one sound: its pitch, its beat and its level. Tap a layer to tune " +
+              "it, or Add a sound to stack another. The transport at the top plays the whole stack." },
       { nav: "sessions", sel: "#rsModules", title: "The whole library",
-        body: "Search it or filter by band, then tap a row to load it. Quick picks live in " +
-              "Studio, next to the schedule editor." },
-      { nav: "studio", sel: "#rsVoices", title: "The engine room",
-        body: "Every layer and its schedule, the sound itself, live tools and the files — this " +
-              "is where a session is edited rather than chosen." },
+        body: "Search it or filter by band, then tap a row to load it. Quick picks are in " +
+              "Studio's Add a sound, beside the mix." },
+      { nav: "studio", sel: "#rsAdvDet", title: "The raw schedule",
+        body: "Each voice's entries and the live meters sit here, folded away until you want " +
+              "that control. Nothing in this app is hidden, only put down." },
       { nav: "viz", sel: "#rsChamber", title: "See the tone",
         body: "The chamber draws the figure the session actually drives. Focus view beside it " +
               "is the gentle one for leaving on." },
@@ -3759,7 +4285,7 @@
     var mini = $id("rsMini");
     if (!mini) return;
     var sess = sessionTitle();
-    var show = !!sess && CUR !== "home";
+    var show = !!sess && CUR !== "home" && CUR !== "studio";
     if (show && !mini.classList.contains("rs-on")) armMini();   /* fresh clock when it appears */
     mini.classList.toggle("rs-on", show);
     if (!show) return;
@@ -3798,7 +4324,7 @@
 
   function tick() {
     applyInsets();
-    if (CUR === "studio") syncStats();
+    if (CUR === "studio") syncStudio();
     syncHero();
     syncMini();
     renderTop();
@@ -3841,10 +4367,13 @@
       stage.style.margin = "0";
       try { drawSched(); } catch (e) { }
     }
+    /* Build a tone is one of the ways to add a sound, so it lives in that pane rather
+       than standing above the mix as a second, competing model. */
     var build = cardOf("#rsBuild");
-    if (build) {
-      var stVoices = $id("rsVoices");
-      if (stVoices && stVoices.parentNode) stVoices.parentNode.insertBefore(build, stVoices);
+    var chapPanel = $id("rsChapPanel");
+    if (build && chapPanel) chapPanel.appendChild(build);
+    else if (build && $id("rsVoices") && $id("rsVoices").parentNode) {
+      $id("rsVoices").parentNode.insertBefore(build, $id("rsVoices"));
     }
     var hear = cardOf("#hearinfo");
     if (hear) {
@@ -3855,8 +4384,8 @@
       hear.classList.remove("card", "rs-screen");
       $id("hearinfo").classList.remove("readout");
       fold.querySelector("details").appendChild(hear);
-      var inStudio = $id("rsVoices");
-      if (inStudio && inStudio.parentNode) inStudio.parentNode.insertBefore(fold, inStudio.nextSibling);
+      var before = $id("rsFilesDet");
+      if (before && before.parentNode) before.parentNode.insertBefore(fold, before);
       else screenEls.studio.appendChild(fold);
     }
 
@@ -3872,24 +4401,22 @@
     var rnd = $id("randomBtn");
     if (rnd) rnd.style.display = "none";
     var quick = cardOf("#quickpick");
-    if (quick) {
-      $id("rsQuick").appendChild(quick);
-      /* the shell's own heading is the card's heading; the page's repeats it, and its
-         two-sentence hint says more than this row needs to */
+    var chapHolder = $id("rsChapPanel");
+    if (quick && chapHolder) {
+      /* the catalogue becomes the add-a-sound pane's chapters; its own heading and
+         two-sentence hint are redundant inside a pane that already says what it is */
+      chapHolder.appendChild(quick);
       $$("h3", quick).forEach(function (n) { n.style.display = "none"; });
-      var qh = quick.querySelector("p.hint");
-      if (qh) qh.textContent = "Adds one layer to what is playing. Pulses work on any speaker; " +
-        "pairs need headphones.";
     }
-    var qsec = $id("rsQuick");
-    if (qsec && $id("rsVoices")) $id("rsVoices").parentNode.insertBefore(qsec, $id("rsVoices"));
 
     var voices = cardOf("#voicelist");
     if (voices) $id("rsVoices").appendChild(voices);
     var vh = voices && voices.querySelector("h3");
     if (vh) {
       var cnt = vh.querySelector(".cnt");
-      vh.textContent = "Layers";
+      /* the mix speaks "layers"; the raw schedule speaks the page's own "voices" and
+         "entries", so the two panels are never two names for one thing */
+      vh.textContent = "Voices";
       if (cnt) { vh.appendChild(document.createTextNode(" \u00b7 ")); vh.appendChild(cnt); }
     }
     var hs = ["duration s", "base Hz", "beat Hz", "vol L", "vol R"];
@@ -3982,7 +4509,7 @@
         var vsel = $id("vizPreset");
         if (vsel && !vsel.value) {
           var custom = doc.createElement("option");
-          custom.value = ""; custom.textContent = "Custom (chips below)";
+          custom.value = ""; custom.textContent = "Custom (chips)";
           vsel.insertBefore(custom, vsel.firstChild);
           vsel.value = "";
         }
@@ -4033,7 +4560,7 @@
     var ver = $id("rsVer");
     if (ver) ver.textContent = "v" + (deviceFacts().app || "?");
     go("home", { scroll: false });
-    syncStats();
+    syncStudio();
     window.setInterval(tick, 1000);
     doc.addEventListener("pointerdown", armNav, true);
     doc.addEventListener("keydown", armNav, true);

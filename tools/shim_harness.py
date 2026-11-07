@@ -277,9 +277,12 @@ def main():
         suite.check("live tools and files travelled with it",
                     page.evaluate("!!document.querySelector('#rsLive #barL') && "
                                   "!!document.querySelector('#rsFiles #saveGnm')"))
-        suite.check("the secondary studio modules are folded by default",
-                    page.evaluate("!document.getElementById('rsFilesDet').open && "
-                                  "!document.getElementById('rsLiveDet').open"))
+        # the studio opens on the mix; the raw schedule and the meters stay folded
+        suite.check("the files card is open and the raw tools are folded",
+                    page.evaluate("document.getElementById('rsFilesDet').open && "
+                                  "!document.getElementById('rsAdvDet').open && "
+                                  "!document.getElementById('rsLiveDet').open && "
+                                  "!!document.getElementById('rsMixRows')"))
         suite.shot("3-studio.png")
         suite.tab("vis")
         suite.shot("4-vis.png")
@@ -407,6 +410,23 @@ def main():
         suite.check("the hero volume drives the studio master gain",
                     abs(page.evaluate("parseFloat(document.getElementById('master').value)") - 0.25) < 0.001)
 
+        # build-a-tone now lives inside the add-a-sound pane's From-scratch chapter,
+        # so every way of making a sound starts from the same button
+        page.click("#rsMixAdd")
+        page.wait_for_timeout(250)
+        suite.check("Add a sound opens one pane with a chapter per kind",
+                    page.evaluate("(() => { const p = document.getElementById('rsAddPane');"
+                                  " const t = [...document.querySelectorAll('#rsChapters [data-chap]')];"
+                                  " return !!p && !p.hidden && t.length >= 7 &&"
+                                  "   t.some(b => b.textContent.trim() === 'From scratch'); })()"),
+                    page.evaluate("document.querySelectorAll('#rsChapters [data-chap]').length"))
+        page.evaluate("(() => { const b = [...document.querySelectorAll('#rsChapters [data-chap]')]"
+                      ".find(x => x.textContent.trim() === 'From scratch'); if (b) b.click(); })()")
+        page.wait_for_timeout(200)
+        suite.check("From scratch reveals the tone builder",
+                    page.evaluate("!document.getElementById('rsBuild').hidden && "
+                                  "!!document.getElementById('rsCarrier')"))
+
         # build-a-tone writes a real schedule
         page.evaluate("(() => { const c = document.getElementById('rsCarrier'); c.value = '300';"
                       " c.dispatchEvent(new Event('input', { bubbles: true }));"
@@ -426,6 +446,63 @@ def main():
         suite.check("a bed adds a second, noise voice",
                     suite.wait_until("window.__gnauralAPI.state.schedule.voices.length === 2", 6))
         page.evaluate("window.__rs.stop()")
+
+        # ---- the mix: the working surface the studio now opens on ----------------
+        suite.check("the mix repaints as soon as the schedule changes", suite.wait_until(
+            "document.querySelectorAll('#rsMixRows .rs-lay').length === 2", 5),
+            page.evaluate("document.getElementById('rsMixRows').textContent.slice(0,120)"))
+        suite.check("the mix lists each layer by name and numbers", page.evaluate(
+            "(() => { const r = [...document.querySelectorAll('#rsMixRows .rs-lay')];"
+            " if (r.length !== 2) return false;"
+            " return /binaural/i.test(r[0].textContent) && /noise/i.test(r[1].textContent) &&"
+            "   /%/.test(r[0].textContent); })()"),
+            page.evaluate("document.getElementById('rsMixRows').textContent.slice(0,160)"))
+        opened = page.evaluate("(() => { const b = document.querySelector('#rsMixRows .rs-mopen');"
+                              " if (!b) return false; b.click(); return true; })()")
+        page.wait_for_timeout(200)
+        suite.check("a layer opens its own pitch, beat and level", opened and page.evaluate(
+            "!!document.querySelector('#rsMixRows .rs-lay.open') && "
+            "!!document.getElementById('rsEB0') && !!document.getElementById('rsET0') && "
+            "!!document.getElementById('rsEL0')"))
+        page.evaluate("(() => { const r = document.getElementById('rsEL0'); if (!r) return; r.value = '15';"
+                      " r.dispatchEvent(new Event('change', { bubbles: true })); })()")
+        suite.check("the level fader writes the schedule",
+                    abs(page.evaluate("window.__gnauralAPI.state.schedule.voices[0].entries[0].volL")
+                        - 0.15) < 0.011,
+                    page.evaluate("JSON.stringify(window.__gnauralAPI.state.schedule.voices[0].entries[0])"))
+        page.evaluate("(() => { const r = document.getElementById('rsET0'); if (!r) return; r.value = '6';"
+                      " r.dispatchEvent(new Event('change', { bubbles: true })); })()")
+        suite.check("the beat fader retunes the layer",
+                    abs(page.evaluate("window.__gnauralAPI.state.schedule.voices[0].entries[0].beat")
+                        - 6) < 0.01)
+        page.evaluate("(() => { const b = document.querySelector('#rsMixRows [data-rs=mix-mute]');"
+                      " if (b) b.click(); })()")
+        suite.check("mute is the page's own voice mute, not a shell flag", page.evaluate(
+            "window.__gnauralAPI.state.schedule.voices[0].mute === true"))
+        page.evaluate("(() => { const b = document.querySelector('#rsMixRows [data-rs=mix-mute]');"
+                      " if (b) b.click(); })()")
+        suite.check("and it unmutes again", page.evaluate(
+            "window.__gnauralAPI.state.schedule.voices[0].mute === false"))
+        suite.check("the header reads the loaded schedule as four facts", page.evaluate(
+            "(() => { const t = [...document.querySelectorAll('#rsMetrics .rs-mtile b')]"
+            ".map(b => b.textContent); const n = window.__gnauralAPI.state.schedule.voices.length;"
+            " return t.length === 4 && /Hz/.test(t[0]) && t[3] === String(n); })()"),
+            page.evaluate("document.getElementById('rsMetrics').textContent"))
+        page.click("#rsStuPlay")
+        suite.check("the studio transport starts the session", suite.wait_until(
+            "window.__gnauralAPI.state.playing === true", 6))
+        page.click("#rsStuStop")
+        suite.check("and stops it again", suite.wait_until(
+            "window.__gnauralAPI.state.playing === false", 6))
+        page.evaluate("(() => { if (!document.querySelector('#rsMixRows .rs-lay.open')) {"
+                      " const b = document.querySelector('#rsMixRows .rs-mopen'); if (b) b.click(); } })()")
+        page.wait_for_timeout(200)
+        page.evaluate("(() => { const b = document.querySelector('#rsMixRows [data-rs=mix-remove]');"
+                      " if (b) b.click(); })()")
+        suite.check("a layer can be removed from the mix", suite.wait_until(
+            "window.__gnauralAPI.state.schedule.voices.length === 1", 6))
+        page.click("#rsMixAdd")   # close the pane before the rest of the run
+        page.wait_for_timeout(150)
 
         # ---- the library ------------------------------------------------------------
         suite.tab("sessions")
@@ -521,6 +598,25 @@ def main():
                                   " x.querySelector('.rs-cta-sub').textContent);"
                                   " return h[0] === 'Cymatic chamber|Full visual experience' &&"
                                   " h[1] === 'Focus view|Gentle visuals'; })()"))
+        # the restructure: the chamber's controls live in the chamber's card, above the way
+        # in. Two "Scene" controls sat side by side before this, one of them driving a
+        # surface three controls away.
+        suite.check("the chamber card owns every chamber control", page.evaluate(
+            "(() => { const c = document.getElementById('rsCymCard'); if (!c) return false;"
+            " return ['rsFollow', 'rsMap', 'rsScenes', 'rsMedia', 'rsVisToggles', 'rsChamber']"
+            "   .every(id => c.contains(document.getElementById(id))); })()"))
+        suite.check("the controls come before the way in, in reading order", page.evaluate(
+            "(() => { const c = document.getElementById('rsCymCard');"
+            " const btn = document.getElementById('rsChamber');"
+            " if (!c || !btn) return false;"
+            " return ['rsFollow', 'rsMap', 'rsScenes', 'rsMedia', 'rsVisToggles']"
+            "   .every(id => (document.getElementById(id).compareDocumentPosition(btn)"
+            "     & Node.DOCUMENT_POSITION_FOLLOWING) !== 0); })()"))
+        suite.check("the Ambient panels card keeps one Scene menu and no chamber chips",
+                    page.evaluate(
+            "(() => { const c = document.getElementById('rsVizCard'); if (!c) return false;"
+            " return !!c.querySelector('#vizPreset') && !c.querySelector('#rsScenes')"
+            "   && !c.querySelector('#rsFollow'); })()"))
         suite.check("Focus view has its own way in",
                     page.evaluate("!!document.getElementById('rsFocusGo')"))
         page.click("#scr-vis [data-act=focus], #rsFocusGo")
