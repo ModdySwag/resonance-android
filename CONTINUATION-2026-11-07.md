@@ -1,6 +1,96 @@
-# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 7)
+# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 8)
+
+## SESSION 8 — the eye pass, before any versionCode or hold-fade decision (HEAD `291f264`)
+
+### STATE
+
+- HEAD `291f264`, tree clean, nothing pushed. Still `2.0.5-beta` / `versionCode 12`.
+- Phone `ZY22LGC75T` (`192.168.1.95:33139`) and tablet `SM-X210` (wireless, mDNS transport)
+  both still carry the session-7 **release** build (650,567 B).
+- The **debug** build (`com.moddys.resonance.debug`) is now installed on **both** the emulator
+  and the Tab A9+, so every later session can drive and read the chamber live over CDP
+  (recipe below). The tablet debug install is what the measurements in this block came from.
+
+### WHAT THE BUILD LOOKS AND FEELS LIKE (measured, not eyeballed)
+
+1. **Home / Sessions / Visualise / chamber on the phone are clean.** Cold start 269 ms; home
+   renders the player card, the 2x2 session grid and the mini player; the tab bar is at rest
+   (`rs-navhide`) as designed. Visualise is tidy. The chamber opens from the row a person taps
+   and paints a proper tilted plate.
+2. **Noise pack is on device**: `LIBRARY.length` **130**, pack `noise` with its six sessions
+   (`White noise (broadband mask)`, `Pink noise (room balance)`, `Brown noise (low bed)`,
+   `Rain (brown, pink and white)`, `Pink, short (first pass)`, `Brown, open-ended`).
+3. **Pinch works, with numbers** (Tab A9+, injected two-finger touch): spread → `dist`
+   **3.55 → 1.35** (near clamp), squeeze → **6.00** (far clamp), and a single finger still
+   orbits (`yaw` **0.48 → -0.42**) without touching `dist`. Pointer ids arrive as two distinct
+   ids, so the by-id tracking is exercised for real. `#cymGL` is only present in the build from
+   `61f9388` onward — a debug APK older than the vizgl commit has no switch at all.
+4. **GPU field: it works, and it is a downgrade as shipped.** On the Adreno 619 it is live
+   (`glLive: true`, no error, a second 1200x1920 canvas) but:
+   - **the plate is gone.** `vizgl.js` draws ONE full-screen triangle, and `cymrender.js`
+     deliberately turns the 2D canvas into a transparent particle overlay
+     (`draw({field:false})`). So GL mode is a full-bleed shader field with no plate body,
+     rim or perspective — on both the tablet and the phone. It reads as unfinished next to
+     the canvas plate.
+   - **it is slower.** Six interleaved samples each, same plate/camera/sand, 800x1280 CSS at
+     DPR 1.5: **canvas 90 fps (90,88,90,90,90,90) vs GPU field 46 fps (46,48,47,46,46,46)**.
+   - The particle overlay *does* draw on a dry plate (7,876 non-zero-alpha px, 0.34%) —
+     `cym.js:523` suppresses sand in **water** medium, which is what made an empty canvas look
+     like a bug at first. Do not read an empty overlay in water as a defect.
+
+### GATES on `291f264` (the only code change this session)
+
+`:app:lintRelease` **"No issues found."** | harness **183 passed, 0 failed** |
+`npx eslint@9` **clean**.
+
+The change: `debugState()` now returns `cam { yaw, pitch, dist }`. Without it a pinch could
+only be judged by eye; with it the four numbers above are a gate.
+
+### HOLD-FADE — measured, still an owner decision
+
+`engine.js:151` — a segment "ends at the next entry's start values (last entry wraps to
+entry 0)". So `{fadeIn:0}, {hold:vol}, {fadeOut:0}` makes **the hold itself ramp vol -> 0**,
+and the fade-out entry then ramps 0 -> 0 (a dead tail). The engine's own `tone()` and the
+noise path both use the correct idiom `{fadeIn:0}, {hold:vol}, {fadeOut:vol}`.
+
+Measured against the shipped library: **114 of 130 sessions** carry the broken signature
+(last entry 0, long non-zero entry before it). Clean: 10 classic + 6 noise. **5 classic
+sessions are affected too**, and the longest affected holds are the 5,400 s free-flow
+sessions. Every pack except classic/noise is affected.
+
+Fixing it lifts the mid-session level of 114 sessions from ~50% of peak to ~100% (the standard
+shape measured 0.160 at 75 s, 0.0743 at 1200 s, 0.0057 at 2100 s — the arithmetic reproduces
+exactly). That is why it is his call and not a cleanup.
+
+### TRAPS (new this session, all cost real time)
+
+- **The tab bar animates its transform.** `rs-navhide` off + an immediate `getBoundingClientRect()`
+  returns the *pre-transition* rect (y=1301, below an 1280 viewport) and the tap lands on nothing.
+  Wait ~550 ms after arming before reading the rect.
+- **`scrollTop +=` and `scrollIntoView` animate** (smooth scrolling): a rect read immediately
+  after is stale. Use `element.scrollTo({top, behavior:'instant'})`.
+- **`#cymRoot` scrolls with `overflow:hidden`.** It is not matched by an `auto|scroll` filter, and
+  `scrollIntoView` on any chamber control scrolls it — which drives the canvas to y=-833 and puts
+  every "centre of the canvas" gesture off-screen (negative y). Park with
+  `document.getElementById('cymRoot').scrollTop = 0`.
+- **`Page.captureScreenshot` over CDP returns black bands and full-black frames on this WebView.**
+  Use `adb exec-out screencap -p`. A full-black CDP frame is not a black screen.
+- **`Input.dispatchTouchEvent` needs `Emulation.setTouchEmulationEnabled`** first; `/json` on a
+  forwarded port >9335 rejects the websocket unless the client suppresses the Origin header
+  (`websocket.create_connection(..., suppress_origin=True)`).
+- **A pinch leaves the camera at a clamp.** Re-set it (double-click the plate, or `resetCam`'s
+  0.52/0.66/3.30) before judging the renderer, or every later screenshot is a tiny plate at
+  `dist 6.0` and looks like a rendering bug.
+
+### TOOLS (this session's additions)
+
+`cache/scratch/s7/cdp.py` — raw CDP client, `RS_CDP_PORT` selects the device (9335 emulator,
+9336 tablet). `cdp.py '<js>'`, or import `evaljs/touch/shot`.
+Attach: `pidof com.moddys.resonance.debug` → `adb forward tcp:9336
+localabstract:webview_devtools_remote_<pid>` → `curl :9336/json`.
 
 ## SESSION 7 — lint to zero, 25% smaller, Play-clean flavour, GPU field (HEAD `61f9388`)
+
 
 ### STATE
 
