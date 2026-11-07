@@ -1,4 +1,144 @@
-# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 8)
+# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 8 FINAL)
+
+## SESSION 8 FINAL — player rebuilt, two new gates, swipe refused (HEAD `05483e0`)
+
+Read this block first; everything below it is history.
+
+### STATE
+
+- HEAD `05483e0`, tree clean, **nothing pushed**. `2.0.5-beta`, `versionCode 12`, targetSdk 36.
+- **Both real devices run the release build built this session**: `app-release.apk` **683,566 B**,
+  sha256 `4ffc0a84e20d750e7694de460b1e2914ec272f63841cef01432067468577035c`, installed over the
+  session-7 build on phone (`192.168.1.95:33139`, motorola edge 60 fusion) and tablet (`SM-X210`,
+  wireless mDNS `adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp`). Cold start 320 ms, no crash.
+- The **debug** build (`com.moddys.resonance.debug`) is installed on the **tablet and emulator** —
+  it is the only build with a devtools socket, so `tools/device_gate.py` needs it.
+- **A generated transport-art pack now ships**: `app/ui/amp-{play,pause,stop,vol-knob,vol-track}.webp`,
+  31.6 KB total. `.gitattributes` already marks `*.webp` binary.
+
+### SHIPPED THIS SESSION, all gated
+
+1. **Hold-fade fixed** (`packs.js`). `engine.js:151`: an entry ramps into the NEXT entry's values and
+   the last wraps to entry 0, so `{fadeIn:0},{hold:vol},{fadeOut:0}` made every session's HOLD the
+   fade. The fade-out entry now repeats the level. Measured against the old build: **92 of 130
+   sessions change, 0 voices change peak, 0 change duration** — it cannot make anything louder or
+   longer. Focus 40 (gamma) went from 0.338 at 60 s falling to 0.012 at 1180 s to a flat 0.350.
+   The wake ramp got the same treatment (its dead silent tail is gone).
+2. **GPU field switch held back for 2.0.5** (`cym.js`, `GL_SWITCH_VISIBLE = false`). As shipped it
+   replaced the plate with a full-bleed shader and ran **46 fps against the canvas path's 90** on
+   the Adreno 619. The code is kept: flip the constant, or pin `window.__rsGLRender = "gl"` +
+   `api.setFieldRenderer("gl")` (verified live: `mode gl, glLive true, glError ""`). A stored
+   `fieldRenderer:"gl"` can no longer resurrect it.
+3. **The player rebuilt** — this is the session's headline.
+   - The Play control *was* a volume knob: `knob-calm.webp` laid on it with the glyph hidden and
+     rotated 34° while playing; Stop was a blank metal mushroom; there was no pause control at all.
+   - Five assets generated with **Higgsfield `gpt_image_2`** (1k/high, 3.5 credits each, 17.5 total
+     against 2,716 held), re-cut locally: play/pause/stop faces with the glyph inlaid in black
+     lacquer, plus a graduated fader slot and its knob.
+   - Both surfaces (home hero and the persistent mini player) now carry **Play/Pause, Stop, mute
+     and a fader**. Play swaps to the pause face while running. The level has three faces (hero
+     fader, mini fader, both mutes) and all paint from one function, so a change anywhere is
+     correct everywhere before the next tick. Mute remembers the level it silenced.
+   - **The mini player slides away after 12 s of quiet** (twice the tab bar's 6, because it is the
+     transport), keeps its layout space, returns on any touch, same quiet guards as the bar.
+   - Verified on the Tab A9+: play/pause/stop both surfaces, pause keeps position (sample 93,184
+     preserved), mute 0.7→0→0.7 with aria-pressed and the readout following, mini fader 0.24 and
+     0.97 with the hero fader and % following, face swap, and the slide-away (gone at t+13, back on
+     one tap).
+4. **`tools/device_gate.py`** — 19 checks, **verified 19/0 on the Tab A9+**. Launches the debug
+   build, attaches over CDP, taps the real controls and reads the engine's own state back, so
+   "the control responded" and "the engine changed" are separate assertions. Covers start-up, tab
+   bar, transport geometry (44 px floor), play/pause/stop with the sample read back, mute + restore,
+   the mini player off Home with its fader, and the crash buffer. Screenshots to
+   `cache/device-gate/` on failure.
+5. **Java tests exist for the first time** — JUnit + Robolectric, **13 tests, 0 failures**
+   via `./gradlew :app:testUnitTests`: `AssetsTest` 4 (compat.json parses, its `appVersion` equals
+   the build's `versionName`, every `ui/*.webp` the shim references is packaged, the amplifier
+   assets present), `BridgeTest` 4 (builds the real Activity; `device()`, `palette()`, `copy()`
+   asserted against the clipboard, `log(null)`), `FocusTest` 5 (drives `requestFocus`/
+   `abandonFocus` on the real service: request reaches AudioManager, a second request does not
+   stack, abandon gives it back, abandoning what was never held is harmless, a refusal is
+   reported as false).
+6. **`debugState()` now returns `cam {yaw,pitch,dist}`** — without it a pinch could only be judged
+   by eye. Measured on the tablet: spread 3.55 → 1.35 (near clamp), squeeze 6.00, single finger
+   orbits (`yaw` 0.48 → -0.42) without touching `dist`.
+
+### DECIDED, do not reopen without a reason
+
+- **Hold-fade**: fix the idiom, **no level re-tuning** — he listens first. If a flat hold is too
+  present, the answer is a per-shape level, never going back to the drift.
+- **GPU field**: hidden for 2.0.5; the real work is masking the field to the plate quad and moving
+  the simulation.
+- **Swipe-between-tabs: NOT being built.** Built twice (two-layer overlay, then a real single-track
+  pager), reverted twice — both fail the suite at `page.click("#plist .item .star")`. He agreed the
+  navigation is self-evident without it, Settings is not a swipe neighbour, and the screens'
+  carousels own the axis so the gesture would work in patches. If a gesture is ever wanted, the
+  **mini player is the right home** (swipe up for the full player, down to dismiss) — vertical, no
+  carousel conflict.
+
+### QUEUE, in order
+
+1. **His ear on the hold-fade** (flat holds at peak for the first time).
+2. **Publish 2.0.5**: `versionCode` → 13, signed release, upload, `updates.json`; the
+   download → sha256 → installer chain is still **untested end to end**.
+3. **Play track** (calendar-bound): 12-tester/14-day closed test, deploy `docs/play/privacy.html`
+   to moddys.net/resonance/privacy, AAB, Play App Signing, FGS video, data safety, IARC, shots.
+4. **VizGL step 3**: mask the field to the plate, move the simulation. The honest limit stands —
+   `heightAt` still runs every frame, so the 18 ms UI cost is not gone.
+5. **Robolectric follow-ups**: make `requestFocus`/`abandonFocus`/`handleFocusChange`
+   package-private (they are driven by reflection today); then test `handleFocusChange` for LOSS
+   and CAN_DUCK, which needs page/notification scaffolding.
+6. **Gates still missing**: Error Prone (needs the manual `--add-exports` recipe; the net.ltgt
+   plugin never injected `-Xplugin`), JaCoCo coverage, StrictMode/LeakCanary, Perfetto, MobSF.
+7. **Track F features**: bedside mode, speaker-safe entrainment, session files + QR, noise continuum
+   + room calibration, night programs, on-device journal, haptics + Live Update.
+8. Do **not** build: accounts, cloud sync, social, AI companion, sensor sleep tracking, Wear OS.
+
+### TRAPS (new this session)
+
+- **The harness pins design, not just behaviour.** A leg asserted "the knob on Play" — the exact
+  thing to be changed. When you change a design, the leg has to change with it, deliberately.
+- **`testOptions.unitTests.includeAndroidResources` is required** or every service test dies with
+  `Resources$NotFoundException` — it looks like "Robolectric doesn't work on this project".
+- **`ShadowAudioManager.getLastAudioFocusRequest()` returns Robolectric's own type**, not
+  `android.media.AudioFocusRequest`; name the return type or you get an incompatible-types error.
+- **Flavours make task names ambiguous** (`testDebugUnitTest`, `lintRelease`). Add an aggregate task
+  depending on both channels, as the project already does for lint.
+- **`Page.captureScreenshot` returns black bands / whole black frames on this WebView.** Use
+  `adb exec-out screencap -p`.
+- **Rects read straight after the nav arm or a smooth scroll are stale** — wait ~550 ms or use
+  `behavior:'instant'`. `#cymRoot` scrolls with `overflow:hidden`, so `scrollIntoView` inside the
+  chamber drives the stage to y=-833.
+- **The mini player's own auto-hide can look like "the buttons don't respond"**: while hidden it is
+  `pointer-events:none`, so the first tap only wakes the bar. Same two-tap feel as the tab bar.
+- Generated binaries: `.gitattributes` already lists `*.webp binary` — do not re-add a `**` text
+  rule above it.
+
+### TOOLS
+
+`./gradlew :app:testUnitTests` (13) · `py -3.11 tools/device_gate.py -s <serial>` (19) ·
+`py -3.11 tools/shim_harness.py` (183) · `./gradlew :app:lintRelease` (0/0) ·
+`py -3.11 tools/apk_identity.py <apk>` (32) · `py -3.11 cache/contrast.py` ·
+`py -3.11 tools/tablet_pass.py` · `npx --yes eslint@9 --config eslint.config.mjs app/src/main/assets/www`
+
+Signed build env: `KEYSTORE_FILE=C:/Users/Moddy/keystores/resonance-release.p12`,
+password in `resonance-release-credentials.txt` beside it, `KEY_ALIAS=resonance`, `storeType PKCS12`.
+Both flavours build; `outputs/apk/release/app-release.apk` is the **sideload** mirror (has INTERNET),
+`outputs/apk/play/release/app-play-release.apk` is the Play one (no INTERNET).
+
+Debug attach: `pidof com.moddys.resonance.debug` → `adb forward tcp:9337
+localabstract:webview_devtools_remote_<pid>` → `curl :9337/json`; the websocket client must pass
+`suppress_origin=True`.
+
+### FIRST THREE MOVES
+
+1. Read this block, then `git log --oneline -6` to see the four commits since the last save.
+2. Confirm the tree is still green: `./gradlew :app:testUnitTests`, `py -3.11 tools/shim_harness.py`.
+3. Then either his ear on the hold-fade, or start the publish path (versionCode 13) — the only
+   thing standing between this build and your phone's next update.
+
+## SESSION 8 (earlier this session) — the eye pass, before the player work
+
 
 ## SESSION 8 — the eye pass, before any versionCode or hold-fade decision (HEAD `291f264`)
 
