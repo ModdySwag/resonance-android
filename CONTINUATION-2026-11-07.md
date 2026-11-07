@@ -1,3 +1,287 @@
+# SAVE POINT — 2026-11-08 (session 12: the harness's red explained, and fixed in the page). READ THIS FIRST.
+
+## Where the tree is
+
+- **HEAD = the session-12 commit** (`git log -1`; its message is "focus view: paint only panels that are on
+  screen"). It sits on top of **`9db88aa`** and carries the whole static-nav + focus-view build from
+  session 11 plus this session's fix. **Nothing pushed, nothing published.**
+- **`harness7.log` does not exist in the tree** (session 11's log was never written to disk); the failure
+  it described was reproduced from the code and is **understood — it was not a history bug**.
+- Release APK built and installed this session: **956,019 B, sha256
+  `1f3a18084cf6fe37b28169afae1f2355447a936c890a3bc8ff2f94919f01bb19`**, versionCode 14 / 2.0.6-beta, on the
+  phone `192.168.1.95:33139` and the Tab A9+ `adb-R92XB0RWN3B-67B1Tm`.
+- Eye-gate evidence from session 11 is still in `cache/focus-eye-2026-11-08/` (outside `tools/`).
+
+## The lead was wrong — what actually happened
+
+Session 11 suspected an off-by-one history stack after the focus/picker legs. **Measured, it is balanced.**
+Probe `cache/probe_history.py` prints `history.state.rsLayer`, `history.length`, the popstate count, `#rsApp`,
+the open layer and the active screen after every step of the exact sequence:
+
+```
+open focus            st=1  pops=0      (picker/legacy clicks inside fullscreen push nothing: FS.on)
+exit focus            st=0  pops=1
+settings-row focus    st=2  pops=1
+exit again            st=0  pops=2
+overflow sheet        st=3  pops=2
+history.back()        st=0  pops=3
+```
+
+`location` never changes, `#rsApp` and `#nav-settings` exist at every step, and the sheet always closes.
+One layer, one entry — the project rule holds. **The app was never navigated away from.**
+
+## The real cause: the page painted panels that had no box on screen
+
+Inside the app the page's own grid is hidden behind the shell, so **both inline visualiser panels sat at a
+0x0 CSS box and were still painted every frame** — and the one that came back from the focus view kept its
+fullscreen backing store (**585x1266 device px**) and kept drawing it. After one focus visit the page ran at
+**10–11 fps** with 117 ms worst-case frames, and Playwright's actionability wait (which polls on
+animation frames) stopped settling: `#nav-settings` resolved, was `visible=True`/`enabled=True`, its box was
+byte-identical across 20 consecutive frames, `elementFromPoint` hit the button, and a raw `mouse.click` and
+a JS `.click()` both switched the screen — yet `page.click` burned 30 s on "waiting for element to be
+visible, enabled and stable". That is the 0-FAIL, 30 s-timeout death at `suite.tab("settings")`.
+
+**Fix (in the page, not the harness):** `viz.js` gained `watchPanels()` — one `IntersectionObserver` over
+every panel canvas — and each panel carries `onScreen`; the draw loop skips a panel with no box
+(`if (p.onScreen === false) continue;`). `debugState().panels[i]` now reports `onScreen` and `frames`.
+
+Measured after the fix: **61 fps after leaving the focus view (was 10–31), 61 at boot (frames frozen on the
+off-screen panels), 38 in the focus view**, and the panel that is on screen still paints. This also stops the
+app burning two invisible canvases at 60 fps forever on the phone — a real battery/CPU win, not just a test
+convenience.
+
+**Two new legs pin it, and both can fail:**
+`the panel in the focus view paints frames` (sum of frames must increase) and `a panel with no box on screen
+paints nothing` (every off-screen panel's frame count must be frozen and none may report `onScreen`).
+Proved able to fail by neutralising the draw gate for one run: `frames` went 171 → 210 with the gate off
+(`cache/probe_leg.py`).
+
+## Gates, all green on these bytes
+
+| gate | result |
+|---|---|
+| `py -3.11 tools/shim_harness.py` | **232 passed / 0 failed** (`cache/harness8.log`) |
+| `py -3.11 cache/contrast.py` | `TOTAL LOW-CONTRAST 0` |
+| `py -3.11 tools/tablet_pass.py` | **82 passed / 0 failed** |
+| `npx eslint@9` | 0 problems |
+| `:app:lintRelease` | `No issues found.` |
+| `:app:testUnitTests` | BUILD SUCCESSFUL |
+| `:app:assembleRelease` (signed) | BUILD SUCCESSFUL in 20 s |
+| `tools/apk_identity.py --site C:/Users/Moddy/radio-browser/deploy/resonance` | only the `byte-identical to the site's` legs red (release minifies; that is the expected clean state) |
+| install + boot, phone & tablet | `page: shim ready`, crash buffer empty, `versionCode=14` |
+| `py -3.11 tools/device_gate.py -s 192.168.1.95:33139` | **19 passed / 0 failed** — `DEVICE GATE OK` |
+
+## What is left, in order
+
+1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker
+   cards at 1:1, the static tab bar, the 8 s player hide, the legacy flag. Do not sign the look off from
+   stills.
+2. **`assets-manifest.json` is still missing the new files**: `app/vizscenes.js` and `app/ui/scene/*.webp`
+   are bundled but not listed, and `tools/sync-assets.py`'s `FILES` does not name `vizscenes.js`. Add them
+   and regenerate **only after** the site-tree drift (below) is reconciled — the manifest is generated from
+   the source tree, and blessing drifted bytes now would hide the difference.
+3. **Publishing is a separate decision.** Nothing was uploaded. The 2.0.6-beta payload staged in session 10
+   (`radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk`, `updates.json` 2.0.6/14) points at
+   **different bytes**; either re-stage 2.0.6 with this APK's sha/size (956,019 B /
+   `1f3a1808…`) or cut 2.0.7-beta / versionCode 15. Regenerate the feed with
+   `make-updates-json.py --resonance-only`; never hand-edit `updates.json`.
+4. **The site-tree drift is unchanged** (session 11's note stands): `tools/sync-assets.py --check` says
+   37/45; `app/index.html`, `engine.js`, `packs.js`, `vizmodes.js`, `viz.js`, `cymrender.js`, `cympresets.js`,
+   `cym.js` differ from `webmusic-hub/site/resonance`. Running sync would revert app-side fixes. The site
+   tree already carries `vizscenes.js` and the new `viz.js` plus the `<script>` tag.
+5. `device_gate.py`, `tablet_pass.py`, `cache/emu4.py`, `cache/tablet_audit.py` still call
+   `remove('rs-navhide')` as a wake-up; harmless, tidied later.
+
+# SAVE POINT — 2026-11-08 (session 11: focus view rebuilt + static nav).
+
+## Where the tree is
+
+- **HEAD `9db88aa`** ("focus view: redesign brief"). **NOTHING COMMITTED THIS SESSION** — the whole
+  build below is in the working tree. Commit by explicit path (project trap: never `git add -A`).
+- **`harness7` finished RED, and it left a real lead.** *(SUPERSEDED — session 12 measured the stack
+  balanced and found the true cause: off-screen panels still painting. See the top block.)* 155 PASS, **0 FAIL**, then a 30 s
+  Playwright timeout at `suite.tab("settings")` (line 993 → line 170): the locator for
+  `#nav-settings` **never resolved**, which is what a page that has navigated away looks like — not
+  a covered or hidden button. It happens immediately after the overflow sheet is closed with
+  `history.back()` ("back closes the sheet" had just passed). **Prime suspect: the history stack is
+  off by one after the new focus/picker legs** — my block opens the picker twice, opens and exits
+  the focus view twice more, and `exitFullscreen(false)` calls `unmarkBackTop()` (a replace, not a
+  pop), so an entry pushed by `openFocus()`/`showOverlay()` can be left behind or consumed twice.
+  **First move next session:** reproduce with `history.length` and `!!document.getElementById('rsApp')`
+  printed after each of: open focus → change → pick → reopen → legacy toggle → pick → exit →
+  settings-row focus → exit → overflow sheet → `history.back()`. If the app is being navigated away
+  from, that is an app bug (Back leaving the app), not a test bug — the project rule is that every
+  layer owns exactly one history entry.
+- Eye-gate evidence (plate sheet, stills sheet, ink/plankton crop) is kept in
+  `cache/focus-eye-2026-11-08/`, out of `tools/` so it cannot be committed by accident.
+- Devices attached when saved: phone `192.168.1.95:33139`, tablet `adb-R92XB0RWN3B-67B1Tm`,
+  phone `adb-ZY22LGC75T-d131nd`, `emulator-5554`.
+
+## What this session did
+
+### 1. The static tab bar (owner's correction, shipped and proven)
+He asked: keep Home / Sessions / Studio / Visualise / Settings **static**, only the lower player
+bar auto-hides. Done:
+- `_shell_shim.js`: the `NAVIDLE` timer and the `rs-navhide` class-add are gone; `armNav()` became
+  **`wakeChrome()`** (clears a stale `rs-navhide` from an older build, then `armMini()`), and every
+  call site was renamed (boot listeners, `go()`, `tourStep()`).
+- CSS: `html.rs-navhide #rsNav{...}` and the nav's transform transition are removed; the nav rule
+  now closes on the padding line. The nav is static at every width.
+- The mini player still leaves, now at **`MINI_IDLE_MS = 8000`** (was 12000), keeps its layout
+  space, and any pointerdown/keydown/wheel brings it back.
+- Harness legs rewritten: after 8.6 quiet seconds the **tab bar is exactly where it was**
+  (top/height/opacity/pointer-events), the **mini player is away**, a touch restores it, and the
+  nav never grows a hide class. `suite.tab()`'s stale "bar auto-hides" comment updated.
+- **`py -3.11 tools/shim_harness.py` passed 218/0 on exactly the nav change** (log `harness2.log`),
+  before any focus-view work — that is the attribution run.
+
+### 2. The focus view: eight scenes, eight geometries
+- **`app/vizscenes.js`** (new, ~50 KB): `SCENES` table (id `focus-*`, name, blurb, plate, still,
+  `warm`, palette, builder) and a `Scene` renderer. Contract:
+  `GnauralVizScenes.{LIST, byId, isScene, step(id,dir), create, reset, stepInst, drawInst,
+  setParallax, gridOf, dhash, hamming, gridDistance, structureDistance, reduced}`.
+  Three layers per panel: far plate (cover-fit, drift + parallax), mid = locally derived blur of the
+  same plate (72 px downscale drawn back up, different zoom, opposite drift) + wash, near =
+  procedural anchor/accents. 4 s-in / 6 s-out breath (0.1 Hz), beat only tints, 1.2 s dissolve in,
+  vignette cached per box. **No per-frame gradients** (every gradient is a cached sprite).
+- **`viz.js`** learned exactly one pref (`scene`) and one render branch; `applyPreset(id)` routes a
+  scene id to `applyScene`; `dissolve()` snapshots the panel and sets the existing crossfade veil to
+  1.2 s on every look change; `stepPreset` walks scenes when one is active; `refreshCard` names a
+  scene in the note; api gained `applyScene`, `scenes()`, `sceneMeta()`, `stepScene`, and
+  `debugState().scene`. The 24 preset ids remain valid and the ambient card path is untouched.
+- **Shell**: `FOCUS_DEFAULT = "focus-cathedral"`; `focusPresets()` returns the 8 scenes and appends
+  the 24 old presets only when **`prefs.focusLegacy`** is on (default off — his sign-off gate);
+  the picker is now **cards** (`focusCard` / `fillFocusList` / `openFocusPick`) with the still as
+  the card's background, the name, and a one-line blurb, plus a **Show/Hide the old presets** key;
+  `focusPlate()` reads the scene's own `warm` flag for the atmosphere layer; `fsBgParallax()`
+  forwards the same pointer offset to `GnauralVizScenes.setParallax()`.
+- **Reduced motion**: draws the shipped still, cross-dissolving over 1.2 s on a scene change; no
+  drift, no particles, no timers.
+
+### 3. Assets — 8 plates, 8 stills (28 credits, half the budget)
+- `app/src/main/assets/www/app/ui/scene/<id>.webp` — 1280x720 WebP q80, **143 KB total**
+  (7-50 KB each), generated with gpt_image_2 16:9 / 1k / high at **3.5 credits each = 28 credits**
+  (balance before 2660.53; ~2632 after). Prompts: cathedral god-rays, deep star field, dark water
+  underside, cold aurora sky, workshop embers, rain-streaked bokeh window, gradient void, dark water
+  column — all with the "very low contrast, no bright hotspots, calm middle" clause.
+- `…/ui/scene/<id>-still.webp` — **480x1039** WebP q76, ~48 KB total, **rendered by the live
+  renderer itself** (`tools/scene_stills.py`, 5 s settle per scene), not cut from the plates.
+- `tools/cut_scene_plates.py` cuts rawUrls to plates; `tools/scene_stills.py` captures stills and is
+  also the **build-time similarity gate** (`--check`).
+
+### 4. The similarity gate (the point of the redesign)
+- 32x32 luminance grid per scene, **structure distance = 1 − Pearson** plus a 992-bit dHash.
+- Build-time (`scene_stills.py --check`) and runtime (harness leg) both gate on
+  **struct >= 0.15, dHash >= 250, no still under mean 8**.
+- Measured on the shipped stills: closest pair **aurora / spiral 0.250 struct / 423 dHash**;
+  everything else 0.307…1.397.
+- **The gate was proved able to fail**: copying `ember-still.webp` over `spiral-still.webp` makes
+  `--check` exit 1; the file was restored.
+- Runtime metrics on a phone viewport: every scene lights **969–1024 of 1024** grid cells; grid
+  delta over 1.6 s is **0.00102 (ember) … 0.03083 (rain)** against a **0.0004** floor.
+
+### 5. Gates green so far
+- `py -3.11 tools/shim_harness.py`: the nav run 218/0; the focus runs passed every scene leg —
+  eight cards, every still decodes, legacy flag 8→32→8, every scene paints, every scene moves,
+  structure gate, reduced-motion frozen still — then died on a **Playwright actionability wait, not a
+  check** (see traps).
+- `py -3.11 tools/scene_stills.py --check` → **GATE PASS**.
+- `npx eslint@9 --config eslint.config.mjs app/src/main/assets/www` → **0 problems**.
+- **NOT yet run on these bytes**: contrast, tablet pass, `lintRelease`, `testUnitTests`,
+  `assembleRelease`, `apk_identity`, `device_gate`.
+
+## The remaining queue, in order
+
+1. **Finish the harness.** Read `harness7.log` (or re-run). I had just changed the three remaining
+   `page.click("#rsOverflow")` calls to `document.getElementById('rsOverflow').click()` (the
+   actionability wait never settles late in the long suite; the sheet/row assertions that follow are
+   the real gate, so this cannot pass on a dead control) and normalised the file back to CRLF.
+   Expect **~200+ passed, 0 failed**; every scene leg must be in the PASS list.
+2. **`py -3.11 cache/contrast.py`** → `TOTAL LOW-CONTRAST 0`. The new picker cards carry a solid
+   `background-color` plus a gradient scrim, so they are measurable; check the card name/blurb lines.
+3. **`py -3.11 tools/tablet_pass.py`** → 0 failed (800x1280 + 1280x800). The 2-column picker grid is
+   the new thing to look at; it should simply widen.
+4. **`./gradlew --no-daemon :app:lintRelease`** (must quote the line; `assembleRelease` is not a
+   lint gate) and **`./gradlew --no-daemon :app:testUnitTests`**.
+5. **Signed release build** (env in the skill): `JAVA_HOME=C:/Program Files/Microsoft/jdk-17.0.20.101-hotspot`,
+   `ANDROID_HOME=C:/Users/Moddy/nakamichi-remote/sdk`, `KEYSTORE_FILE=C:/Users/Moddy/keystores/resonance-release.p12`,
+   password in `resonance-release-credentials.txt`, alias `resonance`. Then record bytes + sha and
+   prove the build carries the edit (`unzip -p … assets/www/app/vizscenes.js | grep -c "focus-cathedral"`).
+6. **`py -3.11 tools/apk_identity.py app/build/outputs/apk/release/app-release.apk --site C:/Users/Moddy/radio-browser/deploy/resonance`**
+   — pass a NATIVE path; a clean run is one where **only** the `byte-identical to the site's` legs
+   are red. `app/vizscenes.js` is new and is not in `assets-manifest.json`; if the run names it, add
+   `app/vizscenes.js` to `tools/sync-assets.py` FILES and regenerate the manifest **only** after the
+   drift below is reconciled.
+7. **Install + device gate**: `adb -s 192.168.1.95:33139 install -r …`, force-stop, relaunch, then
+   `py -3.11 tools/device_gate.py -s 192.168.1.95:33139` → 19/0 (debug build for CDP; the release has
+   no devtools socket). Repeat or at least install on the Tab A9+.
+8. **Owner eye gate (his phone, his call)**: the eight scenes switching in focus view, the picker
+   cards at 1:1, the static tab bar, the 8 s player hide, and the legacy flag. Do not declare the
+   look signed off from stills — he drives it himself.
+9. **Commit** the work by explicit path, then rewrite this continuation's top block with the final
+   bytes/sha and the gate numbers.
+10. **Publishing is a separate decision.** Session 10 already staged a `2.0.6-beta` upload
+    (`radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk`, updates.json 2.0.6/14,
+    backup `%LOCALAPPDATA%/Temp/rs-publish-backup-20261108-055518`). This session's APK is different
+    bytes, so either rebuild and re-stage 2.0.6 with the new sha/size, or cut **2.0.7-beta /
+    versionCode 15**. Never hand-edit `updates.json`; re-run `make-updates-json.py --resonance-only`.
+    Upload only on his word.
+
+## Open decisions / drift to remember
+
+- **8 plates, not the brief's 16.** The mid layer is derived locally from the far plate. That saves
+  28 credits and keeps the planes coherent. If he wants true 2-plate depth per scene, the prompts
+  are already written and cost 3.5 credits each.
+- **The page tree has pre-existing drift.** `tools/sync-assets.py --check` says 37/45 in sync:
+  `app/index.html`, `engine.js`, `packs.js`, `vizmodes.js`, `viz.js`, `cymrender.js`,
+  `cympresets.js`, `cym.js` all differ from `webmusic-hub/site/resonance`. Running sync-assets
+  **would revert** app-side fixes. This session copied `vizscenes.js` and the new `viz.js` into the
+  site tree and put the `<script src="vizscenes.js?v=1a">` tag in **both** index.html files, so the
+  site page references a file that now exists there. Reconcile before ever running sync.
+- The live site is still the frozen 2026-10-09 build; nothing from C1-C5 or this is deployed.
+- `device_gate.py`, `tablet_pass.py`, `cache/emu4.py`, `cache/tablet_audit.py` still call
+  `remove('rs-navhide')` as a wake-up. Harmless (a no-op class), tidied later.
+
+## Traps found this session (add to the skill)
+
+- **A near layer at 5 % alpha is not a design, it is fog.** The first pass read exactly like the
+  owner's complaint ("same dark fog, eight times") at 1:1. Geometry must be drawn at real contrast;
+  the generated plate is air, not the subject. Two eye passes were needed; the second inverted ink
+  (dark matter in lit water) and clustered plankton, and only then did all eight read as their names.
+- **`PROJECT` one level too high**: `tools/cut_scene_plates.py` used `HERE/../..` and wrote the
+  plates to `C:\Users\Moddy\app\…`. Fixed to `HERE/..`. If an asset "exists" but the page 404s,
+  check where the tool actually wrote before debugging the renderer.
+- **`Scene.draw` called `entry.draw`** (the table holds `build`, not `draw`); the state object
+  returned by the builder owns step/draw. Symptom: `[viz] scene failed: … e.draw is not a function`,
+  a page with only the wash painted, and near-identical stills at ~1 KB.
+- **API key collision**: `step` was already the scene-cycling function, so the instance stepper is
+  `stepInst`/`drawInst`. A duplicate `step` key would have been an eslint error and a silent
+  wrong-dispatch.
+- **Plates are 16:9, the panel is portrait.** Measured: the centre crop is BRIGHTER than the whole
+  plate (cathedral 47 vs 32; spiral 37 vs 20), so cover-fitting a landscape plate in a portrait panel
+  is correct and portrait plates are not needed.
+- **The harness's focus chrome auto-hides during long API-driven loops.** A scene loop takes ~25 s
+  without a touch, so `#rsFsTop [data-rs=fsExit]` is off-screen by the time it is clicked: tap
+  `#rsFsStage` and wait for `!rs-fs-hide` first, and assert the close actually happened.
+- **Playwright waits for "scheduled navigations" after a Settings row click** (`pushState` app). Use
+  `no_wait_after=True` on those clicks.
+- **`#rsOverflow` actionability can stop settling late in the long suite** (0 FAIL lines, 30 s
+  timeout). Dispatch the click on the real button and keep the assertions that follow; a dead
+  control still fails the gate.
+- **A harness leg that appends new flows must end in the state the next leg expects.** The scene
+  block leaves focus view open with reduced-motion emulation — it resets media and wakes the chrome
+  before closing.
+
+## First three moves for the next session
+
+1. **Fix the history-entry balance first** (harness7's lead, above): instrument `history.length` and
+   `!!document.getElementById('rsApp')` through open focus → change → pick → reopen → legacy → pick →
+   exit → settings focus → exit → overflow sheet → `history.back()`. One layer, one entry; a Back
+   that leaves the app is the bug the project rules exist to prevent. Then re-run the harness and
+   expect every scene leg plus the 8.6 s static-nav leg in the PASS list.
+2. `py -3.11 cache/contrast.py` and `py -3.11 tools/tablet_pass.py` — solo, never two suites at once.
+3. `./gradlew --no-daemon :app:lintRelease` then `:app:testUnitTests`, then the signed build.
+
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
 **HEAD `54468ed`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**

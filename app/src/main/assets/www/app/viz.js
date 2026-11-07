@@ -43,6 +43,7 @@
   var VM = globalThis.GnauralVizMath;
   var VP = globalThis.GnauralVizPal;
   var MODES = globalThis.GnauralVizModes;
+  var SC = globalThis.GnauralVizScenes || null;
   var CP = globalThis.GnauralVizPresets ||
     { LIST: [], byId: function () { return null; }, step: function () { return null; }, random: function () { return null; } };
   if (!VM || !MODES || !VP) {
@@ -62,7 +63,7 @@
   function defaults() {
     return {
       v: 1, on: true, backdrop: "tide", overlays: ["pulse"], palette: "auto",
-      intensity: 0.7, calm: 1, auto: false, seed: (Math.random() * 0xFFFFFFFF) >>> 0, preset: ""
+      intensity: 0.7, calm: 1, auto: false, seed: (Math.random() * 0xFFFFFFFF) >>> 0, preset: "", scene: ""
     };
   }
   function loadPrefs() {
@@ -87,6 +88,7 @@
           if (typeof d.auto === "boolean") p.auto = d.auto;
           if (typeof d.seed === "number") p.seed = d.seed >>> 0;
           if (typeof d.preset === "string") p.preset = d.preset;
+          if (typeof d.scene === "string") p.scene = d.scene;
         }
       } else if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
         p.on = false;                 /* WCAG 2.3.3: honour the preference first run */
@@ -121,7 +123,8 @@
     cv.setAttribute("aria-hidden", "true");   /* decorative: the sound is the content */
     var badge = el("span", "viz-badge", host, "");
     var p = { host: host, canvas: cv, ctx: cv.getContext("2d"), mount: mount, side: side,
-              W: 0, H: 0, dpr: 1, frames: 0, avgMs: 0, lastMs: 0, visible: false, badge: badge };
+              W: 0, H: 0, dpr: 1, frames: 0, avgMs: 0, lastMs: 0, visible: false, onScreen: true,
+              badge: badge };
     host.setAttribute("data-viz-host", side);
     host.setAttribute("data-mount", mount);
     els.badge.push(badge);
@@ -140,7 +143,8 @@
     badge.id = badgeId;
     els.badge.push(badge);
     return { host: cv, canvas: cv, ctx: cv.getContext("2d"), mount: "flank", side: side,
-             W: 0, H: 0, dpr: 1, frames: 0, avgMs: 0, lastMs: 0, visible: false, badge: badge };
+             W: 0, H: 0, dpr: 1, frames: 0, avgMs: 0, lastMs: 0, visible: false, onScreen: true,
+             badge: badge };
   }
 
   function buildDom() {
@@ -296,6 +300,7 @@
       }
     });
 
+    watchPanels();
     refreshCard();
     updateMount();
   }
@@ -312,8 +317,9 @@
     if (vsel && vsel.value !== prefs.preset) vsel.value = prefs.preset;
     var vnote = els.card.querySelector("#vizSceneNote");
     if (vnote) {
-      var vsc = CP.byId(prefs.preset);
-      vnote.textContent = vsc ? vsc.blurb : "Custom — chips below set it by hand.";
+      var vsc = (SC && SC.isScene(prefs.preset)) ? SC.byId(prefs.preset) : CP.byId(prefs.preset);
+      if (vsc && SC && SC.isScene(vsc.id)) vnote.textContent = vsc.blurb + "  ·  in the focus view";
+      else vnote.textContent = vsc ? vsc.blurb : "Custom — chips below set it by hand.";
     }
     if (els.sliders.intensity) els.sliders.intensity.value = Math.round(prefs.intensity * 100);
     if (els.sliders.calm) els.sliders.calm.value = Math.round(prefs.calm * 100);
@@ -374,6 +380,25 @@
   });
   if (mqFlank && mqFlank.addEventListener) mqFlank.addEventListener("change", updateMount);
 
+  /* A panel with no box on screen draws nothing a person can see, yet the loop used to
+     paint it every frame: inside the app the page's own grid is hidden behind the shell,
+     so both inline panels burned a full canvas of work at 60 fps for nothing — and the
+     one that came back from the focus view kept its 390x844 backing store and kept
+     drawing it, which is what dragged the whole page down to ~10 fps after a visit to
+     the focus view. One observer, one flag: paint a panel only while it is on screen. */
+  function watchPanels() {
+    if (!window.IntersectionObserver) return;
+    var all = els.flanks.concat(els.inline);
+    var io = new IntersectionObserver(function (entries) {
+      for (var e = 0; e < entries.length; e++) {
+        for (var j = 0; j < all.length; j++) {
+          if (all[j].canvas === entries[e].target) { all[j].onScreen = entries[e].isIntersecting; break; }
+        }
+      }
+    }, { threshold: 0 });
+    for (var k = 0; k < all.length; k++) io.observe(all[k].canvas);
+  }
+
   /* ==================================================================== *
    * scenes (mode instances) + palette
    * ==================================================================== */
@@ -413,8 +438,15 @@
       for (var ci = 0; ci < all.length; ci++) all[ci].canvas.style.background = pal.bg(1);
       for (var di = 0; di < els.badge.length; di++) els.badge[di].style.color = pal.ink(0.55, 0.85);
     }
+    /* a scene id this build cannot draw must not leave a blank panel */
+    if (prefs.scene && !(SC && SC.isScene(prefs.scene))) prefs.scene = "";
     for (var i = 0; i < state.panels.length; i++) {
-      var sc = { bd: null, ov: [], pal: pal };
+      var sc = { bd: null, ov: [], pal: pal, scene: null };
+      if (prefs.scene) {
+        sc.scene = SC.create(prefs.scene, (prefs.seed + i * 0x9E3779B1) >>> 0);
+        scenes.push(sc);
+        continue;
+      }
       if (prefs.backdrop && prefs.backdrop !== "off") {
         sc.bd = MODES.create(prefs.backdrop, (prefs.seed + i * 0x9E3779B1) >>> 0);
       }
@@ -726,6 +758,7 @@
     for (var pi = 0; pi < state.panels.length; pi++) {
       var p = state.panels[pi];
       if (!p.visible) continue;
+      if (p.onScreen === false) continue;          /* no box on screen: nothing to paint */
       if (p.canvas.width === 0) { fit(p, true); if (p.canvas.width === 0) continue; }
       var ctx = p.ctx, sc = scenes[pi];
       ctx.setTransform(p.dpr, 0, 0, p.dpr, 0, 0);
@@ -740,6 +773,7 @@
         F.field = { W: p.W, x0: 0 };
       }
       if (sc) {
+        if (sc.scene) { stepScene(sc.scene, F); drawScene(sc.scene, F); }
         if (sc.bd) { stepMode(sc.bd, F); drawMode(sc.bd, F); }
         for (var oi = 0; oi < sc.ov.length; oi++) {
           stepMode(sc.ov[oi], F);
@@ -840,6 +874,19 @@
     if (field) F.ctx.restore();
   }
 
+  function stepScene(inst, F) {
+    try { SC.stepInst(inst, F); } catch (e) {
+      if (!stepScene._warned) stepScene._warned = {};
+      if (!stepScene._warned[inst.id]) { stepScene._warned[inst.id] = 1; console.warn("[viz] scene step failed:", inst.id, e && e.message); }
+    }
+  }
+  function drawScene(inst, F) {
+    try { SC.drawInst(inst, F); } catch (e) {
+      if (!drawScene._warned) drawScene._warned = {};
+      if (!drawScene._warned[inst.id]) { drawScene._warned[inst.id] = 1; console.warn("[viz] scene failed:", inst.id, e && e.message); }
+    }
+  }
+
   /* the frame object shared by all modes */
   var F = {
     ctx: null, W: 0, H: 0, dt: 1 / 60, t: 0, playing: false, dpr: 1,
@@ -914,7 +961,34 @@
   /* A scene is one pick: backdrop, overlays, palette and both sliders. Manual
    * chip clicks clear the scene id (it is a custom look from then on). */
   var applying = false;
+
+  /* switching looks is a dissolve, never a cut: keep the panel as it was for
+   * 1.2 s and let the new look rise through it (the crossfade veil below) */
+  function dissolve() {
+    if (!state.enabled) return;
+    var snaps = [], any = false;
+    for (var i = 0; i < state.panels.length; i++) {
+      var p = state.panels[i];
+      var c = (p.visible && p.frames > 0) ? snapshot(p) : null;
+      snaps.push(c);
+      if (c) any = true;
+    }
+    if (any) crossfade = { snap: snaps, t0: F.t, dur: 1.2 };
+  }
+
+  function applyScene(id) {
+    if (!SC || !SC.isScene(id)) return false;
+    prefs.scene = id;
+    prefs.preset = id;
+    savePrefs();
+    dissolve();
+    rebuildScenes();
+    refreshCard();
+    return true;
+  }
+
   function applyPreset(id) {
+    if (SC && SC.isScene(id)) return applyScene(id);
     var s = CP.byId(id);
     if (!s) return false;
     applying = true;
@@ -925,14 +999,22 @@
     prefs.calm = clamp01(s.calm);
     applying = false;
     prefs.preset = s.id;
-    savePrefs(); rebuildScenes(); refreshCard();
+    prefs.scene = "";
+    savePrefs();
+    dissolve();
+    rebuildScenes(); refreshCard();
     if (els.sliders.intensity) els.sliders.intensity.value = Math.round(prefs.intensity * 100);
     if (els.sliders.calm) els.sliders.calm.value = Math.round((60 + (prefs.calm - 0.6) * 100) * 1);
     return true;
   }
   function stepPreset(dir) {
-    var s = CP.step(prefs.preset, dir);
-    if (s) applyPreset(s.id);
+    if (prefs.scene && SC) {
+      var next = SC.step(prefs.scene, dir);
+      if (next) applyScene(next.id);
+      return;
+    }
+    var p = CP.step(prefs.preset, dir);
+    if (p) applyPreset(p.id);
   }
 
   /* ---- scramble: pool curation + constrained draw (design rules R1-R13) -- */
@@ -1050,12 +1132,14 @@
     var pv = pulseVoiceLocal(F.voices);
     return {
       enabled: state.enabled,
-      backdrop: prefs.backdrop, overlays: prefs.overlays.slice(), palette: prefs.palette,
+      backdrop: prefs.backdrop, overlays: prefs.overlays.slice(), palette: prefs.palette, scene: prefs.scene,
       seed: prefs.seed,
       N: pv ? ((pv.kind === "binaural") ? pv.env.N : pv.gate.N) : 1,
       fVis: pv ? ((pv.kind === "binaural") ? pv.env.visRate : pv.gate.visRate) : 0,
       panels: state.panels.map(function (p) {
-        return { mount: p.mount, w: p.W, h: p.H, dpr: p.dpr, visible: p.visible, frames: p.frames, avgFrameMs: Math.round(frameMs * 100) / 100 };
+        return { mount: p.mount, w: p.W, h: p.H, dpr: p.dpr, visible: p.visible,
+                 onScreen: p.onScreen !== false, frames: p.frames,
+                 avgFrameMs: Math.round(frameMs * 100) / 100 };
       }),
       audio: {
         ctx: (S && S.ctx) ? S.ctx.state : "none",
@@ -1099,6 +1183,7 @@
       if (typeof obj.calm === "number") prefs.calm = clamp01(obj.calm);
       if (typeof obj.auto === "boolean") prefs.auto = obj.auto;
       if (typeof obj.seed === "number") prefs.seed = obj.seed >>> 0;
+      if (typeof obj.scene === "string") { prefs.scene = obj.scene; prefs.preset = obj.scene; }
       savePrefs(); rebuildScenes(); refreshCard();
       if (typeof obj.on === "boolean") enable(obj.on);
     },
@@ -1107,6 +1192,12 @@
     setOverlays: setOverlays,
     toggleOverlay: toggleOverlay,
     applyPreset: applyPreset,
+    applyScene: applyScene,
+    scenes: function () { return SC ? SC.LIST.map(function (s) { return s.id; }) : []; },
+    sceneMeta: function () {
+      return SC ? SC.LIST.map(function (s) { return { id: s.id, name: s.name, blurb: s.blurb, still: s.still }; }) : [];
+    },
+    stepScene: function (dir) { var n = SC && SC.step(prefs.scene, dir); if (n) applyScene(n.id); },
     presets: function () { return CP.LIST.map(function (s) { return s.id; }); },
     setPalette: setPalette,
     scramble: scramble,

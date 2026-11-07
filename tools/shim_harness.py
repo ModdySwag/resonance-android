@@ -30,6 +30,23 @@ import time
 
 from playwright.sync_api import sync_playwright
 
+def structure(a, b):
+    """1 - Pearson correlation of two equal-length grids: 'same composition,
+    retinted' scores near 0, different geometry scores near 1."""
+    n = len(a)
+    ma = sum(a) / n
+    mb = sum(b) / n
+    sa = sb = sab = 0.0
+    for x, y in zip(a, b):
+        da = x - ma
+        db = y - mb
+        sa += da * da
+        sb += db * db
+        sab += da * db
+    den = (sa * sb) ** 0.5
+    return 1 - sab / den if den > 1e-9 else 1.0
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 WWW = os.path.join(PROJECT, "app", "src", "main", "assets", "www")
@@ -148,7 +165,7 @@ class Suite:
         print("  shot  %s" % name)
 
     def tab(self, name):
-        # the bar auto-hides; reveal it before aiming at it
+        # the bar is static now; keep the clear for a page from an older build
         self.page.evaluate("document.documentElement.classList.remove('rs-navhide')")
         self.page.click("#nav-%s" % name)
         self.page.wait_for_timeout(260)
@@ -656,16 +673,117 @@ def main():
         suite.check("Change opens the full list", suite.wait_until(
             "!!document.getElementById('rsFocusPick') && "
             "document.getElementById('rsFocusPick').classList.contains('rs-ov-on')", 5))
-        page.click("#rsFocusPick [data-fp='quiet-tide']")
+        cards = page.evaluate("""(() => {
+          const l = [...document.querySelectorAll('#rsFocusList [data-fp]')];
+          return { n: l.length,
+                   ids: l.map(b => b.getAttribute('data-fp')),
+                   stills: l.map(b => (b.style.backgroundImage || '').slice(0, 60)),
+                   names: l.map(b => b.querySelector('.rs-fsname') ? b.querySelector('.rs-fsname').textContent : '') };
+        })()""")
+        suite.check("the picker offers the eight scenes, one card each",
+                    cards["n"] == 8 and all(i.startswith("focus-") for i in cards["ids"]), cards["n"])
+        suite.check("every card carries its own still and its name",
+                    all("url(" in s for s in cards["stills"]) and all(cards["names"]), cards["names"][:3])
+        suite.check("every still file really decodes", page.evaluate("""async () => {
+          const S = window.GnauralVizScenes; const out = [];
+          for (const sc of S.LIST) {
+            out.push(await new Promise(res => { const im = new Image();
+              im.onload = () => res(im.naturalWidth > 0); im.onerror = () => res(false); im.src = sc.still; }));
+          }
+          return out.every(Boolean);
+        }"""))
+        page.click("#rsFocusPick [data-fp='focus-cathedral']")
+        page.wait_for_timeout(320)
+        suite.check("picking a scene applies it", page.evaluate(
+            "window.ResonanceViz.api.getPrefs().scene") == "focus-cathedral")
+
+        # the old presets survive behind the flag, and the flag is honest
+        page.click("#rsFocusBar [data-rs=fPick]")
         page.wait_for_timeout(250)
-        suite.check("picking one applies it", page.evaluate(
-            "window.ResonanceViz.api.getPrefs().preset") == "quiet-tide")
+        page.click("#rsFocusLegacy")
+        page.wait_for_timeout(250)
+        n_legacy = page.evaluate("document.querySelectorAll('#rsFocusList [data-fp]').length")
+        suite.check("the old presets stay behind a flag (8 scenes + 24)", n_legacy == 32, n_legacy)
+        page.click("#rsFocusLegacy")
+        page.wait_for_timeout(200)
+        suite.check("the flag puts them away again", page.evaluate(
+            "document.querySelectorAll('#rsFocusList [data-fp]').length") == 8)
+        page.click("#rsFocusPick [data-fp='focus-deepfield']")
+        page.wait_for_timeout(320)
+
+        # every scene paints and moves, and no two are the same composition
+        grids, painter = {}, []
+        for sid in page.evaluate("window.GnauralVizScenes.LIST.map(s => s.id)"):
+            page.evaluate("window.ResonanceViz.api.applyScene(%r)" % sid)
+            page.wait_for_timeout(1400)
+            g1 = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
+                               " return c ? Array.from(window.GnauralVizScenes.gridOf(c)) : null; })()")
+            page.wait_for_timeout(1600)
+            g2 = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
+                               " return c ? Array.from(window.GnauralVizScenes.gridOf(c)) : null; })()")
+            if not g1 or not g2:
+                painter.append((sid, -1, -1.0))
+                continue
+            lit = sum(1 for v in g1 if v > 0.02)
+            delta = sum(abs(a - b) for a, b in zip(g1, g2)) / len(g1)
+            grids[sid] = g1
+            painter.append((sid, lit, round(delta, 5)))
+        suite.check("every scene paints (lit grid cells / mean)", all(
+            p[1] > 800 for p in painter), painter)
+        suite.check("every scene moves at 1:1 (grid delta over 1.6 s)", all(
+            p[2] > 0.0004 for p in painter), painter)
+        worst = None
+        ids = list(grids)
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                d = structure(grids[ids[i]], grids[ids[j]])
+                if worst is None or d < worst[0]:
+                    worst = (round(d, 4), ids[i], ids[j])
+        suite.check("no two scenes share a composition (structure distance)", bool(worst) and worst[0] >= 0.15, worst)
+
+        # reduced motion draws the shipped still, frozen
+        page.emulate_media(reduced_motion="reduce")
+        page.evaluate("window.ResonanceViz.api.applyScene('focus-aurora')")
+        page.wait_for_timeout(1600)
+        r1 = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
+                           " return c ? Array.from(window.GnauralVizScenes.gridOf(c)) : null; })()")
+        page.wait_for_timeout(1200)
+        r2 = page.evaluate("(() => { const c = document.querySelector('#rsFsStage .viz-canvas');"
+                           " return c ? Array.from(window.GnauralVizScenes.gridOf(c)) : null; })()")
+        rdelta = sum(abs(a - b) for a, b in zip(r1, r2)) / len(r1) if r1 and r2 else -1
+        suite.check("reduced motion holds one still frame", rdelta >= 0 and rdelta <= 0.0002, rdelta)
+        suite.check("and the still is the scene's own, not a black frame",
+                    bool(r1) and sum(r1) / len(r1) > 0.03, r1 and round(sum(r1) / len(r1), 4))
+        page.emulate_media(reduced_motion="no-preference")
+
+        # the scene loop above ran without touches, so the focus chrome has gone
+        # quiet: a touch wakes it before the close key is aimed at
+        page.click("#rsFsStage")
+        suite.wait_until("!document.documentElement.classList.contains('rs-fs-hide')", 4)
+        # on-screen panels must still paint: the gate below would pass trivially if the
+        # renderer simply stopped drawing everywhere
+        pf0 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
+        page.wait_for_timeout(900)
+        pf1 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
+        suite.check("the panel in the focus view paints frames", sum(pf1) > sum(pf0), [pf0, pf1])
         page.click("#rsFsTop [data-rs=fsExit]")
         suite.check("closing focus returns to the app", suite.wait_until(
             "!document.documentElement.classList.contains('rs-focus')", 8))
         suite.check("the panels come home with it", page.evaluate(
             "(() => { const c = document.querySelector('[data-viz-panel]');"
             " return !!c && !c.closest('#rsFs'); })()"))
+        # A panel with no box on screen must not keep painting. The one that came back from
+        # the focus view keeps its full-screen backing store, and painting it for nobody is
+        # what held the page at ~10 fps after a visit (and starved the drive loop).
+        page.wait_for_timeout(400)                     # let the observer settle after the move
+        fs0 = page.evaluate("window.ResonanceViz.api.debugState().panels"
+                            ".map(p => ({ on: p.onScreen, n: p.frames }))")
+        page.wait_for_timeout(1200)
+        fs1 = page.evaluate("window.ResonanceViz.api.debugState().panels"
+                            ".map(p => ({ on: p.onScreen, n: p.frames }))")
+        suite.check("a panel with no box on screen paints nothing",
+                    all(a["n"] == b["n"] for a, b in zip(fs0, fs1))
+                    and not any(a["on"] for a in fs0), [fs0, fs1])
 
         # the chamber opens as a real instrument
         page.click("#rsChamber")
@@ -778,16 +896,35 @@ def main():
         suite.check("resetting tempo restores the session's own beat",
                     bool(back) and abs(back[0] / back[1] - 1) < 0.001, back)
 
-        # ---- the nav leaves when the glass is quiet --------------------------------
-        page.wait_for_timeout(6300)
-        suite.check("six quiet seconds put the nav away",
-                    page.evaluate("document.documentElement.classList.contains('rs-navhide')"))
-        page.mouse.click(200, 600)
-        suite.check("a touch brings the nav back",
-                    suite.wait_until("!document.documentElement.classList.contains('rs-navhide')", 3))
-        suite.check("the bar has a transition, not a jump", page.evaluate(
-            "getComputedStyle(document.getElementById('rsNav')).transitionProperty.indexOf('transform') > -1"))
-        page.evaluate("document.documentElement.classList.remove('rs-navhide')")
+        # ---- the tab bar is static; only the player leaves -------------------------
+        # Owner's rule (2026-11-08): Home / Sessions / Studio / Visualise / Settings
+        # never hide - they are the way out of every screen. The mini player still
+        # leaves after a short quiet spell, and any touch brings it straight back.
+        suite.tab("vis")
+        page.wait_for_timeout(900)
+        nav = page.evaluate("(() => { const n = document.getElementById('rsNav');"
+                            " const r = n.getBoundingClientRect();"
+                            " return { top: Math.round(r.top), h: Math.round(r.height),"
+                            " opacity: getComputedStyle(n).opacity,"
+                            " pe: getComputedStyle(n).pointerEvents,"
+                            " mini: document.getElementById('rsMini').classList.contains('rs-on') }; })()")
+        suite.check("the mini player is up on a screen without its own transport", nav["mini"], nav)
+        page.wait_for_timeout(8600)
+        still = page.evaluate("(() => { const n = document.getElementById('rsNav');"
+                              " const r = n.getBoundingClientRect();"
+                              " return { top: Math.round(r.top), h: Math.round(r.height),"
+                              " opacity: getComputedStyle(n).opacity,"
+                              " pe: getComputedStyle(n).pointerEvents,"
+                              " hide: document.documentElement.classList.contains('rs-minihide') }; })()")
+        suite.check("eight quiet seconds leave the tab bar exactly where it was",
+                    still["top"] == nav["top"] and still["h"] == nav["h"]
+                    and still["opacity"] == "1" and still["pe"] != "none", still)
+        suite.check("they do put the mini player away", still["hide"], still)
+        page.evaluate("document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
+        suite.check("a touch brings the player straight back", suite.wait_until(
+            "!document.documentElement.classList.contains('rs-minihide')", 3))
+        suite.check("the tab bar never grew a hide class", page.evaluate(
+            "!document.documentElement.classList.contains('rs-navhide')"))
 
         # ---- settings ---------------------------------------------------------------
         suite.tab("settings")
@@ -835,11 +972,15 @@ def main():
         page.click("#scr-settings [data-act=focus]")
         suite.check("the Settings row opens focus view too", suite.wait_until(
             "document.documentElement.classList.contains('rs-focus')", 8))
+        suite.check("its chrome is up before the close key is aimed", suite.wait_until(
+            "!document.documentElement.classList.contains('rs-fs-hide')", 4))
+        page.wait_for_timeout(200)
         page.click("#rsFsTop [data-rs=fsExit]")
-        suite.wait_until("!document.documentElement.classList.contains('rs-focus')", 6)
+        suite.check("the close key leaves the focus view", suite.wait_until(
+            "!document.documentElement.classList.contains('rs-focus')", 6))
 
         # ---- the overflow sheet -----------------------------------------------------
-        page.click("#rsOverflow")
+        page.evaluate("document.getElementById('rsOverflow').click()")
         suite.check("the overflow sheet opens",
                     suite.wait_until("document.getElementById('rsSheet').classList.contains('rs-open')"))
         suite.check("it is announced as expanded", page.evaluate(
@@ -871,7 +1012,7 @@ def main():
         for act, ov in (("about", "rsAbout"), ("guide", "rsGuide"), ("check", "rsCheck")):
             close_shown()
             page.evaluate("window.__rsUpdate.none('')")      # a stray answer must not toast here
-            page.click("#scr-settings [data-act=%s]" % act)
+            page.click("#scr-settings [data-act=%s]" % act, no_wait_after=True)
             page.wait_for_timeout(500)
             suite.check("Settings' %s row opens %s" % (act, ov), open_state(ov))
             page.wait_for_timeout(700)                       # the popstate that ate it lands here
@@ -880,7 +1021,7 @@ def main():
 
         for act, ov in (("about", "rsAbout"), ("guide", "rsGuide"), ("check", "rsCheck")):
             close_shown()
-            page.click("#rsOverflow")
+            page.evaluate("document.getElementById('rsOverflow').click()")
             suite.wait_until("document.getElementById('rsSheet').classList.contains('rs-open')", 4)
             page.wait_for_timeout(350)
             page.click("#rsSheet [data-act=%s]" % act)
@@ -938,7 +1079,7 @@ def main():
         close_shown()
 
         # the rows are as tappable as the rest of the app
-        page.click("#rsOverflow")
+        page.evaluate("document.getElementById('rsOverflow').click()")
         page.wait_for_timeout(450)
         small = page.evaluate("""(() => {
           const bad = [];
@@ -966,7 +1107,7 @@ def main():
 
 
         # dragging the grabber down closes it
-        page.click("#rsOverflow")
+        page.evaluate("document.getElementById('rsOverflow').click()")
         suite.wait_until("document.getElementById('rsSheet').classList.contains('rs-open')", 4)
         page.wait_for_timeout(500)
         box = page.evaluate("(() => { const r = document.getElementById('rsGrab').getBoundingClientRect();"

@@ -778,10 +778,8 @@
 
     /* ------------------------------------------------------------------ nav --- */
     "#rsNav{flex:0 0 auto;display:flex;background:var(--rs-s1);border-top:1px solid var(--rs-line);",
-    "  padding:6px 4px calc(6px + " + SAFE_B + ");",
-    "  transition:transform .3s ease,opacity .3s ease;will-change:transform}",
-    /* the bar leaves once the glass is quiet and comes back on the next touch */
-    "html.rs-navhide #rsNav{transform:translateY(112%);opacity:0;pointer-events:none}",
+    "  padding:6px 4px calc(6px + " + SAFE_B + ")}",
+    /* the tab bar is static: it is the way out of every screen, so it never hides */
     "#rsNav button{flex:1 1 0;min-height:56px;border:0;background:transparent;color:var(--rs-dim);",
     "  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;",
     "  cursor:pointer;padding:0;position:relative;font:600 11px/1 var(--rs-sans)}",
@@ -1049,6 +1047,22 @@
     ".rs-chips button[aria-pressed=\"true\"]{background:var(--rs-pri-c);border-color:transparent;",
     "  color:var(--rs-on-pri-c)}",
     "#vizCard .viz-inline{margin:0}",
+    /* the focus picker: one card per scene, and the still is the label */
+    ".rs-focusgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 0 10px}",
+    ".rs-fscard{position:relative;display:block;min-height:112px;padding:0;border:1px solid var(--rs-line2);",
+    "  border-radius:14px;overflow:hidden;background-color:var(--rs-s2);background-size:cover;",
+    "  background-position:center;color:var(--rs-ink);text-align:left;cursor:pointer}",
+    ".rs-fscard::after{content:\"\";position:absolute;inset:0;",
+    "  background:linear-gradient(180deg,rgba(8,7,6,.10) 0%,rgba(8,7,6,.62) 55%,rgba(8,7,6,.92) 100%)}",
+    ".rs-fscard .rs-fsname{position:relative;z-index:1;display:block;margin:62px 10px 0;",
+    "  font:600 13px/1.25 var(--rs-sans)}",
+    ".rs-fscard .rs-fsblurb{position:relative;z-index:1;display:block;margin:3px 10px 10px;",
+    "  font:400 11px/1.3 var(--rs-sans);color:#C9BFAC}",
+    ".rs-fscard[aria-pressed=\"true\"]{border-color:var(--rs-pri);box-shadow:0 0 0 2px var(--rs-pri-c)}",
+    ".rs-fscard-legacy{min-height:72px;background-image:none !important}",
+    ".rs-fscard-legacy .rs-fsname{margin-top:14px}",
+    ".rs-focusmore{width:100%;min-height:44px;border-radius:var(--rs-r-sm);border:1px solid var(--rs-line2);",
+    "  background:transparent;color:var(--rs-ink2);font:600 13px/1 var(--rs-sans);cursor:pointer}",
     "#vizCard canvas.viz-canvas{width:100% !important;height:190px !important;border-radius:var(--rs-r-sm);",
     "  border:1px solid var(--rs-line)}",
     "#vizCard .viz-badge{font-size:11px}",
@@ -1475,12 +1489,11 @@
     return app;
   }
 
-  /* the bar leaves once the glass is quiet, and any touch brings it straight back */
-  /* the bar leaves once the glass is quiet, and any touch brings it straight back.
-   * The mini player rides the same beat, but at 12 s: it is the transport, so it
-   * should outlast the bar, and it keeps its layout space while away (same as the
-   * bar) so nothing underneath shifts when it leaves or returns. */
-  var NAVIDLE = 0, MINIIDLE = 0, MINI_IDLE_MS = 12000;
+  /* the player leaves once the glass is quiet, and any touch brings it straight
+   * back. The tab bar does NOT hide: Home / Sessions / Studio / Visualise /
+   * Settings are the way out of every screen, so they never need waking. The
+   * player keeps its layout space while away, so nothing underneath shifts. */
+  var MINIIDLE = 0, MINI_IDLE_MS = 8000;
   function quietNow() {
     return !doc.hidden && !anyOverlayOpen() && !(sheetEl && sheetEl.classList.contains("rs-open"));
   }
@@ -1494,19 +1507,14 @@
       doc.documentElement.classList.add("rs-minihide");
     }, MINI_IDLE_MS);
   }
-  function armNav() {
-    doc.documentElement.classList.remove("rs-navhide");
-    if (NAVIDLE) window.clearTimeout(NAVIDLE);
-    NAVIDLE = window.setTimeout(function () {
-      if (!quietNow()) return;
-      doc.documentElement.classList.add("rs-navhide");
-    }, 6000);
+  function wakeChrome() {
+    doc.documentElement.classList.remove("rs-navhide");   /* a stale class from an older build */
     armMini();
   }
 
   function go(id, opts) {
     if (!screenEls[id]) return;
-    armNav();
+    wakeChrome();
     CUR = id;
     SCREENS.forEach(function (s) {
       var on = s.id === id;
@@ -3669,7 +3677,7 @@
     window.clearTimeout(TOUR.timer);
     if (st.nav && CUR !== st.nav) go(st.nav);
     doc.documentElement.classList.remove("rs-navhide");
-    armNav();
+    wakeChrome();
     TOUR.bub.classList.remove("rs-t-show");
     /* fill now, place later: the bubble must never be on screen empty while the
        120 ms placement timer runs */
@@ -4065,16 +4073,26 @@
      with the visualisation switchable right there. The chamber is the instrument;
      this is for lying still and watching. */
   var FOCUS = { on: false, preset: "" };
-  var FOCUS_DEFAULT = "quiet-tide";
+  var FOCUS_DEFAULT = "focus-cathedral";
 
+  /* the focus view offers SCENES first (eight compositions), and the old ambient
+   * presets stay reachable behind a flag until the owner signs the new set off */
   function focusPresets() {
-    var P = window.GnauralVizPresets;
-    return (P && P.LIST) || [];
+    var S = window.GnauralVizScenes, P = window.GnauralVizPresets, out = [];
+    if (S && S.LIST) out = S.LIST.slice();
+    if (prefs.focusLegacy && P && P.LIST) {
+      P.LIST.forEach(function (p) {
+        out.push({ id: p.id, name: p.name, blurb: p.blurb, palette: p.palette, legacy: true });
+      });
+    }
+    return out;
   }
 
   function focusName(id) {
     var l = focusPresets(), i;
     for (i = 0; i < l.length; i++) if (l[i].id === id) return l[i].name;
+    var P = window.GnauralVizPresets;
+    if (P && P.byId) { var p = P.byId(id); if (p) return p.name; }
     return "Visualisation";
   }
 
@@ -4083,7 +4101,11 @@
     if (!v || !id) return;
     FOCUS.preset = id;
     prefs.focusPreset = id; savePrefs();
-    try { v.applyPreset(id); v.enable(true); } catch (e) { }
+    try {
+      if (window.GnauralVizScenes && window.GnauralVizScenes.isScene(id)) v.applyScene(id);
+      else v.applyPreset(id);
+      v.enable(true);
+    } catch (e) { }
     var n = $id("rsFocusName");
     if (n) n.textContent = focusName(id);
     var s = $id("rsFocusSub");
@@ -4099,25 +4121,54 @@
     applyFocusPreset(l[(i + dir + l.length) % l.length].id);
   }
 
-  function openFocusPick() {
-    var ov = doc.getElementById("rsFocusPick");
-    if (!ov) {
-      ov = buildOverlay("rsFocusPick", "Visualisation", '<div class="rs-chips" id="rsFocusList"></div>');
-      var box = ov.querySelector("#rsFocusList");
-      focusPresets().forEach(function (p) {
-        var b = doc.createElement("button");
-        b.type = "button";
-        b.textContent = p.name;
-        b.title = p.blurb || "";
-        b.setAttribute("data-fp", p.id);
-        b.setAttribute("aria-pressed", "false");
-        b.addEventListener("click", function () { applyFocusPreset(p.id); closeOverlay(ov); });
-        box.appendChild(b);
-      });
-    }
+  /* one card per scene: its own still (so the picker shows what you are
+     choosing), its name, and one line of what it is */
+  function focusCard(p, ov) {
+    var b = doc.createElement("button");
+    b.type = "button";
+    b.className = "rs-fscard" + (p.legacy ? " rs-fscard-legacy" : "");
+    b.setAttribute("data-fp", p.id);
+    b.setAttribute("aria-pressed", "false");
+    b.title = p.blurb || "";
+    if (p.still) b.style.backgroundImage = "url(" + p.still + ")";
+    var n = doc.createElement("span");
+    n.className = "rs-fsname"; n.textContent = p.name;
+    var d = doc.createElement("span");
+    d.className = "rs-fsblurb"; d.textContent = p.blurb || "";
+    b.appendChild(n); b.appendChild(d);
+    b.addEventListener("click", function () { applyFocusPreset(p.id); closeOverlay(ov); });
+    return b;
+  }
+
+  function fillFocusList(ov) {
+    var box = ov.querySelector("#rsFocusList");
+    if (!box) return;
+    box.textContent = "";
+    focusPresets().forEach(function (p) { box.appendChild(focusCard(p, ov)); });
     $$("#rsFocusList button").forEach(function (b) {
       b.setAttribute("aria-pressed", b.getAttribute("data-fp") === FOCUS.preset ? "true" : "false");
     });
+    var more = ov.querySelector("#rsFocusLegacy");
+    if (more) {
+      more.textContent = prefs.focusLegacy ? "Hide the old presets" : "Show the old presets";
+      more.setAttribute("aria-pressed", prefs.focusLegacy ? "true" : "false");
+    }
+  }
+
+  function openFocusPick() {
+    var ov = doc.getElementById("rsFocusPick");
+    if (!ov) {
+      ov = buildOverlay("rsFocusPick", "Visualisation",
+        '<div class="rs-focusgrid" id="rsFocusList"></div>' +
+        '<button type="button" class="rs-focusmore" id="rsFocusLegacy"></button>');
+      var more = ov.querySelector("#rsFocusLegacy");
+      more.addEventListener("click", function () {
+        prefs.focusLegacy = !prefs.focusLegacy; savePrefs();
+        fillFocusList(ov);
+        syncFsBg();
+      });
+    }
+    fillFocusList(ov);
     showOverlay(ov);
   }
 
@@ -4221,7 +4272,10 @@
   var WARM_PAL = { ember: 1, rose: 1, dusk: 1, solar: 1, blood: 1, blossom: 1, candle: 1, champagne: 1 };
   function focusPlate() {
     var l = focusPresets(), i;
-    for (i = 0; i < l.length; i++) if (l[i].id === FOCUS.preset) return WARM_PAL[l[i].palette] ? "warm" : "cool";
+    for (i = 0; i < l.length; i++) if (l[i].id === FOCUS.preset) {
+      if (l[i].warm !== undefined) return l[i].warm ? "warm" : "cool";
+      return WARM_PAL[l[i].palette] ? "warm" : "cool";
+    }
     return "cool";
   }
   function syncFsBg() {
@@ -4243,6 +4297,8 @@
     if (Math.abs(tx - FSBP.x) < 0.4 && Math.abs(ty - FSBP.y) < 0.4) return;
     FSBP.x = tx; FSBP.y = ty;
     bg.style.transform = "translate3d(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px,0)";
+    var sv = window.GnauralVizScenes;
+    if (sv && sv.setParallax) sv.setParallax(tx / 18, ty / 14);
   }
 
   function syncFs() {
@@ -4802,11 +4858,11 @@
     go("home", { scroll: false });
     syncStudio();
     window.setInterval(tick, 1000);
-    doc.addEventListener("pointerdown", armNav, true);
-    doc.addEventListener("keydown", armNav, true);
-    doc.addEventListener("wheel", armNav, { passive: true });
-    doc.addEventListener("visibilitychange", function () { if (!doc.hidden) armNav(); });
-    armNav();
+    doc.addEventListener("pointerdown", wakeChrome, true);
+    doc.addEventListener("keydown", wakeChrome, true);
+    doc.addEventListener("wheel", wakeChrome, { passive: true });
+    doc.addEventListener("visibilitychange", function () { if (!doc.hidden) wakeChrome(); });
+    wakeChrome();
     /* the library re-renders on every keystroke and filter; band the rows promptly */
     window.setInterval(function () { if (CUR === "sessions") paintItems(); }, 300);
     tick();
