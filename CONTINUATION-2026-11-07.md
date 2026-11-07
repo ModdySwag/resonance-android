@@ -1,12 +1,12 @@
 # SAVE POINT — 2026-11-08, end of session 10 (read this first)
 
-**HEAD `c4a2045`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
+**HEAD `b714a09`**, tree clean, nothing pushed. **2.0.6-beta, versionCode 14.**
 
 ## The bytes
 
-- Signed release APK: **732,636 B, sha256 `21d83dcda31378e1f4e2b56a8961a3e285ee1db1f5c4288fdfd288c94f39b4e0`**.
+- Signed release APK: **757,874 B, sha256 `0defe969e588cb2f99975e42050d6ab9c4314292efe0de085e7df87513cdb966`**.
 - On **both** devices, verified by pulling the installed APK back and hashing it:
-  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 732,636 B and same sha.
+  phone `192.168.1.95:33139`, Tab A9+ `adb-R92XB0RWN3B-67B1Tm` — same 757,874 B and same sha.
 - `dumpsys package` on both: versionCode 14. `page: shim ready`, crash buffer empty.
 - A second `assembleRelease` of the same sources produced the **same** sha (deterministic).
 
@@ -59,6 +59,19 @@
     drives the page's own `#loop` input, so nothing about the engine changed. Contrast needed a fixed
     warm grey for the engraved label (a theme token vanishes on the dark plate) and a solid
     `background-color` on the LED panel for the probe.
+14. **Focus view atmosphere (owner: "the subtle pop of a parallax")**: two generated plates
+    (`ui/focus-cool.webp` 14 KB, `ui/focus-warm.webp` 10 KB, gpt_image_2 16:9 1k/high, 3.5 credits each)
+    crossfade by the preset's own palette — warm for ember/rose/dusk/solar/blood/blossom/candle/champagne.
+    Two depth planes (blurred 52 s drift, sharp 34 s drift) behind a `screen` blend at 55 %, plus a shallow
+    pointer parallax written to the wrapper. Motion is inside `prefers-reduced-motion: no-preference`.
+    `openFocus` now waits up to ~1.2 s for `[data-viz-panel]` instead of toasting, and forces the
+    visualiser on before the host is moved, so the first frame paints in place.
+15. **Focus preset audit (24 presets, session playing, pixel-sampled):** 11 animate, 11 draw but read as
+    near-static (slow/calm presets: quiet-tide, drift-meter, aurora-orbits, ember-bed, ember-ripples,
+    phosphor, harmonograph, orbits-only), and **2 draw nothing at all — `cold-drift` (drift backdrop) and
+    `ripple-only` (ripples overlay)**. `drift` and `ripples` are the two modes to repair. The focus view is
+    2D canvas only (viz*.js has zero WebGL); the chamber's WebGL2 field is a singleton behind
+    `window.ResonanceCymatics` with open/close only, so porting it is a real extraction, not a switch.
 13. **Medium chips were dead-looking (owner report).** The engine did switch (`prefs.medium` went plate →
     bolted → disc → drum → bubbles), but `syncVis()` repainted the chip row and the `#rsMap` readout from the
     session plan on every tick, so only the session's own medium ever stayed lit and the line still said "on
@@ -75,8 +88,8 @@ nine source legs.
 
 ## PUBLISH PAYLOAD — STAGED, NOT UPLOADED (his review is the gate)
 
-- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 732,636 B bytes (re-staged in place; 2.0.6 was never uploaded).
-- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 732636 / `21d83dcd…`; feed = file = card
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.6-beta.apk` = the same 757,874 B bytes (re-staged in place; 2.0.6 was never uploaded).
+- `deploy/updates.json`: resonance-android = 2.0.6-beta / **14** / 757874 / `0defe969…`; feed = file = card
   verified equal by script (size **and** sha **and** the card's own `<code>`).
 - `deploy/moddys-downloads.html`: pill v2.0.6-beta, href/filename, 0.7 MB, sha at the resonance label's own
   line, certutil line, "New in 2.0.6" paragraph, GitHub → `/releases`.
