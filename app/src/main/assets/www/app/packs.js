@@ -395,9 +395,15 @@
       var riseBeat = Math.min(beat * 2.5, 20);
       v.push({ dur: shape.rise * 0.55, base: base, beat: Math.min(beat * 1.6, riseBeat), vol: vol });
       v.push({ dur: shape.rise * 0.45, base: base, beat: riseBeat, vol: vol * 0.8 });
-      v.push({ dur: shape.fadeOut, base: base, beat: riseBeat, vol: 0 });
+      /* the level repeats here for the same reason as below: a 0 would make this
+       * entry the fade and leave a dead silent tail after it */
+      v.push({ dur: shape.fadeOut, base: base, beat: riseBeat, vol: vol * 0.8 });
     } else {
-      v.push({ dur: shape.fadeOut, base: base, beat: beat, vol: 0 });
+      /* entry k ramps into entry k+1's values and the last wraps to entry 0's zero, so
+       * this entry carries the level: a 0 here would make every session's HOLD the
+       * fade (vol -> 0 across the whole sitting) and then spend the fade-out on 0 -> 0.
+       * Repeating the level keeps the hold flat and lets this last entry do the fading. */
+      v.push({ dur: shape.fadeOut, base: base, beat: beat, vol: vol });
     }
     return iso ? h.iso(v) : h.binaural(v);
   }

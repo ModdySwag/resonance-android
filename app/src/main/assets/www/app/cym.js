@@ -191,9 +191,19 @@
    * lost) drops straight back to the canvas path on the next frame.
    * ==================================================================== */
 
+  /* 2.0.5 does NOT expose the GPU field. As shipped it replaces the plate with a
+   * full-bleed shader field and runs at about half the canvas path's frame rate on
+   * the Tab A9+ (46 fps against 90), so the switch is held back until the field is
+   * masked to the plate and the simulation moves. The code path stays: flip this to
+   * true to bring the switch back, or pin window.__rsGLRender = "gl" to probe it. */
+  var GL_SWITCH_VISIBLE = false;
+
   function prefFieldMode() {
     var o = window.__rsGLRender;
     if (o === "gl" || o === "canvas") return o;
+    /* a preference saved while the switch was visible must not resurrect a hidden
+     * feature: with the switch gone, canvas is the only path storage can pick */
+    if (!GL_SWITCH_VISIBLE) return "canvas";
     return P.fieldRenderer === "gl" ? "gl" : "canvas";
   }
 
@@ -737,7 +747,7 @@
       "<div class='cym-chips' id='cymPal'></div>" +
       "<label class='cym-check'><input id='cymSand' type='checkbox'> Sand grains</label>" +
       "<label class='cym-check'><input id='cymLines' type='checkbox'> Nodal glow</label>" +
-      "<label class='cym-check'><input id='cymGL' type='checkbox'> GPU field (WebGL2)</label>" +
+      (GL_SWITCH_VISIBLE ? "<label class='cym-check'><input id='cymGL' type='checkbox'> GPU field (WebGL2)</label>" : "") +
       "<label class='cym-check'><input id='cymBub' type='checkbox'> Bubbles</label>" +
       "<label class='cym-check'><input id='cymDust' type='checkbox'> Airborne dust</label>" +
       "<label class='cym-check'><input id='cymFreeze' type='checkbox'> Freeze motion</label>" +
