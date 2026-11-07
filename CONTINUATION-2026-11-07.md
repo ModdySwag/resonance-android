@@ -1,3 +1,60 @@
+# SAVE POINT — 2026-11-08, end of session 9 (read this first)
+
+**HEAD `e3b7a30`** (work commit `16f78b8`), tree clean, nothing pushed. 2.0.5-beta, versionCode 13.
+
+## What is on the devices right now
+
+- Both the phone (`192.168.1.95:33139`) and the Tab A9+ (`adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp`)
+  carry the **same bytes**, verified by pulling the installed APK back and hashing it:
+  **715,323 B, sha256 `e48b88d4fb169feffeb159d1d6decc5686fd1beaaf0b580beb49d2dc000d7d68`**.
+- The debug twin (`com.moddys.resonance.debug`) is on both for device_gate/CDP (port forwards 9337 phone, 9338 tablet).
+
+## Publish payload — STAGED, NOT UPLOADED (his review is the gate)
+
+- `radio-browser/deploy/downloads/resonance-studio-v2.0.5-beta.apk` = the same 715,323 B bytes.
+- `radio-browser/deploy/updates.json` regenerated: `resonance-android` = 2.0.5-beta / **13** / 715323 / `e48b88d4…`; feed→file verified MATCH.
+- `radio-browser/deploy/moddys-downloads.html`: pill v2.0.5-beta, href/filename, 0.7 MB, sha at the resonance label's own line (never regex the first 64-hex — it rewrites ModFlow's hash), certutil line, GitHub → `/releases`, "New in 2.0.5", 130 sessions in 18 packs.
+- Backups: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
+- Upload (on his word): `cd /c/Users/Moddy/radio-browser && python3 upload-site.py --only downloads/resonance-studio-v2.0.5-beta.apk updates.json moddys-downloads.html` then `--verify --only` (same list) → expect `0 file(s) not in sync.`
+- Then the untested chain, for real: curl the live APK → sha256 vs feed → install those bytes → confirm code 13 and that no update is offered.
+
+## Shipped this session (all gated)
+
+1. **Chamber faceplate** — top row Back / LIVE / ? (page's Close removed; Back leaves, fullscreen ✕ stays); transport row brass Play-Pause 56, Stop 48, master fader, engraved brass CONTROLS. Four new generated keys (`amp-back/next/info/close`, 28 credits, re-rolled once for the bezel). Root cause of the missing chrome was a stray `}` in the shim's CSS string array.
+2. **Drawer** — the lower panel is a real bottom sheet (`top:auto`, safe-area bottom), 54 px handle, **40 px brass expand puck** at the far right, aria flips Hide/Show; drag down/up and tap all verified with real `adb input swipe`.
+3. **Player lip** — drag up to hide (lip parks under the status bar), drag down to return; **8 s of quiet auto-hides both panels**, any touch wakes the player.
+4. **Scene chips fixed** — a chip is manual control (Follow switches off, chip stays lit, pick survives reopening); `openChamber` no longer re-applies the plan.
+5. **Focus/fullscreen** — one faceplate (`#rsFocusBar` inside `#rsFsCtl` above play · stop · fader · time); **a tap anywhere in focus only wakes the player** (the old tap hid what it had just revealed) and **the sync/slow badge is hidden** under `html.rs-focus`.
+6. **Cards** — session-band language on Studio/Visualise/Settings cards (3 px edge + 0.09 wash), band stacked over a brushed `strip.webp` plate under a 90% scrim on **both** devices; Quick-pick chips and pressed toggles take the band they sit in.
+7. **Palette** — dark surfaces are the plate's warm brown/silver (`bg #0F0C0A`, `s1 #1B1714`, warm ink/lines); the band family lost its greens (teal → **silver `#B6AFA3`**, emerald → **sage `#8E9E6B`**). Teal accent untouched. Full mode only for all of it.
+8. **Cleanups** — idle timer stops with the chamber; `aria-valuetext` written only on change; one cached `matchMedia`; Back takes focus on open.
+9. **Control audit** — 253 interactive elements across the five screens; all 6 `data-act` and 7 `data-rs` values wired; 33 with no own listener are delegated rows/anchors/submit-read inputs; behaviour spot-checks pass.
+
+Gates on the final bytes: **harness 199/0**, **contrast 0** (5 accents × 2 themes), tablet pass 82/0, lint 0/0, JVM 26/26, device gate 19/0. `apk_identity` 36/43 — its seven byte-identity legs can never pass on a minified release (app.js 38,185 → 21,932 B); tool fix, not an app fault.
+
+## NEXT — in order
+
+1. **His eye** on the chamber, the cards and the focus view — then the publish above.
+2. **Visualise restructure (agreed, NOT built).** `Follow the tone` + the scene/medium chips are chamber controls but sit beside the **Ambient panels** card, and that card has its own Scene menu — two "Scene" controls, confusing placement. Plan: move the Follow switch, `#rsScenes`, `#rsMedia`, `#rsVisToggles` and the `#rsMap` line **into the chamber card** above its Open button; leave Ambient panels as its own entry using the page's Scene menu; Focus card unchanged. Move existing nodes, no new art, updates live.
+3. Play track: privacy page live, AAB, 12-tester/14-day closed test.
+4. VizGL step 3: mask the field to the plate, move the simulation.
+5. Robolectric follow-ups; Error Prone / JaCoCo / StrictMode / Perfetto / MobSF.
+6. Track F features. Do not build accounts/cloud/social/Wear.
+
+## OPEN, not fixed
+
+- The site's `resonance/app` tree is **8 files behind** the page bundled in the APK (noise pack + vizgl work never deployed to moddys.net/resonance) — the biggest consistency gap.
+- `apk_identity`'s minified-asset legs (above).
+- Chamber and `#rsFsVol` fader CSS duplicate ~30 lines.
+- Drag gestures are gated to ≤820 px, so a landscape tablet keeps the page's side rail.
+- No CI leg for the drags — Playwright's synthetic mouse cannot drive pointer capture; `adb input swipe` can (scale CSS→device px by `wm size / innerWidth`).
+
+## TRAPS paid for (do not re-learn)
+
+Stray `}` in the shim's CSS string array silently kills every later rule · `!important` + higher specificity beats a later rule · a flex item in `overflow:auto` shrinks below its height (`flex:0 0 54px`) · clamp the visual drag delta but keep the **raw** delta for thresholds · Playwright mouse cannot drive the pointer drags · **never regex the first 64-hex on the downloads page** · two Gradle builds of the same source can hash differently (zip timestamps) — always make devices, staged APK, feed and card agree on one artifact by hash, not size.
+
+---
+
 # RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 9 FINAL)
 
 ## SESSION 9 FINAL — the chamber faceplate, scene chips fixed, versionCode 13
