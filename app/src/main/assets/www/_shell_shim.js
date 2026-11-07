@@ -3890,7 +3890,29 @@
       "#rsFs{position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:#000;display:none}",
       "html.rs-fs #rsFs{display:block}",
       "html.rs-fs #rsApp{display:none}",
-      "#rsFsStage{position:absolute;top:0;right:0;bottom:0;left:0;overflow:hidden}",
+      /* generated atmosphere for the focus view: two plates at different depths, drifting
+       at different speeds over the figure. Blended, so it adds air and colour without
+       covering what the session is drawing; the preset's own palette picks the plate. */
+    "#rsFsBg{position:absolute;inset:-5%;z-index:2;pointer-events:none;overflow:hidden;",
+    "  opacity:0;transition:opacity 1.1s ease;mix-blend-mode:screen;will-change:transform}",
+    "html.rs-focus #rsFsBg{opacity:.55}",
+    "#rsFsBg .rs-bgl{position:absolute;inset:0;background-size:cover;background-position:center;",
+    "  opacity:0;transition:opacity 1.2s ease;will-change:transform}",
+    "#rsFsBg .rs-bgl.on{opacity:1}",
+    "#rsFsBgCool{background-image:url(ui/focus-cool.webp)}",
+    "#rsFsBgWarm{background-image:url(ui/focus-warm.webp)}",
+    "#rsFsBg .a{filter:blur(16px) saturate(1.15)}",
+    "#rsFsBg .b{filter:blur(3px) saturate(1.05);opacity:0}",
+    "#rsFsBg .b.on{opacity:.55}",
+    "@media (prefers-reduced-motion: no-preference){",
+    "  #rsFsBg .a{animation:rsBgA 52s ease-in-out infinite alternate}",
+    "  #rsFsBg .b{animation:rsBgB 34s ease-in-out infinite alternate}",
+    "}",
+    "@keyframes rsBgA{from{transform:translate3d(-2.4%,-1.6%,0) scale(1.10)}",
+    "  to{transform:translate3d(2.4%,1.6%,0) scale(1.17)}}",
+    "@keyframes rsBgB{from{transform:translate3d(2%,1.2%,0) scale(1.22)}",
+    "  to{transform:translate3d(-2%,-1.2%,0) scale(1.13)}}",
+    "#rsFsStage{position:absolute;top:0;right:0;bottom:0;left:0;overflow:hidden}",
       "html.rs-fs .rs-fs-host{position:absolute !important;top:0 !important;right:0 !important;",
       "  bottom:0 !important;left:0 !important;width:100% !important;height:100% !important;",
       "  margin:0 !important;padding:0 !important;border:0 !important;border-radius:0 !important;",
@@ -3993,6 +4015,8 @@
     fs.id = "rsFs";
     fs.innerHTML =
       '<div id="rsFsStage" data-rs="fsStage"></div>' +
+      '<div id="rsFsBg" aria-hidden="true"><i id="rsFsBgCool" class="rs-bgl a"></i>' +
+      '  <i id="rsFsBgWarm" class="rs-bgl b"></i></div>' +
       '<div id="rsFsTop"><span class="rs-fs-title" id="rsFsTitle"></span>' +
       '<button data-rs="fsExit" aria-label="Close the visualiser">✕</button></div>' +
       '<div id="rsFsCtl">' +
@@ -4089,6 +4113,20 @@
 
   function openFocus() {
     FOCUS.on = true;
+    /* the panels mount a beat after the page boots, so a fast tap used to land on
+       nothing and toast. Wait for a panel instead of giving up, and turn the
+       visualiser on before it is moved so its first frame is painted in place. */
+    if (!doc.querySelector("[data-viz-panel]")) {
+      FOCUS.wait = (FOCUS.wait || 0) + 1;
+      if (FOCUS.wait < 14) { window.setTimeout(openFocus, 90); return; }
+      FOCUS.wait = 0;
+      FOCUS.on = false;
+      toast("The visualiser is still starting — try again in a moment.");
+      return;
+    }
+    FOCUS.wait = 0;
+    var v0 = window.ResonanceViz && window.ResonanceViz.api;
+    if (v0) { try { if (!v0.getPrefs().on) v0.enable(true); } catch (e) { } }
     enterFullscreen();
     if (!FS.on) { FOCUS.on = false; return; }
     doc.documentElement.classList.add("rs-focus");
@@ -4140,6 +4178,10 @@
       FSWAS.hidden = doc.documentElement.classList.contains("rs-fs-hide");
       armHide();
     });
+    if (!fs.rsBgWired) {
+      fs.rsBgWired = true;
+      fs.addEventListener("pointermove", function (ev) { try { fsBgParallax(ev); } catch (e) { } }, { passive: true });
+    }
     try { window.dispatchEvent(new Event("resize")); } catch (e) { }
     syncFs();
   }
@@ -4166,7 +4208,35 @@
     FS.host = null; FS.home = null; FS.homeNext = null;
   }
 
+  var WARM_PAL = { ember: 1, rose: 1, dusk: 1, solar: 1, blood: 1, blossom: 1, candle: 1, champagne: 1 };
+  function focusPlate() {
+    var l = focusPresets(), i;
+    for (i = 0; i < l.length; i++) if (l[i].id === FOCUS.preset) return WARM_PAL[l[i].palette] ? "warm" : "cool";
+    return "cool";
+  }
+  function syncFsBg() {
+    var cool = $id("rsFsBgCool"), warm = $id("rsFsBgWarm");
+    if (!cool || !warm) return;
+    var want = focusPlate();
+    cool.classList.toggle("on", want === "cool");
+    warm.classList.toggle("on", want === "warm");
+  }
+  var FSBP = { x: 0, y: 0 };
+  function fsBgParallax(ev) {
+    var bg = $id("rsFsBg");
+    if (!bg) return;
+    var w = window.innerWidth || 1, h = window.innerHeight || 1;
+    /* a shallow, opposite-to-finger offset: the plates move under the glass, the figure
+       stays put. Written straight to the wrapper, the layers keep their own drift. */
+    var tx = ((ev.clientX || w / 2) / w - 0.5) * -18;
+    var ty = ((ev.clientY || h / 2) / h - 0.5) * -14;
+    if (Math.abs(tx - FSBP.x) < 0.4 && Math.abs(ty - FSBP.y) < 0.4) return;
+    FSBP.x = tx; FSBP.y = ty;
+    bg.style.transform = "translate3d(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px,0)";
+  }
+
   function syncFs() {
+    syncFsBg();
     var p = $id("rsFsTitle");
     if (p) p.textContent = sessionTitle() || APP_NAME;
     var fs = doc.getElementById("rsFs");
