@@ -9,12 +9,15 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.util.Log;
 
 /**
  * Keeps a session alive while the app is backgrounded or the screen is off, and owns the
@@ -26,11 +29,14 @@ import android.os.PowerManager;
  * the audio; this class never touches it, forwards commands and prints the state the page
  * reports.
  *
- * <p><b>It asks for no audio focus.</b> The WebView's engine (Chromium) requests focus for
- * the audio it plays, as any media app does. A second request from this service would make
- * one app look like two clients, and the framework reports the resulting shuffle back as a
- * loss or a refusal about this app's own audio. So the service stays out of it - the same
- * design the World Radio app settled on after three releases of learning it the hard way.
+ * <p><b>It holds audio focus for the session.</b> Playback is reported as playing only after
+ * {@link AudioManager#AUDIOFOCUS_GAIN} has been requested with an {@link AudioFocusRequest}
+ * (minSdk is 26, so there is no pre-26 path to keep), and the request is abandoned when the
+ * session stops. {@code AUDIOFOCUS_LOSS} pauses the page and {@code AUDIOFOCUS_LOSS_TRANSIENT}
+ * pauses then resumes on {@code AUDIOFOCUS_GAIN}; {@code AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK}
+ * pulls the media stream down instead of stopping. The sound itself is synthesised inside the
+ * WebView's WebAudio graph, which exposes no gain to Java, so ducking is done on the stream
+ * volume and the previous index is restored afterwards.
  *
  * <p>Pause keeps the notification (with Play) - a session that is paused is exactly when the
  * user wants that button. Stop tears the notification down. And a state the page reports on
@@ -54,9 +60,19 @@ public class PlaybackService extends Service {
     private static final String CHANNEL_ID = "playback";
     private static final int NOTIFICATION_ID = 4230;
     private static final long WAKE_TIMEOUT_MS = 12L * 60L * 60L * 1000L;
+    private static final String TAG = "ResonanceStudio";
+
+    /** How far the media stream is pulled down while another app asks us to duck. */
+    private static final float DUCK_FRACTION = 0.2f;
 
     private MediaSession session;
     private PowerManager.WakeLock wake;
+    private AudioManager audio;
+    private AudioFocusRequest focus;
+    private boolean hasFocus;
+    private boolean pausedForFocus;   // paused because focus went away, not because a person asked
+    private int duckFrom = -1;        // stream index before a duck, -1 when not ducked
+    private int duckTo = -1;          // the index the duck set, to tell a user change from ours
     private String title;
     private String pauseText;         // non-null while sitting in the paused state
     private boolean foreground = false;
@@ -65,6 +81,7 @@ public class PlaybackService extends Service {
     public void onCreate() {
         super.onCreate();
         title = getString(R.string.app_name);
+        audio = getSystemService(AudioManager.class);
 
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW);
@@ -78,12 +95,14 @@ public class PlaybackService extends Service {
         session.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
+                requestFocus();                 // the session may only play while it holds focus
                 tellPage("play");
                 showPlaying();
             }
 
             @Override
             public void onPause() {
+                pausedForFocus = false;         // a person asked for this one
                 tellPage("pause");
                 showPaused(getString(R.string.notification_paused));
             }
@@ -108,6 +127,7 @@ public class PlaybackService extends Service {
         String action = (intent == null) ? null : intent.getAction();
 
         if (ACTION_PAUSE.equals(action)) {
+            pausedForFocus = false;                 // a person asked for this one
             tellPage("pause");
             showPaused(getString(R.string.notification_paused));
             return START_NOT_STICKY;
@@ -118,11 +138,13 @@ public class PlaybackService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_RESUME.equals(action)) {
+            requestFocus();                         // before the page is told to make a sound
             tellPage("play");
             showPlaying();
             return START_NOT_STICKY;
         }
         if (ACTION_STOPPED.equals(action)) {
+            pausedForFocus = false;                 // the page stopped itself
             showPaused(getString(R.string.notification_paused));
             return START_NOT_STICKY;
         }
@@ -142,6 +164,7 @@ public class PlaybackService extends Service {
     /** Swiping the app away kills its WebView, so the notification must go with it. */
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        abandonFocus();
         releaseWake();
         stopForegroundCompat();
         stopSelf();
@@ -150,6 +173,7 @@ public class PlaybackService extends Service {
 
     @Override
     public void onDestroy() {
+        abandonFocus();
         releaseWake();
         if (session != null) {
             session.setActive(false);
@@ -166,8 +190,10 @@ public class PlaybackService extends Service {
     /* ------------------------------------------------------------------ states ---- */
 
     private void teardown() {
+        abandonFocus();
         releaseWake();
         pauseText = null;
+        pausedForFocus = false;
         setPlaybackState(PlaybackState.STATE_STOPPED);
         stopForegroundCompat();
         stopSelf();
@@ -175,8 +201,12 @@ public class PlaybackService extends Service {
 
     private void showPlaying() {
         pauseText = null;
+        pausedForFocus = false;
         session.setMetadata(metadata(getString(R.string.notification_tagline)));
+        /* Unchanged order: the notification first (the foreground clock starts here, whatever
+           focus does), then focus before the state claims to be playing. */
         startForegroundCompat();
+        requestFocus();
         acquireWake();
         setPlaybackState(PlaybackState.STATE_PLAYING);
     }
@@ -198,6 +228,129 @@ public class PlaybackService extends Service {
                 .putString(MediaMetadata.METADATA_KEY_TITLE, title)
                 .putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle)
                 .build();
+    }
+
+    /* ------------------------------------------------------------- audio focus ---- */
+
+    /**
+     * Take the media focus before this session is reported as playing.
+     *
+     * <p>minSdk is 26, so {@link AudioFocusRequest} is the only path; the deprecated
+     * {@code requestAudioFocus(listener, streamType, durationHint)} overload is never needed.
+     * The request is refused (logged) rather than obeyed: the sound is already coming out of
+     * the WebView by the time the page reports it, and leaving the notification on "paused"
+     * while the speakers play would be the worse lie.
+     */
+    private boolean requestFocus() {
+        if (audio == null) audio = getSystemService(AudioManager.class);
+        if (audio == null) return false;
+        if (focus == null) {
+            focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(ATTRS)
+                    /* Ducking is ours to do: the framework would otherwise pause us on a
+                       can-duck loss, and the page resumes better from our own duck. */
+                    .setWillPauseWhenDucked(false)
+                    .setOnAudioFocusChangeListener(new AudioManager.OnAudioFocusChangeListener() {
+                        @Override
+                        public void onAudioFocusChange(int change) {
+                            handleFocusChange(change);
+                        }
+                    })
+                    .build();
+        }
+        if (hasFocus) return true;
+        hasFocus = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        if (!hasFocus) Log.w(TAG, "audio focus refused; reporting the page's state anyway");
+        return hasFocus;
+    }
+
+    private void abandonFocus() {
+        unduck();
+        if (hasFocus && audio != null && focus != null) {
+            try {
+                audio.abandonAudioFocusRequest(focus);
+            } catch (Exception e) {
+                Log.w(TAG, "abandon focus: " + e);
+            }
+        }
+        hasFocus = false;
+    }
+
+    /**
+     * The framework's verdict on who may use the speakers. Called on the main thread (the
+     * listener was built on it), so the notification and the page command are safe here.
+     */
+    private void handleFocusChange(int change) {
+        switch (change) {
+            case AudioManager.AUDIOFOCUS_LOSS:
+                /* Gone until we ask again - a call, another player, the assistant. Drop the
+                   request instead of sitting on one we no longer hold. */
+                hasFocus = false;
+                if (audio != null && focus != null) {
+                    try { audio.abandonAudioFocusRequest(focus); } catch (Exception e) { }
+                }
+                unduck();
+                pausedForFocus = true;
+                tellPage("pause");
+                showPaused(getString(R.string.notification_paused));
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                /* Someone needs the speakers for a moment and is giving them back: pause but
+                   keep the request, so AUDIOFOCUS_GAIN can resume where the person was. */
+                pausedForFocus = true;
+                tellPage("pause");
+                showPaused(getString(R.string.notification_paused));
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                duck();
+                break;
+            case AudioManager.AUDIOFOCUS_GAIN:
+                unduck();
+                if (pausedForFocus) {                    // only resume what we paused
+                    tellPage("play");
+                    showPlaying();
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Pull our own output down without stopping it.
+     *
+     * <p>The page synthesises in a WebAudio graph inside the WebView; the graph exposes no gain
+     * node to Java, so the media stream is the only attenuation this service can apply. The
+     * previous index is remembered and only put back if the ducked level is still the one we
+     * set - a person who moves the volume during the duck meant it.
+     */
+    private void duck() {
+        if (audio == null || duckFrom >= 0) return;
+        try {
+            int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+            int now = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+            int target = Math.max(1, Math.round(max * DUCK_FRACTION));
+            if (now <= target) return;                   // already quieter than the duck
+            audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+            duckFrom = now;
+            duckTo = target;
+        } catch (Exception e) {
+            Log.w(TAG, "duck: " + e);
+            duckFrom = duckTo = -1;
+        }
+    }
+
+    private void unduck() {
+        int from = duckFrom, to = duckTo;
+        duckFrom = duckTo = -1;
+        if (from < 0 || audio == null) return;
+        try {
+            if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) == to) {
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, from, 0);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "unduck: " + e);
+        }
     }
 
     private void tellPage(String method) {

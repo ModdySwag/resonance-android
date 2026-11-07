@@ -12,10 +12,29 @@
  *
  * Ported voice types:
  *   0 BINAURALBEAT  — two sines, L = base + beat/2, R = base − beat/2 (beat heard in the brain)
- *   1 PINKNOISE     — the upstream 31/32 lopass pink-noise approximation
+ *   1 PINKNOISE     — 1/f noise. Upstream's 31/32 one-pole lopass is NOT pink (measured
+ *                     −3 dB/oct in octave-band energy, i.e. brown-ish), so this uses a
+ *                     true pink source: Paul Kellet's 3-pole recursive approximation
+ *                     (1999, public domain), flat to ±0.3 dB/oct over 20 Hz–20 kHz.
  *   3 ISOPULSE      — isochronic tones (tone/silence alternating at the beat frequency)
  *   4 ISOPULSE_ALT  — isochronic tones alternating between L and R each half-cycle
  * Not ported in v1: 2 (PCM file loops), 5 (waterdrops), 6 (rain).
+ *
+ * Generated noise sources (all procedural, no samples, no dependencies):
+ *   7 WHITE — uniform white, one PRNG draw per channel per sample
+ *   8 BROWN — leaky-integrated white (red noise): 1/f², DC-bounded by the leak
+ *   1 PINK  — 1/f (see above)
+ * All three are produced in the same raw 16-bit scale as the tonal voices, so the
+ * /32768 output stage and the preset volumes mean the same thing for every colour;
+ * each is level-matched to the pink voice's measured raw RMS 4773 (float 0.1457).
+ * They are ordinary voices: they live in the same voice list, mix through the same
+ * sum and take the same per-entry volume ramps as carriers.
+ *
+ * Clicks: the engine has no intrinsic discontinuity at start/stop. A 10 ms master
+ * ramp (RAMP_SAMPLES) fades the mix in when playback starts and out when it pauses;
+ * pause keeps rendering for the length of that fade, then freezes the position.
+ * A voice whose own entry volumes step (a schedule that begins at full volume)
+ * is still click-free because of that master ramp.
  *
  * Fidelity notes (deliberate, documented):
  *  - Envelope/entry recalculation happens every UPDATE_PERIOD_SAMPLES = 16 samples and the
@@ -52,8 +71,28 @@
   var VOICE_WHITE = 7;
   var VOICE_BROWN = 8;
   var WHITE_SCALE = 8267;     // uniform [-1,1) * this = raw RMS 4773
-  var BROWN_GAIN = 9.86;      // leaky-integrated white * this = raw RMS 4773
+  var BROWN_GAIN = 10.08;     // leaky-integrated white * this = raw RMS 4773
   var BROWN_LEAK = 0.02;      // integrator input gain (pole 1/(1+LEAK))
+
+  /* Paul Kellet's 3-pole pink filter (1999, public domain): three one-pole
+   * integrators with ascending weights, summed with a direct term. Analytic
+   * response is flat to ±0.3 dB/oct in octave-band energy from 20 Hz to 20 kHz,
+   * i.e. genuinely 1/f — unlike the upstream one-pole lopass it replaces.
+   * Cost is 3 states and 9 flops per channel per sample. */
+  var PINK_A = [0.99765, 0.96300, 0.57000];
+  var PINK_S = [0.0990460, 0.2965164, 1.0526913];
+  var PINK_DIRECT = 0.1848;
+  var PINK_SCALE = 2849;      // Kellet output * this = raw RMS 4773, same as white/brown
+
+  /* One-pole DC blocker (~3.5 Hz at 44.1 kHz) after the integrating sources.
+   * The brown integrator's leak already bounds it; this removes the residual
+   * sub-audio offset so nothing can drift into the headroom. 0.985 gain at 20 Hz:
+   * the audio band is untouched. */
+  var DC_BLOCK_R = 0.9995;
+
+  /* Master start/stop ramp: 10 ms is long enough to kill the step at a buffer
+   * boundary and short enough that play/pause still feels instant. */
+  var RAMP_SAMPLES = 441;
 
   var FLAG_COMPLETED = 1;
   var FLAG_NEWLOOP = 2;
@@ -84,9 +123,22 @@
     this.mcgn = (Math.imul(69069, this.mcgn) | 0);
     return ((this.mcgn ^ this.srgn) | 0);
   };
-  /* Upstream BB_LoPass: a heavy one-pole lowpass used for the pink approximation. */
-  function loPass(state, value) {
-    return ((((state.n * 31) + value) >> 5) | 0);
+  /* One 16-bit uniform draw in [-1, 1): the shared source of all three colours. */
+  function uniform(rng) {
+    return ((rng.rand() >>> 16) / 32768) - 1;
+  }
+  /* Paul Kellet 3-pole pink, one sample. state = {b0, b1, b2}. */
+  function pinkStep(st, x) {
+    st.b0 = PINK_A[0] * st.b0 + x * PINK_S[0];
+    st.b1 = PINK_A[1] * st.b1 + x * PINK_S[1];
+    st.b2 = PINK_A[2] * st.b2 + x * PINK_S[2];
+    return st.b0 + st.b1 + st.b2 + x * PINK_DIRECT;
+  }
+  /* One-pole DC blocker, one sample. state = {x1, y1}. */
+  function dcBlock(st, x) {
+    var y = x - st.x1 + DC_BLOCK_R * st.y1;
+    st.x1 = x; st.y1 = y;
+    return y;
   }
 
   /* ------------------------------------------------------------------ *
@@ -139,8 +191,12 @@
     this.phaseFlag = 0; this.phaseEnvelope = 0;
     this.sinPosL = 0; this.sinPosR = 0;
     this.sinL = 0; this.sinR = 0;
-    this.noise = { n: 1 }; this.noiseR = { n: 1 };
-    this.brown = 0; this.brownR = 0;
+    /* noise-source state: Kellet pink poles, brown integrator, DC blocker.
+     * All start at zero, so a noise voice begins at silence rather than with a
+     * step — the filter settles under the entry ramp. */
+    this.pinkL = { b0: 0, b1: 0, b2: 0 }; this.pinkR = { b0: 0, b1: 0, b2: 0 };
+    this.brownL = 0; this.brownR = 0;
+    this.dcL = { x1: 0, y1: 0 }; this.dcR = { x1: 0, y1: 0 };
   };
 
   /* ------------------------------------------------------------------ *
@@ -160,7 +216,13 @@
     this.volumeOverallR = 1;
     this.mono = false;
     this.stereoSwap = false;
-    this.paused = true;
+    /* `paused` is an accessor (see the bottom of this file): the backing field is
+     * _paused, and outGain ramps 0..1 so play/pause never steps the waveform. */
+    this._paused = true;
+    this._pausing = false;      /* a fade-out is in flight; render() finishes it */
+    this.outGain = 0;
+    this._pauseSample = 0;
+    this._pauseUpdatePeriod = 1;
     this.peakL = 0; this.peakR = 0;
     this.rng = new XorRandom();
   }
@@ -236,6 +298,14 @@
     this.completed = false;
     this.updatePeriod = 1;
     this.peakL = 0; this.peakR = 0;
+    /* A reset is a fresh start. Paused: the next play fades in from silence, and
+     * a fade-out already in flight is allowed to finish over the new schedule,
+     * freezing at the new position rather than snapping the gain down. Playing:
+     * the gain is left at 1 — a jump to 0 here would itself be the click. */
+    if (this._paused) {
+      if (this._pausing) { this._pauseSample = 0; this._pauseUpdatePeriod = 1; }
+      else this.outGain = 0;
+    }
     for (var i = 0; i < this.voices.length; i++) this.voices[i].reset();
     this.resetAllVoices();
     var r = this.rng; r.mcgn = 3677; r.srgn = 127;
@@ -248,8 +318,10 @@
   Engine.prototype.render = function (outL, outR, n) {
     /* Paused (or empty schedule): emit silence and HOLD position. This is a
        deliberate deviation from upstream, whose sample counter keeps advancing
-       while its internal flag is set — for a user-facing pause we freeze. */
-    if (this.paused || !this.voices.length) {
+       while its internal flag is set — for a user-facing pause we freeze.
+       A paused engine still renders while a fade-out is in flight (_pausing), so
+       the last few milliseconds decay instead of stopping dead. */
+    if (!this.voices.length || (this._paused && !this._pausing)) {
       for (var z = 0; z < n; z++) { outL[z] = 0; outR[z] = 0; }
       return { completed: false, flags: 0 };
     }
@@ -258,12 +330,15 @@
     var voice, v, nv = this.voices.length;
     var k, i;
     var completedNow = false;
+    var rampStep = 1 / RAMP_SAMPLES;
+    var frozen = false;           /* fade-out completed inside this block */
+    var mixVoices = !this._paused || this._pausing;
 
     for (k = 0; k < n; k++) {
       updateperiod--;
       sumL = 0; sumR = 0;
 
-      if (!this.paused) {
+      if (mixVoices) {
         for (voice = 0; voice < nv; voice++) {
           v = this.voices[voice];
           Sample_left = 0; Sample_right = 0;
@@ -353,19 +428,21 @@
                 v.phaseEnvelope = 0;
               }
             } else if (v.type === VOICE_PINK) {
-              var rl = this.rng.rand() >> 15, rr = this.rng.rand() >> 15;
-              v.noise.n = loPass(v.noise, rl);
-              Sample_left = v.noise.n;
-              v.noiseR.n = loPass(v.noiseR, rr);
-              Sample_right = v.noiseR.n;
+              /* 1/f: Kellet 3-pole on independent draws per channel, DC-blocked
+                 so the sub-audio part of 1/f cannot drift the mix. */
+              Sample_left = dcBlock(v.dcL, pinkStep(v.pinkL, uniform(this.rng))) * PINK_SCALE;
+              Sample_right = dcBlock(v.dcR, pinkStep(v.pinkR, uniform(this.rng))) * PINK_SCALE;
             } else if (v.type === VOICE_WHITE) {
-              Sample_left = (((this.rng.rand() >>> 16) / 32768) - 1) * WHITE_SCALE;
-              Sample_right = (((this.rng.rand() >>> 16) / 32768) - 1) * WHITE_SCALE;
+              Sample_left = uniform(this.rng) * WHITE_SCALE;
+              Sample_right = uniform(this.rng) * WHITE_SCALE;
             } else if (v.type === VOICE_BROWN) {
-              v.brown = (v.brown + (((this.rng.rand() >>> 16) / 32768) - 1) * WHITE_SCALE * BROWN_LEAK) / (1 + BROWN_LEAK);
-              v.brownR = (v.brownR + (((this.rng.rand() >>> 16) / 32768) - 1) * WHITE_SCALE * BROWN_LEAK) / (1 + BROWN_LEAK);
-              Sample_left = v.brown * BROWN_GAIN;
-              Sample_right = v.brownR * BROWN_GAIN;
+              /* leaky integrator: the 1/(1+LEAK) pole bounds the walk, so brown
+                 cannot run away however long the session is. The DC blocker then
+                 removes the residual offset the leak still allows. */
+              v.brownL = (v.brownL + uniform(this.rng) * WHITE_SCALE * BROWN_LEAK) / (1 + BROWN_LEAK);
+              v.brownR = (v.brownR + uniform(this.rng) * WHITE_SCALE * BROWN_LEAK) / (1 + BROWN_LEAK);
+              Sample_left = dcBlock(v.dcL, v.brownL) * BROWN_GAIN;
+              Sample_right = dcBlock(v.dcR, v.brownR) * BROWN_GAIN;
             } else if (v.type === VOICE_ISOPULSE || v.type === VOICE_ISOPULSE_ALT) {
               var alt = (v.type === VOICE_ISOPULSE_ALT) ? 1 : 0;
               v.sinPosL += v.curBeatfreqLFactor;
@@ -409,6 +486,20 @@
         outl = sumR * this.volumeOverallR;
         outr = sumL * this.volumeOverallL;
       }
+
+      /* master start/stop ramp (see RAMP_SAMPLES): drive outGain toward the
+         target one step per sample, so play and pause never step the waveform */
+      var gainTarget = this._paused ? 0 : 1;
+      if (this.outGain < gainTarget) {
+        this.outGain += rampStep;
+        if (this.outGain > gainTarget) this.outGain = gainTarget;
+      } else if (this.outGain > gainTarget) {
+        this.outGain -= rampStep;
+        if (this.outGain < 0) this.outGain = 0;
+      }
+      outl *= this.outGain;
+      outr *= this.outGain;
+
       var sl = outl / 32768, sr = outr / 32768;
       if (sl > 1) sl = 1; else if (sl < -1) sl = -1;      /* clamp (upstream wraps a short) */
       if (sr > 1) sr = 1; else if (sr < -1) sr = -1;
@@ -423,9 +514,20 @@
         updateperiod = UPDATE_PERIOD_SAMPLES;
         this.currentSample += UPDATE_PERIOD_SAMPLES;
       }
+
+      /* the fade-out has reached silence: hold the position the pause started at
+         and stop mixing for the rest of this block */
+      if (this._pausing && this.outGain === 0) {
+        this._pausing = false;
+        this.currentSample = this._pauseSample;
+        this.updatePeriod = this._pauseUpdatePeriod;
+        for (var zf = k + 1; zf < n; zf++) { outL[zf] = 0; outR[zf] = 0; }
+        frozen = true;
+        break;
+      }
     }
 
-    this.updatePeriod = updateperiod;
+    if (!frozen) this.updatePeriod = updateperiod;
     return { completed: completedNow, flags: this.infoFlag };
   };
 
@@ -433,6 +535,71 @@
   Engine.prototype.duration = function () {
     return this.totalDuration;
   };
+
+  /* ------------------------------------------------------------------ *
+   * paused — a real accessor, because a pause has to fade, not cut.
+   * Assigning true starts the 10 ms fade-out: render() keeps mixing until
+   * outGain reaches 0, then restores the position the pause began at and holds
+   * there. Assigning false cancels any fade-out in flight and ramps back up.
+   * Callers keep writing engine.paused = true/false exactly as before
+   * (app.js and worklet-processor.js both do), so no caller changes.
+   * ------------------------------------------------------------------ */
+  Object.defineProperty(Engine.prototype, "paused", {
+    get: function () { return this._paused; },
+    set: function (on) {
+      on = !!on;
+      if (on) {
+        if (this._paused) return;
+        this._paused = true;
+        if (this.outGain > 0) {
+          this._pausing = true;
+          this._pauseSample = this.currentSample;
+          this._pauseUpdatePeriod = this.updatePeriod;
+        }
+      } else {
+        this._paused = false;
+        this._pausing = false;   /* a fade-out in flight becomes a fade back up */
+      }
+    },
+    enumerable: true,
+    configurable: true
+  });
+
+  /* ------------------------------------------------------------------ *
+   * Noise sources as API.
+   * A noise voice is an ordinary schedule voice — {type, mute, mono, entries}
+   * — the same object shape new Voice() consumes and the same shape the page's
+   * "build a tone" panel writes, so it mixes with carriers through the one
+   * existing path. noiseVoice() is only a convenience that wraps that shape in
+   * a fade-in / hold / fade-out envelope, so a bare source never starts or
+   * stops on a step of its own.
+   * ------------------------------------------------------------------ */
+  var NOISE_TYPES = { white: VOICE_WHITE, pink: VOICE_PINK, brown: VOICE_BROWN };
+
+  function noiseVoice(colour, opts) {
+    opts = opts || {};
+    var type = NOISE_TYPES[String(colour).toLowerCase()];
+    if (type === undefined) throw new Error("unknown noise colour: " + colour);
+    var vol = num(opts.vol, 0.3);
+    var volR = num(opts.volR, vol);
+    var duration = num(opts.duration, 600);
+    var fadeIn = Math.min(num(opts.fadeIn, 3), duration / 2);
+    var fadeOut = Math.min(num(opts.fadeOut, 3), duration / 2);
+    var hold = Math.max(0.01, duration - fadeIn - fadeOut);
+    return {
+      type: type,
+      mute: !!opts.mute,
+      mono: !!opts.mono,
+      /* Same three-entry idiom as presets.js's shape(): entry k ramps into entry
+         k+1's start values, so the hold repeats its volume (flat) and only the
+         last entry — wrapping to entry 0's zero — fades out. */
+      entries: [
+        { duration: fadeIn, volL: 0, volR: 0, basefreq: 0, beat: 0 },
+        { duration: hold, volL: vol, volR: volR, basefreq: 0, beat: 0 },
+        { duration: fadeOut, volL: vol, volR: volR, basefreq: 0, beat: 0 }
+      ]
+    };
+  }
 
   var api = {
     SAMPLE_RATE: SAMPLE_RATE,
@@ -443,6 +610,8 @@
     VOICE_ISOPULSE_ALT: VOICE_ISOPULSE_ALT,
     VOICE_WHITE: VOICE_WHITE,
     VOICE_BROWN: VOICE_BROWN,
+    NOISE_TYPES: NOISE_TYPES,
+    noiseVoice: noiseVoice,
     FLAG_COMPLETED: FLAG_COMPLETED,
     FLAG_NEWLOOP: FLAG_NEWLOOP,
     FLAG_NEWENTRY: FLAG_NEWENTRY,

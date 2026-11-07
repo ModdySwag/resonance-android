@@ -286,6 +286,41 @@
     }
   };
 
+  /* ----------------------------------------------------------------- noise */
+  /* Generated noise beds: same tuple shape as the levels above — [base, beat,
+   * vol, kind] — but the kind names a noise colour and base/beat go unused,
+   * because the engine synthesises the source itself (engine.js VOICE_WHITE /
+   * VOICE_PINK / VOICE_BROWN). No samples, no network, no dependency: a noise
+   * session is just a voice whose type is a colour.
+   *
+   * All three colours are level-matched inside the engine (raw RMS 4773 at
+   * vol 1, the calibration the tonal voices share), so these volumes mean the
+   * same thing they do in the tone sets: the layers sum like any other bed.
+   * White is the brightest and most fatiguing, so it sits lowest; brown keeps
+   * most of its energy under 200 Hz, so it can sit highest. */
+  var NOISE = {
+    Nwhite: {
+      label: "Noise — white",
+      note: "flat spectrum, equal energy per hertz: the masking reference",
+      sets: [[0, 0, 0.30, "white"]]
+    },
+    Npink: {
+      label: "Noise — pink",
+      note: "equal energy per octave, 1/f: the usual room/sleep balance",
+      sets: [[0, 0, 0.32, "pink"]]
+    },
+    Nbrown: {
+      label: "Noise — brown",
+      note: "1/f², most energy low: the deepest bed of the three",
+      sets: [[0, 0, 0.38, "brown"]]
+    },
+    Nrain: {
+      label: "Noise — rain",
+      note: "brown body under a pink middle and a little white hiss",
+      sets: [[0, 0, 0.28, "brown"], [0, 0, 0.13, "pink"], [0, 0, 0.05, "white"]]
+    }
+  };
+
   /* --------------------------------------------------------------- shapes */
   /* Each shape returns the per-voice entry list for one carrier layer.
    * `settle` = the beat on the first audible layer glides down from this value
@@ -310,13 +345,29 @@
 
   /* one layer tuple -> a voice.  The tuple's 4th element chooses the voice
    * type: "iso" = isochronic pulse (single carrier, identical channels),
-   * anything else = a binaural pair (headphone sets only). */
+   * "white" / "pink" / "brown" = a generated noise source (no carrier, no
+   * beat), anything else = a binaural pair (headphone sets only). */
   function layerVoice(spec, shape, isFirst) {
     var h = helpers();
     var base = spec[0], beat = spec[1], vol = spec[2];
-    var iso = spec[3] === "iso";
+    var kind = spec[3];
+    var iso = kind === "iso";
     var v = [];
     var hold = (beat === 0) ? 0 : shape.settle;          /* a plain carrier never settles */
+
+    if (kind === "white" || kind === "pink" || kind === "brown") {
+      /* Generated noise layer: the engine synthesises the colour, so there is
+       * no carrier and no beat — just the source under the same fade-in /
+       * hold / fade-out envelope every other layer uses. The hold entry
+       * repeats the level (entry k ramps into entry k+1's values) so the bed
+       * holds flat instead of fading across the whole sitting. */
+      var noiseEntries = [
+        { dur: shape.fadeIn, vol: 0 },
+        { dur: shape.hold, vol: vol },
+        { dur: shape.fadeOut, vol: vol }
+      ];
+      return h[kind](noiseEntries);
+    }
 
     v.push({ dur: shape.fadeIn, base: base, beat: beat, vol: 0 });
     if (hold > 0 && isFirst) {
@@ -356,7 +407,7 @@
   var CUE_BASE = 281, CUE_RATE = 22;         /* the same signal, as a speaker pulse */
 
   function level(key) {
-    var l = LEVELS[key] || ROOM[key];
+    var l = LEVELS[key] || ROOM[key] || NOISE[key];
     if (!l) throw new Error("unknown level " + key);
     return l;
   }
@@ -675,6 +726,31 @@
         ["Dl6", "extended", "Theta, held (no walking)", "One rate for the longest shape in the library, over the pink bed: the same theta bed the walks pass through, with nowhere to go."],
         ["Dl25", "freeflow", "Delta, open-ended", "Two and a half a second unbroken for the longest free-flow shape - no settling, no ramp, and no stages to follow."]
       ]
+    },
+    {
+      id: "noise",
+      name: "Noise — white, pink, brown",
+      blurb: "The generated beds: white for masking, pink for a room-like balance, brown for the low end, and a three-layer rain mix. No tones and no samples — every colour is synthesised by the engine and level-matched to the tone sets.",
+      sessions: [
+        ["Nwhite", "standard", "White noise (broadband mask)",
+         "Flat from 20 Hz to 20 kHz: the colour that hides speech and traffic best, and the one that tires the ear fastest, so it sits at the lowest volume of the three.",
+         { shape: { bed: false } }],
+        ["Npink", "extended", "Pink noise (room balance)",
+         "Equal energy per octave — the balance of steady rain or a fan rather than a hiss, and the usual choice for a long bed. The long shape, with a slow fade at each end.",
+         { shape: { bed: false } }],
+        ["Nbrown", "deep", "Brown noise (low bed)",
+         "The 1/f² colour: most of its energy sits under 200 Hz, so it reads as a low rumble rather than a hiss. The deep shape, with the longest fades the library has room for.",
+         { shape: { bed: false } }],
+        ["Nrain", "extended", "Rain (brown, pink and white)",
+         "Three layers stacked the way weather stacks: a brown body, a pink middle and a thread of white hiss on top. Not a recording of rain — a generated bed with the same spectral shape.",
+         { shape: { bed: false } }],
+        ["Npink", "intro", "Pink, short (first pass)",
+         "The shortest way to hear what pink does in a room, and to settle the level before committing to an hour of it.",
+         { shape: { bed: false } }],
+        ["Nbrown", "freeflow", "Brown, open-ended",
+         "No settling and no ramp: the low bed simply runs for as long as the sitting does.",
+         { shape: { bed: false } }]
+      ]
     }
   ];
 
@@ -715,7 +791,7 @@
   }
 
   var api = {
-    LEVELS: LEVELS, ROOM: ROOM, SHAPES: SHAPES, PACKS: PACKS,
+    LEVELS: LEVELS, ROOM: ROOM, NOISE: NOISE, SHAPES: SHAPES, PACKS: PACKS,
     buildSession: buildSession, buildTour: buildTour, buildLibrary: buildLibrary,
     LIBRARY: buildLibrary()
   };

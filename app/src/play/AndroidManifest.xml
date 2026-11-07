@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Play channel overlay.
+
+    The app's page is served from the APK's own assets (WebViewAssetLoader answers every request
+    for appassets.androidplatform.net), so nothing in this build needs the network, and Play
+    delivers the updates instead of the site's JSON feed. The updater is also compiled out of
+    this flavour - Updates checks BuildConfig.SELF_UPDATE, which is false here - so these three
+    permissions would be a request for a capability that no code can use. They are removed from
+    the merged manifest rather than declared and left unused.
+
+    The sideload flavour merges the main manifest unchanged and keeps all three.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Only the site's own updater could use these; the play build cannot install anything. -->
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="remove" />
+
+    <!-- The player reads local assets and writes through MediaStore: no network at all. -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+
+    <!-- The installer query in the main manifest exists only for the self-updater's hand-off. -->
+    <queries tools:node="remove" />
+
+</manifest>

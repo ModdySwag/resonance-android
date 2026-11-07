@@ -14,6 +14,30 @@ android {
         versionName "2.0.5-beta"
     }
 
+    /* Two delivery channels from one code base, same application id.
+       sideload: today's build - it reads the update feed on moddys.net and hands the new APK to
+                 the system installer. This is what the site serves and what CI publishes.
+       play:     Play policy forbids REQUEST_INSTALL_PACKAGES for a player like this and the app
+                 is a local asset player, so this flavour keeps no network permission at all and
+                 compiles the self-updater out (see app/src/play/AndroidManifest.xml and
+                 BuildConfig.SELF_UPDATE). Play delivers the updates. */
+    flavorDimensions "channel"
+    productFlavors {
+        sideload {
+            dimension "channel"
+            buildConfigField "boolean", "SELF_UPDATE", "true"
+        }
+        play {
+            dimension "channel"
+            buildConfigField "boolean", "SELF_UPDATE", "false"
+        }
+    }
+
+    buildFeatures {
+        // AGP 8 defaults this off; the flavour guard in Updates reads BuildConfig.SELF_UPDATE
+        buildConfig true
+    }
+
     signingConfigs {
         release {
             // Filled in from CI secrets (see .github/workflows/release.yml). When the env
@@ -121,4 +145,52 @@ tasks.configureEach { t ->
     if (t.name != "minifyPageJs" && t.name.contains("Release") && !t.name.contains("clean")) {
         t.dependsOn minifyPageJs
     }
+}
+
+// A flavoured build writes its artefacts under the flavour's own directory
+// (outputs/apk/sideload/release/app-sideload-release.apk). Everything that already publishes
+// this app - .github/workflows/release.yml, tools/apk_identity.py, the install snippets - reads
+// outputs/apk/release/app-release.apk, so the sideload channel is mirrored (and renamed) back to
+// that exact path: after a build it is the current sideload APK, not a leftover.
+// Only the sideload channel: the play build leaves through Play, never through the site.
+def mirrorSideloadApk = tasks.register("mirrorSideloadReleaseApk", Copy) {
+    from("$buildDir/outputs/apk/sideload/release") {
+        include "*.apk"
+        rename { "app-release.apk" }
+    }
+    into("$buildDir/outputs/apk/release")
+    doLast { logger.lifecycle("sideload channel mirrored to build/outputs/apk/release/app-release.apk") }
+}
+
+def mirrorSideloadBundle = tasks.register("mirrorSideloadReleaseBundle", Copy) {
+    from("$buildDir/outputs/bundle/sideloadRelease") {
+        include "*.aab"
+        rename { "app-release.aab" }
+    }
+    into("$buildDir/outputs/bundle/release")
+}
+
+// The debug channel has the same problem: .github/workflows/android.yml uploads
+// outputs/apk/debug/*.apk, which a flavoured build writes to outputs/apk/sideload/debug.
+def mirrorSideloadDebug = tasks.register("mirrorSideloadDebugApk", Copy) {
+    from("$buildDir/outputs/apk/sideload/debug") {
+        include "*.apk"
+        rename { "app-debug.apk" }
+    }
+    into("$buildDir/outputs/apk/debug")
+}
+
+tasks.configureEach { t ->
+    if (t.name == "assembleSideloadRelease") t.finalizedBy mirrorSideloadApk
+    if (t.name == "bundleSideloadRelease") t.finalizedBy mirrorSideloadBundle
+    if (t.name == "assembleSideloadDebug") t.finalizedBy mirrorSideloadDebug
+}
+
+// Flavours give AGP one lint task per variant (lintSideloadRelease, lintPlayRelease) and no
+// build-type one, so the documented gate `./gradlew :app:lintRelease` would die with "task is
+// ambiguous". Keep that name meaning "lint everything this release ships": both channels.
+tasks.register("lintRelease") {
+    group = "verification"
+    description = "Lint both release variants (sideload and play)."
+    dependsOn "lintSideloadRelease", "lintPlayRelease"
 }

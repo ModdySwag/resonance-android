@@ -227,15 +227,18 @@
 <div id="toast" class="toast"></div>
 
 <!-- order matters: engine → gnm → presets/packs/rates → pack reader → app → studio panels -->
-<script src="engine.js?v=81p"></script>
+<script src="engine.js?v=81q"></script>
 <script src="gnm.js?v=81p"></script>
 <script src="presets.js?v=81p"></script>
-<script src="packs.js?v=81p"></script>
+<script src="packs.js?v=81q"></script>
 <script src="rates.js?v=81p"></script>
 <script src="pack.js?v=81p"></script>
 <script src="app.js?v=81r"></script>
 <script src="studio.js?v=84a"></script>
 <!-- visualizer system: mounts its own panels + menu card, follows the audio -->
+<!-- WebGL2 field renderer: capability + shader only, inert until a caller invokes
+     window.__rsGL.init(canvas); wiring into the live visualiser is a later step. -->
+<script src="vizgl.js?v=1a"></script>
 <script src="vizmath.js?v=82v"></script>
 <script src="vizpal.js?v=82v"></script>
 <script src="vizmodes.js?v=82x"></script>

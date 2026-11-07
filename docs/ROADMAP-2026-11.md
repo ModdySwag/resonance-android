@@ -134,6 +134,39 @@ buys compute this renderer does not need.
   Calm/Headspace/BetterSleep/Endel and by clinical brands.
 - **Grandfather** existing sideload users with a free unlock and a session import path.
 
+## Track F — features that build distance (not just parity)
+
+Distance comes from things a competitor cannot copy in a sprint because their architecture forbids
+it. Ours are structural: no account, no server, no network permission, and a native shell that owns
+system surfaces a web app cannot reach.
+
+1. **Cymatic Bedside Mode.** Full-screen field, clock, burn-in-safe dim, fade-out, 15 s share clip.
+   Turns the one asset nobody else has into eight hours of nightly use. Copyable in a month; not
+   copyable by anyone whose visualiser is a paid add-on.
+2. **Speaker-safe entrainment.** Route detection, isochronic fallback, one honest line about
+   headphones. Every competitor's product silently dies on a phone speaker; theirs cannot fix it
+   without admitting it.
+3. **Session files, no cloud.** A session exports as a small JSON (and a QR for a tap-to-import).
+   Sharing a protocol works offline, needs no account, and is something cloud-based rivals will not
+   ship because it routes around their account system.
+4. **Noise colour continuum + room calibration.** Not four fixed colours: one continuous tilt from
+   brown to white, plus a 20-second ambient measurement that sets the masking level. Owns the
+   highest-volume search terms with a better tool than the incumbents' fixed presets.
+5. **Night programs.** Chain sessions with crossfades into a single night-long arc (down through
+   theta, hold, drift to delta, sunrise ramp). A timer is a setting; a program is a feature.
+6. **On-device journal.** One tap after a session (focus/mood/sleep), stored locally, 7-day chart,
+   CSV export, no telemetry. Evidence mode's other half, and a trust claim no subscription app can
+   make credibly.
+7. **Haptics + Android 16 Live Update card.** The "this is native" layer: a beat you can feel and a
+   session card in the shade.
+
+**Do not build:** accounts, cloud sync, social feed, an AI companion, sleep-cycle detection from
+phone sensors, Wear OS. Each one either breaks the offline moat or picks a fight with an incumbent
+who owns it.
+
+**The bluntest moat is a permission list.** A Play build with no `INTERNET` permission is verifiable
+by any user in Settings, and no competitor whose product depends on a server can say the same.
+
 ## First three moves
 
 1. Start the 12-tester closed test the day the Play track begins — it is a 14-day calendar wall.

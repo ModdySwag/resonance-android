@@ -87,6 +87,15 @@ final class Updates {
 
     /** Ask the site what the newest build is. Never throws; failures arrive as an error. */
     static void check(final Context ctx, final boolean manual, final Callback cb) {
+        /* Play delivers this build's updates, and the play manifest carries no network
+           permission: there is no feed to read. Say "current" rather than "failed" - the app is
+           up to date as far as anything this build can see. BuildConfig.SELF_UPDATE is a
+           compile-time constant, so in the play flavour every line below this guard is dead
+           code and R8 drops it along with the network classes it uses. */
+        if (!BuildConfig.SELF_UPDATE) {
+            cb.onResult(new Info(false, versionCode(ctx), "", "", "", ""), null);
+            return;
+        }
         if (!manual && System.currentTimeMillis() - lastCheckedAt < CHECK_AGAIN_AFTER_MS) {
             return;                      // a launch check already ran recently; do not nag the site
         }
@@ -168,6 +177,15 @@ final class Updates {
     @android.annotation.SuppressLint("InlinedApi")   /* RECEIVER_NOT_EXPORTED inlines to 4; a forged
         broadcast still cannot pass the download-id and sha256 checks below */
     static void downloadAndInstall(final Activity act, String url, String version, final String sha256) {
+        /* The play build has no installer permission and no network permission, so this must be
+           unreachable there even if the shell's notice somehow calls the bridge. Same
+           compile-time constant as check(): in the play flavour the rest of this method - the
+           DownloadManager hand-off and the ACTION_VIEW into the system installer - does not
+           survive into the dex. */
+        if (!BuildConfig.SELF_UPDATE) {
+            Log.i(TAG, "update: ignored - this build is updated through Google Play");
+            return;
+        }
         if (url == null || url.trim().isEmpty()) {
             toast(act, "The update feed has no download link yet.");
             return;
