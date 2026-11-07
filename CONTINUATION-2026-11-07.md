@@ -1,4 +1,97 @@
-# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (latest: session 6)
+# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-08 (latest: session 7)
+
+## SESSION 7 — lint to zero, 25% smaller, Play-clean flavour, GPU field (HEAD `61f9388`)
+
+### STATE
+
+- HEAD `61f9388`, tree clean, **nothing pushed**. `2.0.5-beta`, `versionCode 12`, targetSdk 36.
+- **Both devices run 650,567 B**: tablet SM-X210 (wireless, mDNS transport) and phone
+  `ZY22LGC75T` motorola edge 60 fusion (`192.168.1.95:33139`). Verified by `base.apk` size.
+- **Tablet GPU is an Adreno 619**, not the 643 the research budgets assumed — every perf number in
+  `docs/ROADMAP-2026-11.md` needs re-basing on it. WebGL2, `EXT_color_buffer_float`, maxTex 8192, DPR 1.5.
+
+### SHIPPED THIS SESSION (all gated, all on device)
+
+1. **Lint 0/0** (was 3 errors / 11 warnings). `OnBackInvokedCallback` into an `@TargetApi(33)` method;
+   `windowLightNavigationBar` into `values-v27` / `values-night-v27` over a shared `AppThemeBase`;
+   `Locale.ROOT`; dead SDK guards; `fullBackupContent="false"`; unused colours deleted.
+2. **APK 860,074 -> 641,386 B** before the new features: knobs 512->256 px (-85,158; they paint at
+   68 px), release-only terser over the packaged JS (-66,124; sources stay readable), ten density
+   launcher PNGs deleted (-67,412; adaptive icon covers every density at minSdk 26).
+3. **ESLint + Gradle wrapper**. ESLint found five real defects: duplicate key in `cympresets.js`,
+   sparse array slot in `_shell_shim.js`, a dead `Shift+R` branch in `cym.js` (`r`/`R` claimed
+   twice), redeclared `target` and `db !== db` in `viz.js`, redeclared loop var in `vizmodes.js`.
+4. **play / sideload flavours.** Play build has **no INTERNET, no ACCESS_NETWORK_STATE, no
+   REQUEST_INSTALL_PACKAGES** (verified with `aapt2 dump permissions`) and the updater is compiled
+   out via `BuildConfig.SELF_UPDATE`; sideload is byte-identical to before. Mirror tasks keep
+   `outputs/apk/release`, `outputs/bundle/release`, `outputs/apk/debug` on the sideload build.
+5. **Audio focus** in `PlaybackService`: `AUDIOFOCUS_GAIN` around the existing startForeground
+   ordering, abandon on stop, pause on LOSS/TRANSIENT, duck on CAN_DUCK. Request+abandon observed
+   on device; loss/duck paths are code-verified only.
+6. **`app/vizgl.js`** (24,281 B): 8-mode Chladni field shader, real capability probe, inert until
+   `init()`. Chamber paints its **field layer** with it when `fieldRenderer='gl'` (default
+   **canvas**) — Canvas runs unchanged when webgl2 is missing, init fails, or the context is lost
+   (all three forced in the probe; zero page errors).
+   **HONEST LIMIT: painting moved, not the simulation — `heightAt` still runs every frame for
+   sand/bubbles/dust, so the 18 ms UI cost is NOT gone.**
+7. **Noise pack.** `engine.js`: pink was not pink (inherited one-pole lopass measured -3 dB/oct) —
+   replaced with Paul Kellet's 3-pole 1/f. Measured octave slopes: white +3.07, pink +0.07, brown
+   -2.34 dB/oct at the documented gain. 10 ms master ramp makes play/pause click-free (bit-identical
+   after sample 441). New pack: 6 sessions, library 124 -> 130, no existing session altered.
+8. **Pinch-to-zoom** in the chamber (`cym.js`): pointers tracked by id, distance ratio maps onto the
+   wheel's `cam.dist` clamp 1.35-6.0, remaining finger re-seeds the drag. Hint now says pinch or
+   wheel by `(pointer: coarse)`.
+9. **Docs**: `docs/ROADMAP-2026-11.md` (five research streams, corrected against the code) and
+   `docs/QUALITY-GATES.md` (measured matrix + what is still missing); `docs/play/` — privacy policy
+   (md + self-contained HTML), listing copy with 3 A/B arms, data-safety answers, FGS declaration +
+   shot list, IARC answers, 52-item checklist.
+
+### OPEN QUEUE, in order
+
+1. **His eye on the new build**: pinch, noise pack, the "GPU field (WebGL2)" switch in the chamber's
+   Display section (default remains canvas).
+2. **Hold-fade defect, owner decision**: in `packs.js` every legacy session's `hold` entry ramps into
+   a `fadeOut`, so all **124** sessions fade across their whole hold — measured 0.160 at 75 s,
+   0.0743 at 1200 s, 0.0057 at 2100 s. Fixing changes every existing preset's loudness envelope.
+3. **Publish 2.0.5**: `versionCode` -> 13, upload, `updates.json`; download -> sha256 -> installer
+   still untested.
+4. **Play track** (calendar-bound): start the **12-tester / 14-day** closed test now; deploy
+   `docs/play/privacy.html` to https://moddys.net/resonance/privacy (replace `[OWNER]` contact);
+   AAB; Play App Signing enrolment; FGS video; data safety; IARC; screenshots.
+5. **VizGL step 3**: move or cut the field *simulation*; the painting-only win is not the 18 ms.
+6. **Gates still missing**: Error Prone (plugin 4.1.0 did not inject `-Xplugin` into AGP — reverted;
+   needs the manual `--add-exports` recipe), JUnit/Robolectric/JaCoCo (Java has **0 tests**),
+   StrictMode/LeakCanary, Perfetto, MobSF.
+7. **Track F features**: Cymatic Bedside Mode, speaker-safe entrainment, session files + QR, noise
+   continuum + room calibration, night programs, on-device journal, haptics + Live Update card.
+8. Do **not** build: accounts, cloud sync, social, AI companion, sensor sleep tracking, Wear OS.
+
+### TRAPS (new this session)
+
+- **`assembleRelease` only runs `lintVital`.** `:app:lintRelease` is the real gate and was red while
+  the build looked green. Quote the `lintRelease` line.
+- **Mutating AGP's merged assets in a `doLast` never reaches packaging.** Minify via a generated dir
+  owned by the *release* source set (`minifyPageJs`); match `mergeReleaseAssets` lazily; every task
+  whose name contains `Release` must depend on it or Gradle fails the implicit-dependency check.
+- **AAPT2 only compiles `<adaptive-icon>` in a `v26` folder** — keep `mipmap-anydpi-v26` and put a
+  path-scoped `ObsoleteSdkInt` ignore in `app/lint.xml`.
+- `apk_identity` must assert **mangling-safe markers** (`ResonanceJs`, `__rs`), not `function native(`.
+- The tab bar **auto-hides after 6 s** (`rs-navhide`) and keeps its space; a screenshot without it is
+  the resting state. A screencap seconds after launch can be an **empty frame** — re-capture.
+- **Wireless adb**: the connect port changes every time the toggle restarts; pair first
+  (`adb pair <ip>:<pairport> <code>`, codes are single-use). If `_adb-tls-pairing` is not advertised,
+  scan 30000-46000 for the open port. **Revoking USB debugging authorisations also kills wireless** —
+  both devices need re-pairing afterwards.
+- Error Prone via `net.ltgt.errorprone` 4.1.0 resolved but never added `-Xplugin:ErrorProne`; a
+  three-defect probe compiled clean. Do not assume a wired plugin is running — plant a fault.
+
+### TOOLS
+
+`./gradlew` (wrapper, 8.7) | `py -3.11 tools/shim_harness.py [--www <dir>]` (183) |
+`py -3.11 cache/contrast.py` (0) | `py -3.11 tools/apk_identity.py <apk>` (32) |
+`py -3.11 tools/tablet_pass.py` (82) | `npx --yes eslint@9 --config eslint.config.mjs app/src/main/assets/www` |
+signed build env: `KEYSTORE_FILE=C:/Users/Moddy/keystores/resonance-release.p12`, password in
+`resonance-release-credentials.txt` beside it, `KEY_ALIAS=resonance`.
 
 ## SESSION 6 — lint to zero, 25% smaller, both devices on the new build (HEAD `65310c9`)
 
