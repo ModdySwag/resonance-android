@@ -7,7 +7,7 @@ Read this block first; everything below it is history.
 ### STATE
 
 - HEAD `777f53e`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
-- **Signed release APK: 715,067 B, sha256 `fedfcfe14e5b65f8487dd1f2f88dd93ed4cbade37d7c0fe21c670d20291ea405`**,
+- **Signed release APK: 715,323 B, sha256 `e48b88d4fb169feffeb159d1d6decc5686fd1beaaf0b580beb49d2dc000d7d68`** (HEAD `16f78b8`),
   installed on the phone (`192.168.1.95:33139`) over the 683,566 B / code-12 build: cold start
   **454 ms**, `page: shim ready` in logcat, crash buffer empty.
 - Debug build (`com.moddys.resonance.debug`) on the phone — device_gate and CDP need it.
@@ -108,9 +108,26 @@ pre-existing (two PatternForge live links answer HTTP 300, palette/spraybar drif
 - The chamber's Close key is gone (Back owns leaving); the fullscreen ✕ stays.
 - A scene chip is manual control and turns Follow off — do not "restore" the old auto-reapply.
 
+### NEXT AFTER THE PUBLISH — the Visualise restructure (agreed, not built)
+
+Two different things share one card in Visualise, which is why it reads confusing:
+`Follow the tone` + the scene/medium chips are **chamber** controls but sit next to the
+**Ambient panels** card, and that card has its own Scene menu, duplicating "Scene".
+
+Plan (a move of existing nodes; no new art; updates live):
+1. Move the Follow switch, `#rsScenes`, `#rsMedia`, `#rsVisToggles` and the `#rsMap` line
+   **into the chamber card**, directly above the "Open the chamber" button.
+2. The Ambient panels card stands alone as a visualiser entry; its own page Scene menu is the
+   only scene control for panels, and the duplicate chips go.
+3. Focus-view card unchanged.
+
+Also shipped late in session 9: focus view — a tap anywhere now only wakes the player (the
+old toggle hid it on the revealing tap, which read as a flicker), and the page's sync/slow
+badge is hidden there (`.viz-badge` under `html.rs-focus`).
+
 ### QUEUE, in order
 
-1. **His eye on the chamber** (faceplate, drawer, lip, auto-hide, chips) — then the publish above.
+1. **His eye on the chamber, the cards and the focus view** — then the publish above.
 2. Play track: privacy page live, AAB, closed test.
 3. VizGL step 3: mask the field to the plate.
 4. Robolectric follow-ups; Error Prone/JaCoCo/StrictMode/Perfetto/MobSF.
