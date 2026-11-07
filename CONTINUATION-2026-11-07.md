@@ -6,15 +6,15 @@ Read this block first; everything below it is history.
 
 ### STATE
 
-- HEAD `ba53731`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
-- **Signed release APK: 714,843 B, sha256 `8724078eff88fcb4052b3ce45a70135159f00054657b8b84789e16cd65ac72f6`**,
+- HEAD `c239866`, tree clean, **nothing pushed**. `2.0.5-beta`, **`versionCode 13`**, targetSdk 36.
+- **Signed release APK: 714,923 B, sha256 `5f6a72066537aa4013b429a92ab249b98d5ed0ad19a8c7734e9ccf2968ef8f99`**,
   installed on the phone (`192.168.1.95:33139`) over the 683,566 B / code-12 build: cold start
   **454 ms**, `page: shim ready` in logcat, crash buffer empty.
 - Debug build (`com.moddys.resonance.debug`) on the phone — device_gate and CDP need it.
 - **Publish payload staged locally in `radio-browser`, NOT uploaded** (house rule: his review
   first): `deploy/downloads/resonance-studio-v2.0.5-beta.apk` (same bytes as the release APK),
-  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714843 /
-  `8724078e…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
+  `deploy/updates.json` regenerated (`resonance-android` = 2.0.5-beta / code 13 / 714923 /
+  `5f6a7206…`), `deploy/moddys-downloads.html` card updated (pill, href, filename, 0.7 MB, sha256,
   certutil line, GitHub link → `/releases`, "New in 2.0.5", 130 sessions). Backups of the two
   site files: `%LOCALAPPDATA%/Temp/rs-publish-backup-*`.
 
@@ -53,6 +53,21 @@ pin it, including "opening the chamber keeps the scene a person picked".
 - **Focus view / fullscreen:** one faceplate — `#rsFocusBar` (‹ name › Change) now lives *inside*
   `#rsFsCtl`, above the transport row (play · stop · fader · time). Brass faces on both.
 - `paintLevel()` now also paints `#rsCymVol` and `#rsFsVol`, so all four faders/levels are one value.
+
+### CLEANUP PASS (after the chamber work)
+
+- The 8 s quiet timer re-armed forever once the chamber had been opened — it now stops when the
+  chamber closes and only re-arms while the document is hidden.
+- `paintLevel()` rewrote `aria-valuetext` on both new faders every tick; it writes on change only.
+- The chamber built a fresh `matchMedia` per pointermove during a drag; one cached object now.
+- Removing Close left nothing focused on open; Back takes focus.
+- **Control audit**: 253 interactive elements across the five screens (home 19, sessions 19,
+  studio 109, visualise 60, settings 46); every rendered `data-act` (6) and `data-rs` (7) value has
+  a handler; the 33 with no listener of their own are delegated settings rows, pack-download
+  anchors, or inputs read at submit. Behaviour spot-checks all pass — theme, UI mode, accent,
+  follow, scene/medium/sand chips, hero play (aria flips to Pause, sample advances) and stop, mute
+  and restore. "Add a voice" *opens* the builder pane rather than adding a voice — that is the
+  page's design, not a dead control. `tools/shim_harness.py` 199/0 after the cleanups.
 
 ### GATES (this session, all green)
 
