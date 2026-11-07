@@ -190,7 +190,7 @@
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     for (var L = 0; L < s.layers.length; L++) {
-      var lay = s.layers[L], pts = lay.pts, a = 0.05 + 0.05 * L + 0.16 * F.pre.intensity * 0.5;
+      var lay = s.layers[L], pts = lay.pts, a = 0.11 + 0.07 * L + 0.30 * F.pre.intensity * 0.5;
       ctx.fillStyle = ink(F, 0.55 + 0.25 * L, Math.min(0.5, a));
       for (var i = 0; i < pts.length; i++) {
         var p = pts[i];
@@ -198,8 +198,8 @@
         var bright = twk * (0.35 + 0.9 * (bands.mid || 0) + 0.5 * (bands.air || 0));
         if (bright < 0.06) continue;
         var x = p.x * fw, y = p.y * H;
-        var sz = 1 + 1.6 * p.z * (0.6 + bright);
-        ctx.globalAlpha = clamp(bright * (0.5 + 0.5 * p.z), 0, 0.85);
+        var sz = 1.4 + 2.4 * p.z * (0.6 + bright);
+        ctx.globalAlpha = clamp(bright * (0.95 + 0.8 * p.z), 0, 0.95);
         ctx.fillRect(x, y, sz, sz);
       }
     }
@@ -237,7 +237,7 @@
     var s = this.s, H = F.H, W = F.W;
     var air = (F.feat.bandsAtt && F.feat.bandsAtt.air) || 0;
     var sub = (F.feat.bandsAtt && F.feat.bandsAtt.sub) || 0;
-    var rate = 3 + 120 * clamp(F.pre.intensity * air * 1.8, 0, 1);
+    var rate = 4 + 155 * clamp(F.pre.intensity * air * 1.8, 0, 1);
     s.acc += rate * F.dt;
     while (s.acc >= 1 && s.drops.length < s.pool) {
       s.acc -= 1;
@@ -246,8 +246,8 @@
         x: this.r() * W,
         y: -12 - this.r() * 30,
         v: 90 + this.r() * 190 * (0.5 + F.pre.intensity),
-        len: 6 + this.r() * 16,
-        a: 0.05 + this.r() * 0.13,
+        len: 9 + this.r() * 22,
+        a: 0.16 + this.r() * 0.26,
         bead: bead, stuck: 0, slide: 0
       });
     }
@@ -378,6 +378,24 @@
     var air = (F.feat.bandsAtt && F.feat.bandsAtt.air) || 0;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    /* a shallow star field behind the curtains: the space in a space picture is mostly
+       what is not moving, so a few still points at depth read as distance */
+    if (!s.stars) {
+      s.stars = [];
+      var sr = VP.mulberry32(90210);
+      for (var kStar = 0; kStar < 96; kStar++) {
+        s.stars.push({ x: sr(), y: sr() * 0.88, r: 0.5 + sr() * 1.4,
+                       ph: sr() * TAU, tw: 0.3 + sr() * 1.2 });
+      }
+    }
+    ctx.fillStyle = ink(F, 0.95, 0.55);
+    for (var k2 = 0; k2 < s.stars.length; k2++) {
+      var st = s.stars[k2];
+      var tw = 0.5 + 0.5 * Math.sin(F.t * st.tw + st.ph);
+      ctx.globalAlpha = clamp(0.18 + 0.55 * tw * (0.5 + 0.5 * F.pre.intensity), 0, 0.8);
+      ctx.fillRect(st.x * fw, st.y * H, st.r, st.r);
+    }
+    ctx.globalAlpha = 1;
     for (var i = 0; i < s.curtains.length; i++) {
       var cu = s.curtains[i];
       var thick = cu.w * (0.5 + 0.9 * (cu.hue ? mid : air)) * (0.6 + 0.7 * F.pre.intensity);
@@ -870,24 +888,24 @@
       var n = (v.kind === "binaural") ? Math.max(1, v.env.N) : Math.max(1, v.gate.N);
       if (events - s.lastOpen >= n && s.rings.length < 7) {
         s.lastOpen = events - (events - s.lastOpen) % n;
-        spawn(0.10 + 0.14 * clamp(v.att, 0, 1));
+        spawn(0.26 + 0.30 * clamp(v.att, 0, 1));
       }
     }
     /* Never open blank: on a heavily slowed session the first gate event can be
      * a minute away, and a backdrop-less ripple panel would show nothing. */
-    if (!s.rings.length) spawn(0.12);
+    if (!s.rings.length) spawn(0.28);
     ctx.save();
     for (var i = s.rings.length - 1; i >= 0; i--) {
       var r0 = s.rings[i];
       var age = F.t - r0.t0;
-      var life = 4.5;
+      var life = 6.0;
       if (age > life) { s.rings.splice(i, 1); continue; }
       var rr = age * Math.min(W, H) * r0.s;
-      var aa = r0.a * (1 - age / life) * (1 - age / life);
+      var aa = r0.a * Math.pow(1 - age / life, 1.4);
       ctx.beginPath();
       ctx.arc(r0.x, r0.y, rr, 0, TAU);
-      ctx.lineWidth = 1.2;
-      ctx.strokeStyle = accent(F, aa * (0.5 + 0.5 * F.pre.intensity));
+      ctx.lineWidth = 1.4 + 1.4 * F.pre.intensity;
+      ctx.strokeStyle = accent(F, clamp(aa * (0.9 + 0.8 * F.pre.intensity), 0, 0.95));
       ctx.stroke();
     }
     ctx.restore();
