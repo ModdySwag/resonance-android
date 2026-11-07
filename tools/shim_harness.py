@@ -340,6 +340,49 @@ def main():
         suite.check("Stop stops and rewinds",
                     suite.wait_until("document.getElementById('clock').textContent.indexOf('0:00') === 0", 8))
 
+        # ---- the loop key: state, its face, and where it sits ---------------------------
+        # The page's own button:hover shorthand used to wipe the key's generated face on the
+        # first press and never give it back (a tap leaves a sticky hover on a touch screen),
+        # so the key went grey and stayed grey while the state still toggled.
+        def loop_state():
+            return page.evaluate(
+                "(() => ({ pressed: document.getElementById('rsLoopBtn').getAttribute('aria-pressed'),"
+                " loops: String(window.__gnauralAPI.state.schedule.loops),"
+                " face: getComputedStyle(document.getElementById('rsLoopBtn')).backgroundImage,"
+                " led: document.getElementById('rsLoopLed').className }))()")
+
+        l0 = loop_state()
+        suite.check("the loop key starts lit, and the engine is looping",
+                    l0["pressed"] == "true" and l0["loops"] == "Infinity" and "on" in l0["led"].split(), l0)
+        page.click("#rsLoopBtn")
+        page.wait_for_timeout(350)
+        l1 = loop_state()
+        suite.check("one press stops looping, in the engine too",
+                    l1["pressed"] == "false" and l1["loops"] == "1" and "on" not in l1["led"].split(), l1)
+        suite.check("the key keeps its brass face while it is pressed", "amp-loop" in l1["face"], l1["face"])
+        page.click("#rsLoopBtn")
+        page.wait_for_timeout(350)
+        l2 = loop_state()
+        suite.check("a second press brings looping back",
+                    l2["pressed"] == "true" and l2["loops"] == "Infinity" and "on" in l2["led"].split(), l2)
+        suite.check("and the face is still the key's own", "amp-loop" in l2["face"], l2["face"])
+        geo = page.evaluate("""(() => {
+          const k = document.getElementById('rsLoopBtn'), led = document.getElementById('rsLoopLed');
+          const row = document.querySelector('.rs-amprow');
+          const kr = k.getBoundingClientRect(), lr = led.getBoundingClientRect();
+          const rr = row.getBoundingClientRect();
+          let rightmost = true;
+          for (const el of row.children) {
+            const b = el.getBoundingClientRect();
+            if (getComputedStyle(el).display !== 'none' && b.width > 0 && b.right > kr.right + 1) rightmost = false;
+          }
+          return { keyRight: Math.round(kr.right), rowRight: Math.round(rr.right),
+                   keyLeft: Math.round(kr.left), ledRight: Math.round(lr.right), rightmost: rightmost };
+        })()""")
+        suite.check("the lamp is left of the key, and the key is flush with the row's right edge",
+                    geo["ledRight"] <= geo["keyLeft"]
+                    and abs(geo["keyRight"] - geo["rowRight"]) <= 1 and geo["rightmost"], geo)
+
         # ---- Surprise me lives in the player -----------------------------------------
         sur = page.evaluate("""(() => {
           const s = document.getElementById('rsSurprise'),

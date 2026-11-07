@@ -7,9 +7,10 @@
   session 11 plus this session's fix. **Nothing pushed, nothing published.**
 - **`harness7.log` does not exist in the tree** (session 11's log was never written to disk); the failure
   it described was reproduced from the code and is **understood — it was not a history bug**.
-- Release APK built and installed this session: **956,019 B, sha256
-  `1f3a18084cf6fe37b28169afae1f2355447a936c890a3bc8ff2f94919f01bb19`**, versionCode 14 / 2.0.6-beta, on the
-  phone `192.168.1.95:33139` and the Tab A9+ `adb-R92XB0RWN3B-67B1Tm`.
+- Release APK built and installed this session: **956,063 B, sha256
+  `6fff9919dcced4e93bc802b05e2212d123a99810b0ad559b8d1bfa86ec2bdc02`** (the loop-key follow-up below
+  rebuilt it; the first build of the session was 956,019 B / `1f3a1808…`), versionCode 14 / 2.0.6-beta,
+  on the phone `192.168.1.95:33139` and the Tab A9+ `adb-R92XB0RWN3B-67B1Tm`.
 - Eye-gate evidence from session 11 is still in `cache/focus-eye-2026-11-08/` (outside `tools/`).
 
 ## The lead was wrong — what actually happened
@@ -60,7 +61,7 @@ Proved able to fail by neutralising the draw gate for one run: `frames` went 171
 
 | gate | result |
 |---|---|
-| `py -3.11 tools/shim_harness.py` | **232 passed / 0 failed** (`cache/harness8.log`) |
+| `py -3.11 tools/shim_harness.py` | **238 passed / 0 failed** (`cache/harness9.log`; 232 before the loop-key legs) |
 | `py -3.11 cache/contrast.py` | `TOTAL LOW-CONTRAST 0` |
 | `py -3.11 tools/tablet_pass.py` | **82 passed / 0 failed** |
 | `npx eslint@9` | 0 problems |
@@ -70,6 +71,26 @@ Proved able to fail by neutralising the draw gate for one run: `frames` went 171
 | `tools/apk_identity.py --site C:/Users/Moddy/radio-browser/deploy/resonance` | only the `byte-identical to the site's` legs red (release minifies; that is the expected clean state) |
 | install + boot, phone & tablet | `page: shim ready`, crash buffer empty, `versionCode=14` |
 | `py -3.11 tools/device_gate.py -s 192.168.1.95:33139` | **19 passed / 0 failed** — `DEVICE GATE OK` |
+
+## Follow-up in the same session: the Home loop key (owner's report)
+
+He reported: *"when I press the Loop button it goes grey and circular and then stays that way"*, and asked
+for the key and its red lamp to move to the player's right edge with **the key furthest right and the lamp
+left of it**.
+
+- **Cause, measured with CDP `CSS.getMatchedStylesForNode`:** the *page's* own `button:hover` rule
+  (`background: color-mix(in srgb, var(--acc) 18%, var(--panel2))`) applies a `background` **shorthand**,
+  which resets `background-image` to `none` — and a tap leaves a sticky hover on a touch screen, so the
+  generated brass face was wiped on the first press and never came back even though the state kept toggling
+  (`aria-pressed` and `engine.schedule.loops` toggled all along; only the face was lost).
+- **Fix:** the key's rule is now `html[data-rs-ui=full] .rs-loopkey` **with `:hover`, `:active` and `:focus`
+  variants**, re-declaring the face at a specificity the page's `button:hover` cannot beat.
+- **Layout:** markup order is now `Loop` (engraved label) → **red lamp** → **key**, and the group is pushed
+  to the card's right edge by `html[data-rs-ui=full] .rs-amprow > .rs-loopunit{margin-left:auto}` — the bare
+  `margin-left:auto` was losing to the row's own `.rs-transport > * + *{margin-left:14px}`.
+- **Measured on his phone (433 CSS px, dpr 2.8125):** row `33..401`, key `355..401` (flush with the row and
+  with Stop above it), lamp `337..347` — and two real CDP touch taps leave the face on `amp-loop.webp` while
+  `loops` goes `Infinity → 1 → Infinity`.
 
 ## What is left, in order
 

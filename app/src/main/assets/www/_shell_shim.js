@@ -608,12 +608,23 @@
     "#rsClock{font:700 15px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;",
     "  color:#FFB454;letter-spacing:.08em;font-variant-numeric:tabular-nums;",
     "  text-shadow:0 0 7px rgba(255,150,40,.6),0 0 2px rgba(255,200,120,.9)}",
-    ".rs-loopunit{display:none;align-items:center;gap:7px;margin-left:auto}",
+    ".rs-loopunit{display:none;align-items:center;gap:8px;margin-left:auto}",
     "html[data-rs-ui=full] .rs-loopunit{display:inline-flex}",
+    /* the row's own spacing rule (.rs-transport > * + *) outranks a bare margin, so the
+       group only reaches the card's right edge with a selector that outranks it in turn:
+       the lamp and its label sit left, the key itself ends flush under Stop */
+    "html[data-rs-ui=full] .rs-amprow > .rs-loopunit{margin-left:auto}",
     "html[data-rs-ui=full] .rs-loopswitch{display:none}",
-    ".rs-loopkey{width:46px;height:46px;border-radius:50%;border:0;padding:0;cursor:pointer;",
+    /* The page's own button:hover shorthand (background: color-mix(...)) wiped this key's
+       generated face the first time it was pressed and never gave it back — a tap leaves a
+       sticky hover on a touch screen. The face is re-declared for every state it can be in,
+       at a specificity the page's rule cannot beat. */
+    "html[data-rs-ui=full] .rs-loopkey,html[data-rs-ui=full] .rs-loopkey:hover,",
+    "html[data-rs-ui=full] .rs-loopkey:active,html[data-rs-ui=full] .rs-loopkey:focus{",
+    "  width:46px;height:46px;border-radius:50%;border:0;padding:0;cursor:pointer;",
     "  background-image:url(ui/amp-loop.webp);background-size:cover;background-position:center;",
-    "  background-color:#100e0c;box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .12s var(--rs-ease)}",
+    "  background-repeat:no-repeat;background-color:#100e0c;",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5);transition:transform .12s var(--rs-ease)}",
     ".rs-loopkey:active{transform:scale(.95)}",
     ".rs-loopled{width:10px;height:10px;border-radius:50%;flex:0 0 10px;",
     "  background:radial-gradient(circle at 35% 30%,#5a1612,#2a0b09 70%);",
@@ -1608,9 +1619,11 @@
          lamp: the same hardware language as the transport above it */
       '    <span class="rs-ledpanel"><span id="rsClock" aria-live="polite">0:00 / 0:00</span></span>' +
       '    <span class="rs-loopunit">' +
-      '      <button class="rs-loopkey" id="rsLoopBtn" aria-pressed="true" aria-label="Loop"></button>' +
-      '      <i class="rs-loopled" id="rsLoopLed" aria-hidden="true"></i>' +
+      /* reading order: the engraved label, the pilot lamp, then the key itself at the
+         far right of the row — the lamp sits left of the key it reports on */
       '      <b class="rs-loopcap" aria-hidden="true">Loop</b>' +
+      '      <i class="rs-loopled" id="rsLoopLed" aria-hidden="true"></i>' +
+      '      <button class="rs-loopkey" id="rsLoopBtn" aria-pressed="true" aria-label="Loop"></button>' +
       '    </span>' +
       '    <label class="rs-sw rs-loopswitch" style="flex:1 1 auto;min-height:40px;padding:0">' +
       '      <span class="rs-swt"><span style="font-size:12.5px">Loop</span></span>' +
