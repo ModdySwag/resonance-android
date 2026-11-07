@@ -1004,12 +1004,15 @@
     "    background:linear-gradient(90deg,#8A6A33,#E7C98A,#8A6A33)}",
     "  .rs-app .cym .rs-cym-lip em{font-style:normal;color:#C9B48C;font-size:11px;line-height:1}",
     "  .rs-app .cym .rs-cym-lip:focus-visible{outline:2px solid #E0B96F;outline-offset:-2px}",
-    "  .rs-app .cym .cym-left.rs-cym-sheet{transform:translateY(calc(100% - 46px)) !important;",
+    /* the drawer anchors to the bottom edge, not to the panel's desktop top offset */
+    "  .rs-app .cym .cym-left.rs-cym-sheet{top:auto !important;height:auto;",
+    "    bottom:calc(var(--rs-safe-b,0px)) !important;",
+    "    transform:translateY(calc(100% - 54px)) !important;",
     "    transition:transform .26s cubic-bezier(.22,.61,.36,1)}",
     "  .rs-app .cym .cym-left.rs-cym-sheet.open{transform:translateY(0) !important}",
     "  .rs-app .cym .cym-left.rs-cym-sheet.rs-dragging{transition:none !important}",
     "  .rs-app .cym .rs-cym-grab{position:sticky;top:0;z-index:3;display:flex;align-items:center;",
-    "    gap:10px;flex:0 0 46px;height:46px;margin:-14px -16px 10px;padding:0 16px;box-sizing:border-box;",
+    "    gap:10px;flex:0 0 54px;height:54px;margin:-14px -16px 10px;padding:0 14px 0 16px;box-sizing:border-box;",
     "    background:linear-gradient(180deg,rgba(28,22,15,.99),rgba(18,13,9,.97));",
     "    border-bottom:1px solid rgba(224,185,111,.20);touch-action:none;cursor:grab}",
     "  .rs-app .cym .rs-cym-grab i{display:flex;justify-content:center;width:44px;flex:0 0 44px}",
@@ -1017,7 +1020,15 @@
     "    background:linear-gradient(90deg,#8A6A33,#E7C98A,#8A6A33);display:block}",
     "  .rs-app .cym .rs-cym-grab b{flex:1 1 auto;font:600 10px/1 var(--rs-sans);letter-spacing:.16em;",
     "    text-transform:uppercase;color:#D9C6A6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-    "  .rs-app .cym .rs-cym-grab em{font-style:normal;color:#E0B96F;font-size:13px;line-height:1}",
+    /* the chevron is the same toggle key as the player's lip: a visible puck, not a hint */
+    /* the expand key: a brass puck at the far right, the same size as the app's other keys,
+       so it reads as a control rather than a decoration on the handle */
+    "  .rs-app .cym .rs-cym-grab em{font-style:normal;color:#241A0F;font-size:17px;line-height:1;",
+    "    width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:flex;align-items:center;",
+    "    justify-content:center;background-image:linear-gradient(180deg,#E2C489,#B58C4C 56%,#7E5C2E);",
+    "    border:1px solid #5E4623;text-shadow:0 1px 0 rgba(255,244,220,.35);",
+    "    box-shadow:inset 0 1px 0 rgba(255,248,230,.45),0 3px 9px rgba(0,0,0,.5)}",
+    "  .rs-app .cym .rs-cym-grab{box-shadow:0 -8px 18px rgba(0,0,0,.45)}",
     "  .rs-app .cym .rs-cym-grab:focus-visible{outline:2px solid #E0B96F;outline-offset:-2px}",
     "}",
     "@media (max-width: 599px){",
@@ -2181,12 +2192,13 @@
       grab.className = "rs-cym-grab";
       grab.setAttribute("role", "button");
       grab.setAttribute("tabindex", "0");
-      grab.setAttribute("aria-label", "Tone tempo and scenes");
+      grab.setAttribute("aria-label", "Show tone tempo and scenes");
       grab.innerHTML = "<i></i><b>Tone tempo &amp; scenes</b><em>▾</em>";
       sheet.insertBefore(grab, sheet.firstChild);
       setSheet = function (on) {
         sheet.classList.toggle("open", on);
         grab.setAttribute("aria-expanded", on ? "true" : "false");
+        grab.setAttribute("aria-label", on ? "Hide tone tempo and scenes" : "Show tone tempo and scenes");
         var em = grab.querySelector("em");
         if (em) em.textContent = on ? "▾" : "▴";
         var sc = doc.getElementById("cymScrim");
@@ -2210,7 +2222,7 @@
         drag.dy = Math.max(-24, drag.raw);
         sheet.style.transform = sheet.classList.contains("open")
           ? "translateY(" + Math.max(0, drag.dy) + "px)"
-          : "translateY(calc(100% - 46px + " + Math.min(0, drag.dy) + "px))";
+          : "translateY(calc(100% - 54px + " + Math.min(0, drag.dy) + "px))";
       });
       var endDrag = function () {
         if (!drag) return;
