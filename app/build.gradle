@@ -209,3 +209,13 @@ tasks.register("testUnitTests") {
     description = "Run the JVM test suites for both channels (no emulator)."
     dependsOn "testSideloadDebugUnitTest", "testPlayDebugUnitTest"
 }
+
+// Robolectric resolves the app's own resources (the service's notification strings and
+// channel) only when AGP packages them for unit tests.
+android {
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
