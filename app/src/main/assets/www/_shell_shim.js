@@ -650,6 +650,27 @@
     "html[data-rs-ui=full] .rs-screen .card[data-band=relax]{--rs-band:#8E9E6B;--rs-band-wash2:rgba(142,158,107,.09)}",
     "html[data-rs-ui=full] .rs-screen .card[data-band=wake]{--rs-band:#D8B45C;--rs-band-wash2:rgba(216,180,92,.09)}",
     "html[data-rs-ui=full] .rs-screen .card[data-band=other]{--rs-band:#B6AFA3;--rs-band-wash2:rgba(182,175,163,.08)}",
+    /* the same band language on the small hardware: quick-pick chips carry their session's
+       colour, and every pressed toggle takes the band of the card it lives in (CSS vars
+       inherit, so a chip in the amber Studio card rings amber, one in a silver rail rings
+       silver). At rest a toggle keeps only a hairline edge - the colour marks state. */
+    "html[data-rs-ui=full] #quickpick button.chip[data-band]{background-image:",
+    "  linear-gradient(100deg,var(--rs-band-wash2,rgba(182,175,163,.10)),rgba(0,0,0,0) 72%)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=sleep]{--rs-band-wash2:rgba(108,129,190,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=focus]{--rs-band-wash2:rgba(210,166,89,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=relax]{--rs-band-wash2:rgba(142,158,107,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=wake]{--rs-band-wash2:rgba(216,180,92,.12)}",
+    "html[data-rs-ui=full] #quickpick button.chip[data-band=other]{--rs-band-wash2:rgba(182,175,163,.10)}",
+    "html[data-rs-ui=full] .rs-seg button[aria-pressed=true],",
+    "html[data-rs-ui=full] #rsFilters button[aria-pressed=true],",
+    "html[data-rs-ui=full] #rsVisToggles button[aria-pressed=true],",
+    "html[data-rs-ui=full] #rsScenes button[aria-pressed=true],",
+    "html[data-rs-ui=full] #rsMedia button[aria-pressed=true],",
+    "html[data-rs-ui=full] #rsAccents button[aria-pressed=true],",
+    "html[data-rs-ui=full] #plist .rs-chip[aria-pressed=true]{",
+    "  box-shadow:inset 0 0 0 1px var(--rs-band,#B6AFA3);",
+    "  background-image:linear-gradient(180deg,var(--rs-band-wash2,rgba(182,175,163,.12)),rgba(0,0,0,0))}",
+    "html[data-rs-ui=full] .rs-seg button{box-shadow:inset 0 0 0 1px rgba(59,51,43,.9)}",
     "html[data-rs-ui=full] .rs-card[data-band]{box-shadow:inset 3px 0 0 var(--rs-band,#B6AFA3);",
     "  background-image:linear-gradient(100deg,var(--rs-band-wash,transparent),transparent 70%)}",
     "html[data-rs-ui=full] .rs-card[data-band=sleep]{--rs-band:#6C81BE;--rs-band-wash:rgba(108,129,190,.18)}",
