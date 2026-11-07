@@ -72,6 +72,29 @@ the GPU field switch back for 2.0.5 while keeping the code**.
 Gates on `f98f653`: `:app:lintRelease` **"No issues found."**, harness **183 passed / 0 failed**,
 ESLint **clean**.
 
+### TWO NEW GATES (`1adf4ab`, `7714284`)
+
+- **`tools/device_gate.py`** — the on-device pass the Chromium harness cannot reach. It launches
+  the **debug** build, attaches over CDP, taps the real controls and reads the engine's own state
+  back, so "the control responded" and "the engine changed" stay separate assertions. **19 checks,
+  verified 19/0 on the Tab A9+**: start-up, tab bar, transport geometry (44 px floor),
+  play/pause (sample kept)/stop (rewound), mute + restore, the mini player off Home with its fader,
+  and the crash buffer. `py -3.11 tools/device_gate.py -s <serial>`; screenshots land in
+  `cache/device-gate/` on failure. Use it whenever a change touches scrolling, layout or the
+  bridge — that is where `shim_harness.py`'s stubs disagree with the real WebView.
+- **`app/src/test`** — Java had **zero** tests. JUnit + Robolectric wired; **8 tests, 0 failures**
+  via `./gradlew :app:testUnitTests` (the aggregate exists because the flavours make
+  `testDebugUnitTest` ambiguous, same reason `lintRelease` does). `AssetsTest` guards build
+  integrity: compat.json parses, its `appVersion` equals the build's `versionName` (the drift World
+  Radio shipped once), every `ui/*.webp` the shim references is packaged, the five amplifier assets
+  exist. `BridgeTest` builds the real Activity under Robolectric (only `create()`, never `setup()`
+  — start/resume would start the service) and covers `device()`, `palette()`, `copy()` (asserted
+  against the clipboard) and `log(null)`.
+
+**Swipe-between-tabs: built twice, reverted twice.** The trap in `resonance-android-ops` records
+why — the suite and parts of the shell treat `#rsBody` as the scroller, so port the harness's
+scroll model before restructuring anything.
+
 **NOT DONE, deliberately**: no level re-tuning (waiting on his ear), and `versionCode` is still
 12 — the publish step has not been touched.
 
