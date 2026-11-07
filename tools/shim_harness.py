@@ -601,15 +601,17 @@ def main():
                     page.evaluate("document.documentElement.style.getPropertyValue('--rs-pri')") == "#8AD8C8")
         page.click("#rsAccent")
         # ---- the Full / Minimal interface -------------------------------------------
-        suite.check("the interface starts Full, with the knob on Play",
+        bg_play = page.evaluate("getComputedStyle(document.getElementById('rsPlay')).backgroundImage")
+        playing = page.evaluate("document.documentElement.classList.contains('rs-playing')")
+        suite.check("Play wears the brass play face, and the pause face while it runs",
                     page.evaluate("document.documentElement.getAttribute('data-rs-ui')") == "full" and
-                    "knob-calm" in page.evaluate(
-                        "getComputedStyle(document.getElementById('rsPlay')).backgroundImage"))
+                    ("amp-pause" if playing else "amp-play") in bg_play, bg_play)
         suite.check("the tiles carry their own artwork",
                     "tile-sleep" in page.evaluate(
                         "getComputedStyle(document.querySelector('.rs-tile[data-rs-tile=sleep]')).backgroundImage"))
         art = page.evaluate("""() => Promise.all(["knob-calm","knob-dusk","knob-sage","knob-sand",
-            "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate","strip"]
+            "knob-slate","btn-stop","tile-sleep","tile-focus","tile-relax","tile-wake","plate","strip",
+            "amp-play","amp-pause","amp-stop","amp-vol-knob","amp-vol-track"]
             .map(n => fetch("ui/" + n + ".webp").then(r => r.ok)))""")
         suite.check("every piece of art actually loads", bool(art) and all(art), art)
         page.click("#rsUi button[data-u=minimal]")

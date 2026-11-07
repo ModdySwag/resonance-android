@@ -87,8 +87,40 @@
   function pageToggle() { var a = api(); if (a) { try { a.togglePlay(); } catch (e) { } } }
   function pageStop()   { var a = api(); if (a) { try { a.stopPlayback(false); } catch (e) { } } }
   function masterNow()  { var m = $id("master"); return m ? parseFloat(m.value) : 0.7; }
-  function setMaster(v) { var a = api(); if (a) { try { a.setMaster(v); return; } catch (e) { } }
-                          var m = $id("master"); if (m) { m.value = String(v); m.dispatchEvent(new Event("input", { bubbles: true })); } }
+  function setMaster(v) {
+    v = Math.max(0, Math.min(1, isFinite(v) ? v : 0.7));
+    var done = false, a = api();
+    if (a) { try { a.setMaster(v); done = true; } catch (e) { } }
+    if (!done) { var m = $id("master"); if (m) { m.value = String(v); m.dispatchEvent(new Event("input", { bubbles: true })); } }
+    if (v > 0.001) MUTEV = v;
+    paintLevel(v);
+  }
+  /* The level has three faces - the home fader, the mini player's fader and the mute
+     toggles - and every one of them paints from this single function, so a change made
+     on any screen is already correct on the others before the next tick lands. */
+  var MUTEV = 0.7;
+  function paintLevel(v) {
+    var off = !(v > 0.001);
+    var a = $id("rsVol"), b = $id("rsMiniVol"), p = $id("rsVolPct");
+    if (a && Math.abs(parseFloat(a.value) - v) > 0.004) a.value = String(v);
+    if (b && Math.abs(parseFloat(b.value) - v) > 0.004) b.value = String(v);
+    if (p) p.textContent = Math.round(v * 100) + "%";
+    ["rsMute", "rsMiniMute"].forEach(function (id) {
+      var el = $id(id);
+      if (!el) return;
+      var want = off ? "true" : "false";
+      if (el.getAttribute("aria-pressed") !== want) {
+        el.setAttribute("aria-pressed", want);
+        el.innerHTML = svgFill(off ? "voloff" : "vol");
+      }
+    });
+  }
+  /* Mute remembers the level it silenced, so the second tap is a restore and not a guess. */
+  function toggleMute() {
+    var v = masterNow();
+    if (v > 0.001) { MUTEV = v; setMaster(0); } else setMaster(MUTEV || 0.7);
+    try { pushState(true); } catch (e) { }
+  }
   /* Short messages go to the shell's own Toast. The page's API has no toast method, so the
      old code threw here and every message fell through to a logcat line, invisible. Off the
      phone, fall back to the page's own toast element, then to the log. */
@@ -527,28 +559,37 @@
     "html[data-rs-ui=full] .rs-hero .rs-sw span{color:#D2DBD6}",
     "html[data-rs-ui=full] .rs-hero .pill{background:#3A332A;color:#F0E7D7}",
     "html[data-rs-ui=full] .rs-hero .rs-pill{background:#3A332A;color:#F0E7D7}",
+    /* The transport is a BUTTON, not a knob. The faceplate used to lay knob-calm.webp
+     * here and hide the svg, so play read as a rotary dial (knurled rim, pointer slot
+     * at 12 o'clock) and stop carried no symbol at all. Now each control is its own
+     * machined brass button with the glyph inlaid in black lacquer, and the face swaps
+     * to the pause art while the session runs - the shape says what it does. */
     "html[data-rs-ui=full] .rs-hero .rs-fab{width:68px;height:68px;border:0;position:relative;",
-    "  background-image:url(ui/knob-calm.webp);background-size:cover;background-position:center;",
-    "  box-shadow:0 7px 18px rgba(0,0,0,.55);transition:transform .28s ease}",
-    "html[data-rs-ui=full][data-rs-accent=dusk] .rs-hero .rs-fab{background-image:url(ui/knob-dusk.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sage] .rs-hero .rs-fab{background-image:url(ui/knob-sage.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sand] .rs-hero .rs-fab{background-image:url(ui/knob-sand.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=slate] .rs-hero .rs-fab{background-image:url(ui/knob-slate.webp)}",
+    "  background-image:url(ui/amp-play.webp);background-size:cover;background-position:center;",
+    "  background-color:#100e0c;box-shadow:0 7px 18px rgba(0,0,0,.55);",
+    "  transition:transform .12s var(--rs-ease),box-shadow .18s ease}",
+    "html[data-rs-ui=full].rs-playing .rs-hero .rs-fab{background-image:url(ui/amp-pause.webp);",
+    "  transform:scale(.96);box-shadow:0 7px 18px rgba(0,0,0,.55),0 0 0 2px var(--rs-live)}",
     "html[data-rs-ui=full] .rs-fab svg{display:none}",
-    "html[data-rs-ui=full].rs-playing .rs-hero .rs-fab{transform:rotate(34deg)}",
     "html[data-rs-ui=full] .rs-fab::after{content:\"\";position:absolute;left:50%;bottom:-7px;width:8px;height:8px;",
     "  margin-left:-4px;border-radius:50%;background:var(--rs-s4);border:1px solid rgba(0,0,0,.5)}",
     "html[data-rs-ui=full].rs-playing .rs-fab::after{background:var(--rs-live);box-shadow:0 0 10px var(--rs-live)}",
-    "html[data-rs-ui=full] .rs-transport #rsStop{width:46px;height:46px;border:0;border-radius:50%;",
-    "  background-image:url(ui/btn-stop.webp);background-size:cover;background-position:center;",
-    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] .rs-transport #rsStop{width:52px;height:52px;border:0;border-radius:50%;",
+    "  background-image:url(ui/amp-stop.webp);background-size:cover;background-position:center;",
+    "  background-color:#100e0c;box-shadow:0 4px 12px rgba(0,0,0,.5)}",
     "html[data-rs-ui=full] #rsStop svg{display:none}",
-    "html[data-rs-ui=full] .rs-vol input[type=range]{height:44px}",
-    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;",
-    "  background:linear-gradient(180deg,#1b1814,#3a332a 45%,#100e0c);box-shadow:inset 0 1px 2px #000}",
-    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;",
-    "  height:30px;margin-top:-11px;border-radius:4px;border:1px solid #0a0908;",
-    "  background:linear-gradient(180deg,#e7dcc8,#9d8f77 52%,#5c5244)}",
+    /* the level control is a fader sunk into the faceplate: the generated slot carries
+     * the graduated scale, the generated knob rides it, so the slider reads as a piece
+     * of amplifier hardware instead of a browser range input */
+    "html[data-rs-ui=full] .rs-vol input[type=range]{-webkit-appearance:none;height:46px;background:transparent;",
+    "  margin:0}",
+    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-runnable-track{height:36px;border-radius:8px;",
+    "  background-image:url(ui/amp-vol-track.webp);background-size:100% 100%;background-repeat:no-repeat;",
+    "  border:1px solid rgba(0,0,0,.65);box-shadow:inset 0 2px 5px rgba(0,0,0,.7)}",
+    "html[data-rs-ui=full] .rs-vol input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;",
+    "  height:46px;margin-top:-6px;border:0;border-radius:6px;",
+    "  background-image:url(ui/amp-vol-knob.webp);background-size:cover;background-position:center;",
+    "  filter:drop-shadow(0 2px 3px rgba(0,0,0,.65))}",
     "html[data-rs-ui=full] .rs-tile{background-size:cover;background-position:center;position:relative;",
     "  overflow:hidden;color:#F4F7F5;border-color:rgba(0,0,0,.5);background-color:#12100F}",
     "html[data-rs-ui=full] .rs-tile::after{content:\"\";position:absolute;top:0;right:0;bottom:0;left:0;",
@@ -596,16 +637,22 @@
     "  padding:6px 8px;color:#F2F6F4}",
     "html[data-rs-ui=full] #rsMini b{color:#F6FAF8}",
     "html[data-rs-ui=full] #rsMini span{color:#C9D3CE}",
-    "html[data-rs-ui=full] #rsMiniPlay{background-image:url(ui/knob-calm.webp);background-size:cover;",
-    "  background-position:center;box-shadow:0 3px 9px rgba(0,0,0,.55);position:relative}",
-    "html[data-rs-ui=full][data-rs-accent=dusk] #rsMiniPlay{background-image:url(ui/knob-dusk.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sage] #rsMiniPlay{background-image:url(ui/knob-sage.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=sand] #rsMiniPlay{background-image:url(ui/knob-sand.webp)}",
-    "html[data-rs-ui=full][data-rs-accent=slate] #rsMiniPlay{background-image:url(ui/knob-slate.webp)}",
+    "html[data-rs-ui=full] #rsMiniPlay{background-image:url(ui/amp-play.webp);background-size:cover;",
+    "  background-position:center;background-color:#100e0c;box-shadow:0 3px 9px rgba(0,0,0,.55);position:relative}",
+    "html[data-rs-ui=full].rs-playing #rsMiniPlay{background-image:url(ui/amp-pause.webp)}",
     "html[data-rs-ui=full] #rsMiniPlay svg{display:none}",
-    "html[data-rs-ui=full] #rsMiniStop{background-image:url(ui/btn-stop.webp);background-size:cover;",
-    "  background-position:center;border:0;box-shadow:0 3px 9px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] #rsMiniStop{width:44px;height:44px;background-image:url(ui/amp-stop.webp);",
+    "  background-size:cover;background-position:center;background-color:#100e0c;border:0;",
+    "  box-shadow:0 3px 9px rgba(0,0,0,.5)}",
     "html[data-rs-ui=full] #rsMiniStop svg{display:none}",
+    "html[data-rs-ui=full] #rsMiniMute{background:transparent;border:0;color:#D8D2C6}",
+    "html[data-rs-ui=full] #rsMiniVol{-webkit-appearance:none;height:40px;background:transparent;margin:0}",
+    "html[data-rs-ui=full] #rsMiniVol::-webkit-slider-runnable-track{height:26px;border-radius:6px;",
+    "  background-image:url(ui/amp-vol-track.webp);background-size:100% 100%;background-repeat:no-repeat;",
+    "  border:1px solid rgba(0,0,0,.65)}",
+    "html[data-rs-ui=full] #rsMiniVol::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:34px;",
+    "  margin-top:-5px;border:0;border-radius:4px;background-image:url(ui/amp-vol-knob.webp);",
+    "  background-size:cover;background-position:center;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}",
     "html[data-rs-ui=full] #rsBar{background-image:url(ui/strip.webp);background-size:cover;",
     "  background-position:center top;background-color:transparent}",
     "html[data-rs-ui=full] #rsNav{background-image:url(ui/strip.webp);background-size:cover;",
@@ -661,7 +708,9 @@
 
     /* ---------------------------------------------------------- mini player --- */
     "#rsMini{flex:0 0 auto;display:none;align-items:center;gap:10px;margin:0 10px 8px;",
-    "  padding:8px 8px 8px 14px;border-radius:16px;background:var(--rs-s2);border:1px solid var(--rs-line)}",
+    "  padding:8px 8px 8px 14px;border-radius:16px;background:var(--rs-s2);border:1px solid var(--rs-line);",
+    "  transition:transform .28s var(--rs-ease),opacity .22s ease}",
+    "html.rs-minihide #rsMini{transform:translateY(150%);opacity:0;pointer-events:none}",
     "#rsMini.rs-on{display:flex}",
     "#rsMini .rs-mt{flex:1 1 auto;min-width:0}",
     "#rsMini b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;",
@@ -672,6 +721,23 @@
     "  justify-content:center;cursor:pointer;padding:0}",
     "#rsMini button svg{width:22px;height:22px}",
     "#rsMini .rs-mini-stop{background:var(--rs-s3);color:var(--rs-ink);border:1px solid var(--rs-line2)}",
+    /* the level row: a mute toggle and the fader, on both the hero and the mini player */
+    ".rs-volrow{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0}",
+    ".rs-volrow input[type=range]{flex:1 1 auto;min-width:0}",
+    ".rs-vol small{display:block;margin-bottom:2px}",
+    ".rs-mute{width:44px;height:44px;flex:0 0 auto;display:inline-flex;align-items:center;",
+    "  justify-content:center;border:1px solid transparent;border-radius:50%;background:transparent;",
+    "  color:var(--rs-ink)}",
+    ".rs-mute svg{width:24px;height:24px;display:block}",
+    ".rs-mute[aria-pressed=true]{color:var(--rs-live)}",
+    "html[data-rs-ui=full] .rs-mute{color:#EFE7D6;background:rgba(0,0,0,.28);",
+    "  border-color:rgba(255,255,255,.14)}",
+    "html[data-rs-ui=full] .rs-mute[aria-pressed=true]{color:var(--rs-live);",
+    "  background:rgba(0,0,0,.42);border-color:var(--rs-live)}",
+    "#rsMini .rs-mini-mute{width:44px;height:44px}",
+    "#rsMini .rs-mini-mute svg{width:19px;height:19px}",
+    "#rsMini input[type=range]{flex:0 1 96px;min-width:56px;max-width:132px;height:36px;margin:0;",
+    "  accent-color:var(--rs-live);background:transparent}",
 
     /* --------------------------------------------------------------- sheet --- */
     "#rsScrim{position:fixed;top:0;right:0;bottom:0;left:0;z-index:85;background:rgba(6,9,8,.55);" +
@@ -974,6 +1040,8 @@
   /* Generated by tools/make_icons.py from the Material Symbols catalog in the
      local Iconset library. Filled glyphs, 24x24, inherited colour. */
   var IC = {
+    "vol": "<path d=\"M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z\"/>",
+    "voloff": "<path d=\"M4 9v6h4l5 4V5L8 9H4zm17.1-1.6-1.4-1.4-3 3-3-3-1.4 1.4 3 3-3 3 1.4 1.4 3-3 3 3 1.4-1.4-3-3z\"/>",
     "book": "<path d=\"M13 17.05q1.1-.525 2.213-.788T17.5 16q.9 0 1.763.15T21 16.6V6.7q-.825-.35-1.713-.525T17.5 6q-1.175 0-2.325.3T13 7.2zm-1.662 2.338q-.313-.088-.588-.238q-.975-.575-2.05-.862T6.5 18q-1.05 0-2.062.275T2.5 19.05q-.525.275-1.012-.025T1 18.15V6.1q0-.275.138-.525T1.55 5.2q1.175-.575 2.413-.888T6.5 4q1.45 0 2.838.375T12 5.5q1.275-.75 2.663-1.125T17.5 4q1.3 0 2.538.313t2.412.887q.275.125.413.375T23 6.1v12.05q0 .575-.487.875t-1.013.025q-.925-.5-1.937-.775T17.5 18q-1.125 0-2.2.288t-2.05.862q-.275.15-.587.238t-.663.087t-.663-.088M14 8.776q0-.225.163-.462T14.525 8q.725-.25 1.45-.375T17.5 7.5q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112T17.5 9q-.65 0-1.275.125t-1.2.325q-.45.175-.737-.025T14 8.775m0 5.5q0-.225.163-.462t.362-.313q.725-.25 1.45-.375T17.5 13q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112T17.5 14.5q-.65 0-1.275.113t-1.2.312q-.45.175-.737-.012T14 14.275m0-2.75q0-.225.163-.462t.362-.313q.725-.25 1.45-.375t1.525-.125q.5 0 .988.063t.962.162q.225.05.388.25t.162.45q0 .425-.275.625t-.7.1q-.35-.075-.737-.112t-.788-.038q-.65 0-1.275.125t-1.2.325q-.45.175-.737-.025t-.288-.65\"/>",
     "chev": "<path d=\"M12.6 12L8.7 8.1q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7z\"/>",
     "close": "<path d=\"m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z\"/>",
@@ -1042,6 +1110,8 @@
       '</header>' +
       '<main id="rsBody" tabindex="-1"></main>' +
       '<div id="rsMini"><div class="rs-mt"><b id="rsMiniTitle"></b><span id="rsMiniTime"></span></div>' +
+      '  <button id="rsMiniMute" class="rs-mini-mute" aria-label="Mute" aria-pressed="false">' + svgFill("vol") + '</button>' +
+      '  <input id="rsMiniVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume">' +
       '  <button id="rsMiniPlay" aria-label="Play or pause"></button>' +
       '  <button id="rsMiniStop" class="rs-mini-stop" aria-label="Stop and rewind">' + svg("stop") + '</button></div>' +
       '<nav id="rsNav" role="tablist" aria-label="Sections"></nav>';
@@ -1075,20 +1145,39 @@
     $id("rsOverflow").addEventListener("click", function () { openSheet(true); });
     $id("rsMiniPlay").addEventListener("click", function () { pageToggle(); pushState(true); });
     $id("rsMiniStop").addEventListener("click", function () { pageStop(); pushState(true); });
+    $id("rsMiniMute").addEventListener("click", toggleMute);
+    $id("rsMiniVol").addEventListener("input", function () { setMaster(parseFloat(this.value)); });
 
     return app;
   }
 
   /* the bar leaves once the glass is quiet, and any touch brings it straight back */
-  var NAVIDLE = 0;
+  /* the bar leaves once the glass is quiet, and any touch brings it straight back.
+   * The mini player rides the same beat, but at 12 s: it is the transport, so it
+   * should outlast the bar, and it keeps its layout space while away (same as the
+   * bar) so nothing underneath shifts when it leaves or returns. */
+  var NAVIDLE = 0, MINIIDLE = 0, MINI_IDLE_MS = 12000;
+  function quietNow() {
+    return !doc.hidden && !anyOverlayOpen() && !(sheetEl && sheetEl.classList.contains("rs-open"));
+  }
+  function armMini() {
+    doc.documentElement.classList.remove("rs-minihide");
+    if (MINIIDLE) window.clearTimeout(MINIIDLE);
+    MINIIDLE = window.setTimeout(function () {
+      if (!quietNow()) return;
+      var m = $id("rsMini");
+      if (!m || !m.classList.contains("rs-on")) return;
+      doc.documentElement.classList.add("rs-minihide");
+    }, MINI_IDLE_MS);
+  }
   function armNav() {
     doc.documentElement.classList.remove("rs-navhide");
     if (NAVIDLE) window.clearTimeout(NAVIDLE);
     NAVIDLE = window.setTimeout(function () {
-      if (doc.hidden) return;
-      if (anyOverlayOpen() || (sheetEl && sheetEl.classList.contains("rs-open"))) return;
+      if (!quietNow()) return;
       doc.documentElement.classList.add("rs-navhide");
     }, 6000);
+    armMini();
   }
 
   function go(id, opts) {
@@ -1174,11 +1263,13 @@
       '    <button class="rs-tap" id="rsSurprise" aria-label="Surprise me — load a random session and play it">' +
       '      <span class="rs-pill">Surprise me</span></button>' +
       '    <span class="rs-pill rs-live" id="rsMode">idle</span></div>' +
-      '  <div class="rs-transport">' +
-      '    <button class="rs-fab" id="rsPlay" aria-label="Play">' + svgFill("play") + '</button>' +
-      '    <div class="rs-vol"><small>Volume</small>' +
-      '      <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div>' +
-      '    <button class="rs-ico" id="rsStop" aria-label="Stop and rewind">' + svg("stop") + '</button>' +
+      '  <div class="rs-transport rs-amp">' +
+      '    <button class="rs-fab rs-tbtn" id="rsPlay" aria-label="Play">' + svgFill("play") + '</button>' +
+      '    <div class="rs-vol rs-amp-vol"><small>Volume <output id="rsVolPct">70%</output></small>' +
+      '      <div class="rs-volrow">' +
+      '        <button class="rs-mute" id="rsMute" aria-label="Mute" aria-pressed="false">' + svgFill("vol") + '</button>' +
+      '        <input id="rsVol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volume"></div></div>' +
+      '    <button class="rs-ico rs-tbtn rs-stopbtn" id="rsStop" aria-label="Stop and rewind">' + svg("stop") + '</button>' +
       '  </div>' +
       '  <div class="rs-transport" style="margin-top:10px">' +
       '    <span id="rsClock" aria-live="polite">0:00 / 0:00</span>' +
@@ -1517,6 +1608,8 @@
 
     var vol = $id("rsVol");
     vol.addEventListener("input", function () { setMaster(parseFloat(vol.value)); });
+    var mut = $id("rsMute");
+    if (mut) mut.addEventListener("click", toggleMute);
     var loop = $id("rsLoop");
     loop.addEventListener("change", function () {
       var el = $id("loop");
@@ -3235,8 +3328,7 @@
       }
       doc.documentElement.classList.toggle("rs-playing", on);
     }
-    var vol = $id("rsVol");
-    if (vol) { var v = masterNow(); if (Math.abs(parseFloat(vol.value) - v) > 0.005) vol.value = String(v); }
+    paintLevel(masterNow());
     var lp = $id("rsLoop"), lel = $id("loop");
     if (lp && lel && lp.checked !== lel.checked) lp.checked = lel.checked;
     try { tempoGuard(); } catch (e) { }
@@ -3247,6 +3339,7 @@
     if (!mini) return;
     var sess = sessionTitle();
     var show = !!sess && CUR !== "home";
+    if (show && !mini.classList.contains("rs-on")) armMini();   /* fresh clock when it appears */
     mini.classList.toggle("rs-on", show);
     if (!show) return;
     var t = $id("rsMiniTitle");
