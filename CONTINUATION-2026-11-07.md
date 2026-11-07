@@ -1,4 +1,68 @@
-# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (session 2)
+# RESUME HERE — Resonance Studio Android, 2.0.5-beta, 2026-11-07 (latest: session 6)
+
+## SESSION 6 — lint to zero, 25% smaller, both devices on the new build (HEAD `65310c9`)
+
+### STATE
+
+- HEAD `65310c9`, tree clean, 58 commits ahead of `origin/main`, **nothing pushed**.
+- `2.0.5-beta`, `versionCode 12`, **targetSdk 36**. Installed on `ZY22LGC75T` (motorola edge 60
+  fusion, `192.168.1.95:33139`) at 22:52 and on the Tab A9+ (`192.168.1.141:37763`) at 22:40.
+  Both carry `base.apk` **641,386 B**; cold start 320 ms (phone) / 565 ms (tablet), both log
+  `page: shim ready`, no crash buffer entries.
+- **He revoked USB debugging authorisations mid-session**, which also kills wireless: both
+  devices then had to be **re-paired** (`adb pair <ip>:<port> <code>`). Pairing codes are
+  single-use; the pairings themselves persist. The **connect port changes every time the toggle
+  restarts** (42457 -> 37145 -> 37763) — read `adb mdns services` immediately before connecting.
+  The pairing dialog does **not** always advertise: scanning 30000-46000 for open TCP ports on
+  the device IP found the pairing port when mDNS was silent.
+- **APK 860,074 -> 641,386 B (-25.4%)**; download 631,080 B; app dir on device 644,838 B;
+  Android accounts it as 621,056 B app + 4.90 MiB data.
+
+### GATES on the final bytes
+
+`:app:lintRelease` **0 errors / 0 warnings** (was 3 / 11), harness **183/183 against the
+packaged (minified) tree**, contrast 0, `apk_identity` 32/32, release installs and renders on
+phone, tablet and emulator. `docs/QUALITY-GATES.md` carries the full matrix and what is still
+missing from it.
+
+### WHAT LANDED
+
+1. **Lint to zero, honestly** — `OnBackInvokedCallback` moved into an `@TargetApi(33)` method
+   (lint cannot follow the guard into an anonymous class); `windowLightNavigationBar` moved to
+   `values-v27` / `values-night-v27` overlays of a shared `AppThemeBase`; `Locale.ROOT` on the
+   mime lookup; dead `SDK_INT` guards; `fullBackupContent="false"`; unused colours deleted.
+   **`assembleRelease` only runs `lintVital`** — it stayed green for a whole session while
+   `:app:lintRelease` was failing. Quote the `lintRelease` line, always.
+2. **Size** — knobs 512 -> 256 px (-85,158 B; they paint on 68 px controls), release-only terser
+   over the packaged JS (-66,124 B; sources stay readable), ten density launcher PNGs deleted
+   (-67,412 B; the adaptive icon covers every density at minSdk 26).
+
+### TRAPS
+
+- **Mutating AGP's merged assets in a `doLast` does not reach packaging** — the APK keeps the
+  unminified bytes. The minified copies come from `build/generated/minifiedPage/www`, owned by
+  the *release* source set (`minifyPageJs`), and every task whose name contains `Release` must
+  depend on it or Gradle fails the graph as an implicit dependency.
+- **AAPT2 only compiles `<adaptive-icon>` in a `v26`-qualified folder** — keep
+  `mipmap-anydpi-v26` and put a path-scoped `ObsoleteSdkInt` ignore in `app/lint.xml`.
+- `apk_identity` now asserts **mangling-safe markers** (`ResonanceJs`, `__rs`), not
+  `function native(`, which terser mangles.
+- The tab bar **auto-hides after 6 s** (`rs-navhide`) and keeps its space: a screenshot with no
+  tab bar and a ~117 px band is the resting state, not a bug.
+- A screencap taken seconds after launch can be an **empty frame**; re-capture and check mean
+  luminance before believing a layout is broken.
+
+### OPEN, in order
+
+1. **His eye on both devices** — the new build is installed but he has not looked at it.
+2. **Publish 2.0.5**: `versionCode` bump to 13, upload, `updates.json` (draft entry later in this
+   file), and the download -> sha256 -> installer path is still untested.
+3. **Play**: a `play` flavour that removes `REQUEST_INSTALL_PACKAGES`, stubbed updater, Play
+   In-App Updates, AAB, privacy page first.
+4. **Quality items still open** (see `docs/QUALITY-GATES.md`): Error Prone, JUnit + Robolectric +
+   JaCoCo (the Java layer has **0 tests**), StrictMode/LeakCanary, Perfetto on the 18 ms UI
+   frame, ESLint on 7,214 JS lines, Gradle wrapper + CI running these gates, MobSF.
+5. **Optional size**: on-demand packs (250 KB = 39% of the APK) — a product decision.
 
 ## SESSION 5 — tablet on real hardware: dark brushed, bottom bar, filling layout (HEAD `7f6fe34`)
 
