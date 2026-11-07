@@ -4,7 +4,7 @@
 
 ### STATE
 
-- HEAD `291f264`, tree clean, nothing pushed. Still `2.0.5-beta` / `versionCode 12`.
+- HEAD `f98f653`, tree clean, nothing pushed. Still `2.0.5-beta` / `versionCode 12`.
 - Phone `ZY22LGC75T` (`192.168.1.95:33139`) and tablet `SM-X210` (wireless, mDNS transport)
   both still carry the session-7 **release** build (650,567 B).
 - The **debug** build (`com.moddys.resonance.debug`) is now installed on **both** the emulator
@@ -46,7 +46,36 @@
 The change: `debugState()` now returns `cam { yaw, pitch, dist }`. Without it a pinch could
 only be judged by eye; with it the four numbers above are a gate.
 
-### HOLD-FADE — measured, still an owner decision
+### APPLIED AFTER THE DECISION (`f98f653`)
+
+His calls: **fix the envelope idiom, do not re-tune the levels** (he listens first), and **hold
+the GPU field switch back for 2.0.5 while keeping the code**.
+
+1. `packs.js` — the fade-out entry now repeats the level instead of carrying 0, in both the
+   plain and the wake-ramp branch. The wake branch keeps its `vol * 0.8` easing but the fade-out
+   entry repeats *that*, so the entry before it is no longer the fade and there is no dead silent
+   tail. Measured against HEAD on the shipped library: **92 of 130 sessions change, 38 unchanged**;
+   **0 voices change peak, 0 voices change duration** — the fix cannot make anything louder or
+   longer, it only stops the drift. Classic and noise are untouched (they never used that path).
+   Focus 40 (gamma) is the reference case: `0.338` at 60 s falling to `0.012` at 1180 s becomes a
+   flat `0.350` throughout. Largest single change at a sampled instant: **+0.160** (`Settle the
+   room`, speakers pack).
+2. `cym.js` — `GL_SWITCH_VISIBLE = false` gates both the label in the Display section and the
+   persisted preference, so the switch is absent from the UI and a stored `fieldRenderer: "gl"`
+   can no longer resurrect it. Verified live on the Tab A9+: Display now lists only Sand grains /
+   Nodal glow / Bubbles / Airborne dust / Freeze motion; a hand-written `"gl"` in
+   `resonance.cym.v2` still resolves to `canvas`. The code is kept — flipping the constant brings
+   the switch back, and `window.__rsGLRender = "gl"` + `api.setFieldRenderer("gl")` still gives
+   `mode: gl, glLive: true, glError: ""`, so the path stays probeable for the real work
+   (mask the field to the plate, move the simulation).
+
+Gates on `f98f653`: `:app:lintRelease` **"No issues found."**, harness **183 passed / 0 failed**,
+ESLint **clean**.
+
+**NOT DONE, deliberately**: no level re-tuning (waiting on his ear), and `versionCode` is still
+12 — the publish step has not been touched.
+
+### HOLD-FADE — the measurement that produced the decision
 
 `engine.js:151` — a segment "ends at the next entry's start values (last entry wraps to
 entry 0)". So `{fadeIn:0}, {hold:vol}, {fadeOut:0}` makes **the hold itself ramp vol -> 0**,
