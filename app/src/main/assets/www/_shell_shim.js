@@ -348,6 +348,59 @@
     "html[data-rs-ui=full] .rs-cta[data-art=focus]::before{background-image:",
     "  linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-focus.webp)}",
     "html[data-rs-ui=full] .rs-cta > *{position:relative;z-index:1}",
+    /* the Ambient panels card gets the same treatment as the two feature cards: one generated
+       plate behind its head, under the same scrim, at every width */
+    "html[data-rs-ui=full] #rsVizCard{position:relative;overflow:hidden}",
+    "html[data-rs-ui=full] #rsVizCard::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
+    "  background-size:cover;background-position:center;pointer-events:none;",
+    "  background-image:linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-ambient.webp)}",
+    "html[data-rs-ui=full] #rsVizCard > *{position:relative;z-index:1}",
+    /* the scene picker is faceplate too: a smoked LED window naming the scene in amber caps,
+       brass arrows, and a list in the same language. The page's own <select> stays the source
+       of truth (chips, arrows and the engine all drive it) but is hidden — its native popup is
+       the one surface Android will not let us style. */
+    "html[data-rs-ui=full] .rs-scenebox{position:relative;background-color:#161009;border:1px solid #4A3A22;",
+    "  border-radius:12px;background-image:linear-gradient(180deg,#1D150D,#120C07);",
+    "  box-shadow:inset 0 1px 0 rgba(255,226,180,.10)}",
+    "html[data-rs-ui=full] .rs-scenebox .readout{color:#C9BFAC;font:700 10px/1 var(--rs-sans);",
+    "  letter-spacing:.16em;text-transform:uppercase}",
+    "html[data-rs-ui=full] .rs-scenebox .vz-scenes button,html[data-rs-ui=full] .rs-scenebox .vz-scenes button:hover,",
+    "html[data-rs-ui=full] .rs-scenebox .vz-scenes button:active{background-color:#1B140C;background-image:none;",
+    "  border:1px solid #5A4526;border-radius:10px;color:#E8D6B4}",
+    "html[data-rs-ui=full] .rs-scenebox select#vizPreset{display:none}",
+    "html[data-rs-ui=full] #vizSync{display:none !important}",
+    "html[data-rs-ui=full] .rs-scenemenu{flex:1 1 auto;min-width:0;min-height:46px;display:flex;align-items:center;",
+    "  justify-content:space-between;gap:8px;padding:0 12px;border-radius:10px;border:1px solid #5A4526;",
+    "  background-color:#120D07;background-image:linear-gradient(180deg,#0B0805,#171008 62%,#0A0704);",
+    "  box-shadow:inset 0 1px 4px rgba(0,0,0,.9);cursor:pointer;text-align:left}",
+    "html[data-rs-ui=full] .rs-scenemenu span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
+    "  font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#FFB454;",
+    "  letter-spacing:.10em;text-transform:uppercase;text-shadow:0 0 5px rgba(255,150,40,.45)}",
+    "html[data-rs-ui=full] .rs-scenemenu svg{flex:0 0 auto;color:#C9BFAC}",
+    /* the arrows' sizing rule is more specific than a bare class; the picker has to win it
+       or it renders as a third 46 px square */
+    "html[data-rs-ui=full] .rs-scenebox .vz-scenes button.rs-scenemenu{flex:1 1 auto;width:auto;min-width:0}",
+    "html[data-rs-ui=full] .rs-scenepop{position:absolute;left:0;right:0;top:100%;z-index:30;max-height:264px;",
+    "  overflow:auto;margin-top:6px;padding:6px;border-radius:12px;border:1px solid #5A4526;",
+    "  background-color:#120D07;background-image:linear-gradient(180deg,#1B130B,#0E0906);",
+    "  box-shadow:0 14px 34px rgba(0,0,0,.7);display:none}",
+    "html[data-rs-ui=full] .rs-scenepop.rs-on{display:block}",
+    "html[data-rs-ui=full] .rs-scenepop button{display:block;width:100%;min-height:44px;padding:0 10px;border:0;",
+    "  border-radius:8px;background:none;text-align:left;color:#D8C9AC;",
+    "  font:700 11.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;",
+    "  text-transform:uppercase}",
+    "html[data-rs-ui=full] .rs-scenepop button[aria-selected=true]{color:#FFB454;background:rgba(120,84,32,.22)}",
+    "html[data-rs-ui=full] .rs-scenepop button:active{background:rgba(120,84,32,.32)}",
+    /* Turn on/off and Scramble are the same brass keys as Surprise me */
+    "html[data-rs-ui=full] #vizCard #vizToggle,html[data-rs-ui=full] #vizCard #vizToggle:hover,",
+    "html[data-rs-ui=full] #vizCard #vizToggle:active,",
+    "html[data-rs-ui=full] #vizCard #vizScramble,html[data-rs-ui=full] #vizCard #vizScramble:hover,",
+    "html[data-rs-ui=full] #vizCard #vizScramble:active{min-height:44px;padding:0 14px;border-radius:9px;",
+    "  border:1px solid #5A4526;background-color:#1B140C !important;",
+    "  background-image:linear-gradient(180deg,#2B2115,#17110B 60%,#0F0A06) !important;",
+    "  box-shadow:inset 0 1px 0 rgba(255,226,180,.16),0 2px 6px rgba(0,0,0,.55);",
+    "  color:#E8D6B4 !important;font:700 10.5px/1 var(--rs-sans) !important;letter-spacing:.13em;",
+    "  text-transform:uppercase}",
     ".rs-hint{margin:0;font-size:12.5px;line-height:18px;color:var(--rs-out)}",
     "#vizNote{display:none !important}",
     /* folded card: a summary row, contents hidden until asked for */
@@ -836,7 +889,7 @@
     "#rsMini{flex:0 0 auto;display:none;align-items:center;gap:10px;margin:0 10px 8px;",
     "  padding:8px 8px 8px 14px;border-radius:16px;background:var(--rs-s2);border:1px solid var(--rs-line);",
     "  transition:transform .28s var(--rs-ease),opacity .22s ease}",
-    "html.rs-minihide #rsMini{transform:translateY(150%);opacity:0;pointer-events:none}",
+    /* the player is static now: no minihide transform, no opacity fade */
     "#rsMini.rs-on{display:flex}",
     "#rsMini .rs-mt{flex:1 1 auto;min-width:0}",
     "#rsMini b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;",
@@ -1536,27 +1589,13 @@
     return app;
   }
 
-  /* the player leaves once the glass is quiet, and any touch brings it straight
-   * back. The tab bar does NOT hide: Home / Sessions / Studio / Visualise /
-   * Settings are the way out of every screen, so they never need waking. The
-   * player keeps its layout space while away, so nothing underneath shifts. */
-  var MINIIDLE = 0, MINI_IDLE_MS = 8000;
-  function quietNow() {
-    return !doc.hidden && !anyOverlayOpen() && !(sheetEl && sheetEl.classList.contains("rs-open"));
-  }
-  function armMini() {
-    doc.documentElement.classList.remove("rs-minihide");
-    if (MINIIDLE) window.clearTimeout(MINIIDLE);
-    MINIIDLE = window.setTimeout(function () {
-      if (!quietNow()) return;
-      var m = $id("rsMini");
-      if (!m || !m.classList.contains("rs-on")) return;
-      doc.documentElement.classList.add("rs-minihide");
-    }, MINI_IDLE_MS);
-  }
+  /* The player is static, by owner decision: it used to slide away after 8 quiet seconds and
+   * that read as the UI breaking. It now stays where it is on every screen that shows it
+   * (Home and Studio have their own transport, so syncMini simply does not mount it there).
+   * wakeChrome stays as the one place that clears classes left over from older builds. */
   function wakeChrome() {
     doc.documentElement.classList.remove("rs-navhide");   /* a stale class from an older build */
-    armMini();
+    doc.documentElement.classList.remove("rs-minihide");  /* ditto: the player never hides now */
   }
 
   function go(id, opts) {
@@ -2757,9 +2796,8 @@
       '    <p class="rs-cta-sub">Gentle visuals</p></div></div>' +
       '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
       '</section>' +
-      '<section class="card" data-band="other" id="rsVizCard" aria-labelledby="rsVizH">' +
-      '  <h3 id="rsVizH">Ambient panels</h3>' +
-      '  <p class="rs-hint">Under the flash threshold.</p></section>' +
+      '<section class="card" data-band="other" id="rsVizCard" data-art="ambient" aria-labelledby="rsVizH">' +
+      '  <h3 id="rsVizH">Ambient panels</h3></section>' +
       '<div class="rs-pad"></div>';
   }
 
@@ -3502,6 +3540,7 @@
      had a layer to close. It walks the same history entry the system Back would, so the
      popstate handler stays the only place that closes a layer. */
   function shellBack() {
+    if (scenePopOpen()) { closeScenePop(); return true; }
     if (history.state && history.state.rsLayer) {
       try { history.back(); return true; } catch (e) { }
     }
@@ -4617,7 +4656,7 @@
     if (!mini) return;
     var sess = sessionTitle();
     var show = !!sess && CUR !== "home" && CUR !== "studio";
-    if (show && !mini.classList.contains("rs-on")) armMini();   /* fresh clock when it appears */
+    doc.documentElement.classList.remove("rs-minihide");
     mini.classList.toggle("rs-on", show);
     if (!show) return;
     var t = $id("rsMiniTitle");
@@ -4658,6 +4697,7 @@
     if (CUR === "studio") syncStudio();
     syncHero();
     syncMini();
+    try { refreshSceneMenu(); } catch (e) { }
     renderTop();
     syncFs();
     if (CUR === "vis") syncVis();
@@ -4680,6 +4720,65 @@
 
   /* Move the page's real cards into the screens. The nodes are the page's own; its
      renderers keep painting into them. */
+  /* ------------------------------------------------------------------ scene menu --- */
+  /* The page's #vizPreset stays the source of truth — the arrows, the chips and the engine
+     all drive it — but its native popup is the one surface Android will not let us style.
+     The shell shows the value in a smoked LED window and opens a list in the same language. */
+  function sceneOptionText(sel) {
+    if (!sel) return "Scene";
+    var o = sel.options[sel.selectedIndex];
+    return (o && text(o)) || "Custom";
+  }
+  function refreshSceneMenu() {
+    var n = $id("rsSceneName"), sel = $id("vizPreset");
+    if (!n || !sel) return;
+    var want = sceneOptionText(sel);
+    if (n.textContent !== want) n.textContent = want;
+  }
+  function closeScenePop() {
+    var p = $id("rsScenePop"), m = $id("rsSceneMenu");
+    if (p) p.classList.remove("rs-on");
+    if (m) m.setAttribute("aria-expanded", "false");
+  }
+  function fillScenePop() {
+    var pop = $id("rsScenePop"), sel = $id("vizPreset");
+    if (!pop || !sel) return;
+    pop.innerHTML = "";
+    for (var i = 0; i < sel.options.length; i++) {
+      (function (o) {
+        var b = doc.createElement("button");
+        b.type = "button";
+        b.setAttribute("role", "option");
+        b.setAttribute("data-v", o.value);
+        b.setAttribute("aria-selected", o.value === sel.value ? "true" : "false");
+        b.textContent = text(o) || "Custom";
+        b.addEventListener("click", function () {
+          var s2 = $id("vizPreset");
+          if (s2) {
+            s2.value = b.getAttribute("data-v");
+            try { s2.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { }
+          }
+          closeScenePop();
+          refreshSceneMenu();
+        });
+        pop.appendChild(b);
+      })(sel.options[i]);
+    }
+  }
+  function openScenePop() {
+    var pop = $id("rsScenePop"), m = $id("rsSceneMenu");
+    if (!pop || !m) return;
+    fillScenePop();
+    pop.classList.add("rs-on");
+    m.setAttribute("aria-expanded", "true");
+    var cur = pop.querySelector("button[aria-selected=true]");
+    if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ block: "nearest" }); } catch (e) { } }
+  }
+  function scenePopOpen() {
+    var p = $id("rsScenePop");
+    return !!(p && p.classList.contains("rs-on"));
+  }
+
   function mountCards() {
     function cardOf(sel) {
       var n = typeof sel === "string" ? $(sel) : sel;
@@ -4827,7 +4926,7 @@
         $$("h3", vc).forEach(function (n) { n.style.display = "none"; });
         /* the page's paragraph described the panels' plumbing; one line is enough here */
         var vhint = vc.querySelector("p.hint");
-        if (vhint) vhint.textContent = "Follows the audio itself — no microphone, no sensors.";
+        if (vhint) vhint.textContent = "Follows the audio";
         /* the shell's own chamber card is the entry to it; the page's copy of that button
            sat three controls away and read as a second, different door */
         var cymBtn = $id("cymCardBtn");
@@ -4856,6 +4955,33 @@
           var hint = sceneHead.querySelector(".hint");
           if (hint) hint.style.display = "none";
           if (shuf) { shuf.classList.add("rs-scene-shuffle"); sceneHead.appendChild(shuf); }
+          /* the picker a person actually uses: an LED window between the arrows, and a list
+             in the same language (the page's select stays hidden but keeps driving) */
+          var menu = doc.createElement("button");
+          menu.type = "button"; menu.id = "rsSceneMenu"; menu.className = "rs-scenemenu";
+          menu.setAttribute("aria-haspopup", "listbox");
+          menu.setAttribute("aria-expanded", "false");
+          menu.setAttribute("aria-label", "Scene");
+          menu.innerHTML = '<span id="rsSceneName">Scene</span>' + svg("chev", 16);
+          menu.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            if (scenePopOpen()) closeScenePop(); else openScenePop();
+          });
+          var nextBtn = $id("vizNext");
+          if (nextBtn && nextBtn.parentNode === scenes) scenes.insertBefore(menu, nextBtn);
+          else scenes.appendChild(menu);
+          var pop = doc.createElement("div");
+          pop.id = "rsScenePop"; pop.className = "rs-scenepop";
+          pop.setAttribute("role", "listbox");
+          sbox.appendChild(pop);
+          doc.addEventListener("pointerdown", function (ev) {
+            if (!scenePopOpen()) return;
+            if (ev.target && ev.target.closest &&
+                (ev.target.closest("#rsScenePop") || ev.target.closest("#rsSceneMenu"))) return;
+            closeScenePop();
+          }, true);
+          doc.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeScenePop(); });
+          refreshSceneMenu();
         }
         $id("rsVizCard").appendChild(vc);
         decorateSwatches();

@@ -248,7 +248,7 @@ def run_viewport(browser, url, label, w, h, shots):
       const box = document.querySelector('#vizCard .rs-scenebox');
       return { box: box ? (() => { const q = box.getBoundingClientRect();
                  return { x: Math.round(q.x), w: Math.round(q.width), h: Math.round(q.height) }; })() : null,
-               prev: r('vizPrev'), next: r('vizNext'), pick: r('vizPreset'), vw: innerWidth };
+               prev: r('vizPrev'), next: r('vizNext'), pick: r('rsSceneMenu'), vw: innerWidth };
     })()""")
     suite.check("[%s] the scene menu keeps one row: arrows flanking the picker" % label,
                 amb["prev"] and amb["next"] and amb["pick"]

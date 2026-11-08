@@ -124,6 +124,33 @@ should go away in favour of dark only.
   boots dark and is rewritten. **Harness 246/0**, contrast 0 (the probe now walks dark only), tablet 82/0,
   eslint 0, device gate 19/0.
 
+## Follow-up 3: the Ambient panels card, and a static player
+
+- **The card now wears the same art as the two feature cards**: one generated plate
+  (`ui/cta-ambient.webp`, 900x220, 15.8 KB, vintage amplifier faceplate in near darkness) behind a
+  96 px head under the same scrim, at every width (`#rsVizCard::before`).
+- **Copy trimmed**: the shell's "Under the flash threshold." line is gone entirely and the page's
+  paragraph reads just **"Follows the audio"**. A leg asserts the card contains one line and neither
+  of the old strings.
+- **The stray dash beside Scramble was `#vizSync`** (an em-dash readout). Hidden in Full UI; the
+  state is already in the LED window.
+- **The scene picker is faceplate now**: the page's `<select>` stays the source of truth but is
+  hidden; the shell shows its value in a smoked LED window (`#rsSceneMenu`, amber caps, 44 px) between
+  the two brass arrows, and opens a **custom list** (`#rsScenePop`, role=listbox, 25 entries, keys in
+  the same language, current entry marked) because Android's native select popup cannot be styled.
+  Choosing sets the select's value, dispatches `change` (so the engine follows), closes the list and
+  updates the window; Back closes it via `shellBack`; the 1 Hz tick keeps the label honest.
+- **Turn on/off and Scramble are brass plates** like Surprise me (`background-color !important`, since
+  `.ghost` pins it transparent).
+- **The bottom player is static, by owner decision.** The 8 s `rs-minihide` auto-hide, its timer and
+  its CSS are gone; `wakeChrome()` now only clears stale classes from older builds, and the harness
+  leg asserts that after 8.6 quiet seconds the player's rect and opacity are unchanged.
+- **Measured on the phone**: art present, menu 235x44, select and dash hidden, hint "Follows the
+  audio", both keys 44 px on gradient plates; opening the list shows 25 entries inside the glass
+  (33..400 of 433) and picking "Quiet Tide" sets `#vizPreset` to `quiet-tide`, closes the list and
+  renames the window. **Harness 251/0**, contrast 0, tablet 82/0, eslint 0, device gate 19/0.
+  Release **973,235 B, sha256 `7ab9bb7a7943837d4ca70611bce9de0ce13e77b02f142ffb0d7ede3aa734da59`**.
+
 ## What is left, in order
 
 1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker

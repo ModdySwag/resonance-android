@@ -688,9 +688,11 @@ def main():
                                   "document.querySelector('#scr-vis section.card.rs-cta')"))
         suite.check("the page's long motion caption is folded away",
                     page.evaluate("getComputedStyle(document.getElementById('vizNote')).display") == "none")
-        suite.check("a one-line version stands in its place",
-                    page.evaluate("(() => { const h = document.querySelector('#rsVizCard .rs-hint');"
-                                  " return !!h && h.textContent.indexOf('flash threshold') > -1; })()"))
+        suite.check("the card carries one line, and it is the plain one",
+                    page.evaluate("(() => { const c = document.getElementById('rsVizCard');"
+                                  " if (!c) return false; const t = c.textContent;"
+                                  " return /Follows the audio/.test(t) && !/flash threshold/i.test(t)"
+                                  " && !/no microphone/i.test(t); })()"))
         suite.check("the two ways in are equal cards",
                     page.evaluate("(() => { const c = document.querySelectorAll('#scr-vis section.card.rs-cta');"
                                   " if (c.length !== 2) return false;"
@@ -717,6 +719,62 @@ def main():
             "(() => { const c = document.getElementById('rsVizCard'); if (!c) return false;"
             " return !!c.querySelector('#vizPreset') && !c.querySelector('#rsScenes')"
             "   && !c.querySelector('#rsFollow'); })()"))
+        # the card wears the same generated plate under the same scrim as the two feature cards
+        suite.check("the Ambient panels card carries its own plate", page.evaluate(
+            "(() => { const c = document.getElementById('rsVizCard');"
+            " return getComputedStyle(c, '::before').backgroundImage.indexOf('cta-ambient') > -1; })()"))
+        # the scene picker is an LED window; the page's select is hidden but still drives
+        sm = page.evaluate("""(() => {
+          const menu = document.getElementById('rsSceneMenu'), sel = document.getElementById('vizPreset');
+          if (!menu || !sel) return null;
+          const sync = document.getElementById('vizSync');
+          return { h: Math.round(menu.getBoundingClientRect().height),
+                   selDisplay: getComputedStyle(sel).display,
+                   label: document.getElementById('rsSceneName').textContent.trim(),
+                   expanded: menu.getAttribute('aria-expanded'),
+                   syncDisplay: sync ? getComputedStyle(sync).display : 'none' };
+        })()""")
+        suite.check("the scene picker is a smoked LED window, and the stray dash is gone",
+                    sm is not None and sm["h"] >= 44 and sm["selDisplay"] == "none"
+                    and sm["label"] and sm["expanded"] == "false" and sm["syncDisplay"] == "none", sm)
+        page.click("#rsSceneMenu")
+        page.wait_for_timeout(300)
+        pop = page.evaluate("""(() => {
+          const p = document.getElementById('rsScenePop');
+          if (!p) return null;
+          const r = p.getBoundingClientRect();
+          const cur = p.querySelector('button[aria-selected=true]');
+          return { on: p.classList.contains('rs-on'), n: p.querySelectorAll('button').length,
+                   inside: r.left >= 0 && r.right <= innerWidth, cur: cur && cur.textContent.trim() };
+        })()""")
+        suite.check("it opens a list in the same language with the current scene marked",
+                    pop is not None and pop["on"] and pop["n"] >= 3 and pop["inside"] and pop["cur"], pop)
+        picked = page.evaluate("""(() => {
+          const b = [...document.querySelectorAll('#rsScenePop button')]
+            .find(x => x.getAttribute('aria-selected') !== 'true');
+          if (!b) return null;
+          const v = b.getAttribute('data-v'), t = b.textContent.trim();
+          b.click();
+          return { v: v, t: t };
+        })()""")
+        page.wait_for_timeout(450)
+        suite.check("choosing an entry sets the page's own scene and shuts the list",
+                    picked is not None
+                    and page.evaluate("document.getElementById('vizPreset').value") == picked["v"]
+                    and not page.evaluate(
+                        "document.getElementById('rsScenePop').classList.contains('rs-on')"), picked)
+        suite.check("the window names the scene that is now chosen", page.evaluate(
+            "document.getElementById('rsSceneName').textContent.trim()") == picked["t"], picked)
+        keys = page.evaluate("""(() => {
+          const g = (id) => { const e = document.getElementById(id); const s = getComputedStyle(e);
+            return { h: Math.round(e.getBoundingClientRect().height), bg: s.backgroundColor,
+                     img: s.backgroundImage.slice(0, 24) }; };
+          return { on: g('vizToggle'), sc: g('vizScramble') };
+        })()""")
+        suite.check("Turn on/off and Scramble wear the brass plate too",
+                    keys["on"]["h"] >= 44 and "gradient" in keys["on"]["img"]
+                    and keys["on"]["bg"] not in ("rgba(0, 0, 0, 0)", "transparent")
+                    and keys["sc"]["h"] >= 44 and "gradient" in keys["sc"]["img"], keys)
         suite.check("Focus view has its own way in",
                     page.evaluate("!!document.getElementById('rsFocusGo')"))
         # the Visualise Scramble toggle toasts through the page's own #toast, which the shell
@@ -989,33 +1047,38 @@ def main():
         suite.check("resetting tempo restores the session's own beat",
                     bool(back) and abs(back[0] / back[1] - 1) < 0.001, back)
 
-        # ---- the tab bar is static; only the player leaves -------------------------
-        # Owner's rule (2026-11-08): Home / Sessions / Studio / Visualise / Settings
-        # never hide - they are the way out of every screen. The mini player still
-        # leaves after a short quiet spell, and any touch brings it straight back.
+        # ---- the tab bar and the player are both static --------------------------------
+        # Owner's rule (2026-11-08): nothing in the chrome auto-hides. The tab bar is the way
+        # out of every screen, and the player sliding away after a quiet spell read as the UI
+        # breaking, so it now keeps its place too.
         suite.tab("vis")
         page.wait_for_timeout(900)
         nav = page.evaluate("(() => { const n = document.getElementById('rsNav');"
                             " const r = n.getBoundingClientRect();"
+                            " const m = document.getElementById('rsMini'); const mr = m.getBoundingClientRect();"
                             " return { top: Math.round(r.top), h: Math.round(r.height),"
                             " opacity: getComputedStyle(n).opacity,"
                             " pe: getComputedStyle(n).pointerEvents,"
-                            " mini: document.getElementById('rsMini').classList.contains('rs-on') }; })()")
+                            " mini: m.classList.contains('rs-on'),"
+                            " mtop: Math.round(mr.top), mh: Math.round(mr.height),"
+                            " mop: getComputedStyle(m).opacity }; })()")
         suite.check("the mini player is up on a screen without its own transport", nav["mini"], nav)
         page.wait_for_timeout(8600)
         still = page.evaluate("(() => { const n = document.getElementById('rsNav');"
                               " const r = n.getBoundingClientRect();"
+                              " const m = document.getElementById('rsMini'); const mr = m.getBoundingClientRect();"
                               " return { top: Math.round(r.top), h: Math.round(r.height),"
                               " opacity: getComputedStyle(n).opacity,"
                               " pe: getComputedStyle(n).pointerEvents,"
+                              " mtop: Math.round(mr.top), mh: Math.round(mr.height),"
+                              " mop: getComputedStyle(m).opacity,"
                               " hide: document.documentElement.classList.contains('rs-minihide') }; })()")
         suite.check("eight quiet seconds leave the tab bar exactly where it was",
                     still["top"] == nav["top"] and still["h"] == nav["h"]
                     and still["opacity"] == "1" and still["pe"] != "none", still)
-        suite.check("they do put the mini player away", still["hide"], still)
-        page.evaluate("document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))")
-        suite.check("a touch brings the player straight back", suite.wait_until(
-            "!document.documentElement.classList.contains('rs-minihide')", 3))
+        suite.check("and the player stays put too — no hiding, no fade",
+                    still["mtop"] == nav["mtop"] and still["mh"] == nav["mh"]
+                    and still["mop"] == "1" and not still["hide"], still)
         suite.check("the tab bar never grew a hide class", page.evaluate(
             "!document.documentElement.classList.contains('rs-navhide')"))
 
@@ -1264,11 +1327,11 @@ def main():
         amb = page.evaluate("""(() => {
           const p = document.getElementById('vizPrev').getBoundingClientRect();
           const n = document.getElementById('vizNext').getBoundingClientRect();
-          const s = document.getElementById('vizPreset').getBoundingClientRect();
+          const m = document.getElementById('rsSceneMenu').getBoundingClientRect();
           const cym = document.getElementById('cymCardBtn');
           return { box: !!document.querySelector('#vizCard .rs-scenebox'),
                    pw: Math.round(p.width), ph: Math.round(p.height), nw: Math.round(n.width),
-                   sw: Math.round(s.width), sh: Math.round(s.height),
+                   sw: Math.round(m.width), sh: Math.round(m.height),
                    cym: cym ? getComputedStyle(cym).display : 'gone' };
         })()""")
         suite.check("the page's duplicate Cymatic Chamber button is gone", amb["cym"] == "none", amb)
