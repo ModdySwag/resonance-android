@@ -638,6 +638,18 @@ def main():
         suite.check("the mapping prints the real carrier and rate", "carrier" in mapping and "rate" in mapping, mapping[:120])
         suite.check("the mapping names a medium for the band",
                     any(w in mapping.lower() for w in ["plate", "disc", "water", "skin", "ripple"]), mapping[:120])
+        # the chamber's own controls now travel inside the chamber: open it and its Setup sheet
+        page.click("#rsChamber")
+        suite.wait_until("!!document.getElementById('cymRoot') && "
+                         "!document.getElementById('cymRoot').hidden", 8)
+        page.wait_for_timeout(400)
+        page.click("#rsCymSetup")
+        page.wait_for_timeout(350)
+        suite.check("the chamber's Setup sheet holds its controls", page.evaluate(
+            "(() => { const p = document.getElementById('rsCymPanel');"
+            " return !!p && p.classList.contains('on')"
+            "   && p.contains(document.getElementById('rsScenes'))"
+            "   && p.contains(document.getElementById('rsFollow')); })()"))
         suite.check("a scene chip is preselected to match", page.evaluate(
             "!!document.querySelector('#rsScenes button[aria-pressed=true]')"))
         page.click("#rsScenes button[data-scene=minnaert-cloud]")
@@ -670,15 +682,21 @@ def main():
             "(() => { const b = document.querySelector('#rsScenes button[data-scene=cathedral]');"
             " return !!b && b.getAttribute('aria-pressed') === 'true'; })()"))
         # the reported bug: opening the chamber re-applied the plan's scene, so every
-        # chip click was erased a beat later. The pick must survive the open.
+        # chip click was erased a beat later. The pick must survive a close and reopen.
+        page.evaluate("window.ResonanceCymatics.close()")
+        page.wait_for_timeout(300)
         page.click("#rsChamber")
         suite.wait_until("!!document.getElementById('cymRoot') && "
                          "!document.getElementById('cymRoot').hidden", 8)
-        suite.check("opening the chamber keeps the scene a person picked", page.evaluate(
+        page.wait_for_timeout(300)
+        suite.check("reopening the chamber keeps the scene a person picked", page.evaluate(
             "window.ResonanceCymatics.api.getPrefs().preset") == "cathedral")
         page.evaluate("window.ResonanceCymatics.close()")
-        page.wait_for_timeout(250)
-        page.click("#rsFollow")
+        page.wait_for_timeout(300)
+        # Follow lives inside the chamber now, so restore it through the real control's value
+        page.evaluate("(() => { const sw = document.getElementById('rsFollow');"
+                      " if (!sw.checked) { sw.checked = true;"
+                      "   sw.dispatchEvent(new Event('change', { bubbles: true })); } })()")
         suite.check("Follow is back on for the rest of the run", page.evaluate(
             "document.getElementById('rsFollow').checked"))
 
@@ -703,17 +721,15 @@ def main():
         # the restructure: the chamber's controls live in the chamber's card, above the way
         # in. Two "Scene" controls sat side by side before this, one of them driving a
         # surface three controls away.
-        suite.check("the chamber card owns every chamber control", page.evaluate(
-            "(() => { const c = document.getElementById('rsCymCard'); if (!c) return false;"
-            " return ['rsFollow', 'rsMap', 'rsScenes', 'rsMedia', 'rsVisToggles', 'rsChamber']"
-            "   .every(id => c.contains(document.getElementById(id))); })()"))
-        suite.check("the controls come before the way in, in reading order", page.evaluate(
-            "(() => { const c = document.getElementById('rsCymCard');"
-            " const btn = document.getElementById('rsChamber');"
-            " if (!c || !btn) return false;"
-            " return ['rsFollow', 'rsMap', 'rsScenes', 'rsMedia', 'rsVisToggles']"
-            "   .every(id => (document.getElementById(id).compareDocumentPosition(btn)"
-            "     & Node.DOCUMENT_POSITION_FOLLOWING) !== 0); })()"))
+        suite.check("the chamber card is one clean key",
+                    page.evaluate("(() => { const c = document.getElementById('rsCymCard');"
+                                  " if (!c || !document.getElementById('rsChamber')) return false;"
+                                  " return ['rsFollow', 'rsScenes', 'rsMedia', 'rsVisToggles']"
+                                  "   .every(id => !c.contains(document.getElementById(id))); })()"))
+        suite.check("its controls are stashed with the chamber, not on the screen",
+                    page.evaluate("(() => { const c = document.getElementById('rsCymCtl');"
+                                  " if (!c || c.closest('#rsCymCard')) return false;"
+                                  " return c.offsetParent === null; })()"))
         suite.check("the Ambient panels card keeps one Scene menu and no chamber chips",
                     page.evaluate(
             "(() => { const c = document.getElementById('rsVizCard'); if (!c) return false;"

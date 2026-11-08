@@ -200,6 +200,25 @@ screen on it; that is now fixed, not explained away.
   `backdrop: "off"` stored. **Harness 255/0**, contrast 0, tablet 82/0, eslint 0, device gate 19/0.
   Release **957,671 B, sha256 `0ccccb986851af0eb7d63ad1459fad08075c70be8f71accdd2766839e945c083`**.
 
+## Follow-up 6: Visualise is one clean key per experience
+
+Owner's call: the chamber's scene/medium/layer pills and the Follow switch duplicated what the chamber
+itself can do, so the card is now title + **Open the chamber** and nothing else.
+
+- The controls moved *into* the chamber: `#rsCymCtl` (follow switch, mapping readout, scene chips, medium
+  chips, Sand/Lines/Dust) is built into a hidden `#rsCymStash`, and `chamberChrome()` moves it into a
+  **Setup** sheet docked above the chamber's transport (`#rsCymSetup` → `#rsCymPanel`, `aria-expanded`
+  wired, 44 px key, `html.rs-app #rsCymSetup{min-height:44px}`).
+- The Setup handler looks the live panel up by id on every tap: a closure over the first `#rsCymPanel` node
+  silently toggled a detached copy (measured: manual call left the class unchanged), which is the trap to
+  remember for any node created in `chamberChrome` — the page rebuilds the chamber's own chrome.
+- Harness legs rewritten to the new contract: the card carries only `#rsChamber` and none of the controls;
+  the controls are off-screen (not inside the card); the chamber's Setup sheet holds them; the chamber
+  chip/medium/follow legs now drive them *inside* the chamber, and the "pick survives" leg closes and
+  reopens the chamber.
+- **Harness 256/0**, contrast 0, tablet 82/0 (after giving Setup its 44 px), eslint 0, device gate 19/0.
+  Release **957,927 B, sha256 `9a675bb7234b1d6ea45b2609aa29c970eff93cd9dc10e94e258505152ad0c9ca`**.
+
 ## What is left, in order
 
 1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker

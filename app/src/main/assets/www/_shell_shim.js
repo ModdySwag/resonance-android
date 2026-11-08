@@ -338,6 +338,13 @@
        switch first, then the mapping and the three pickers, then the way in */
     ".rs-cymctl{margin:0;padding:12px 0 0;border-top:1px solid var(--rs-line)}",
     ".rs-cymctl .rs-sw{padding-top:0;padding-bottom:2px}",
+    /* the chamber's controls ride with it as a Setup sheet above the transport */
+    "html.rs-app .rs-cym-setup{position:absolute;left:0;right:0;bottom:84px;max-height:64%;overflow:auto;",
+    "  display:none;padding:12px 14px 16px;background-color:#120D07;border-top:1px solid #5A4526;",
+    "  box-shadow:0 -14px 34px rgba(0,0,0,.65);z-index:9}",
+    "html.rs-app .rs-cym-setup.on{display:block}",
+    "html.rs-app #rsCymSetup{min-height:44px;min-width:64px}",
+    "html.rs-app .rs-cym-setup .rs-cymctl{padding:0;margin:0;background:none;border:0}",
     /* a quiet picture bleeds in at the head of each way in, and fades into the card */
     "html[data-rs-ui=full] .rs-cta{position:relative;overflow:hidden}",
     "html[data-rs-ui=full] .rs-cta::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
@@ -2787,22 +2794,6 @@
       '  <div class="rs-cta-top"><span class="rs-cta-art">' + svg("chamber", 26) + '</span>' +
       '    <div><h3 id="rsCymH">Cymatic chamber</h3>' +
       '    <p class="rs-cta-sub">Full visual experience</p></div></div>' +
-      /* The chamber's own controls: follow, the mapping, the scene and medium chips, the
-         layer toggles. They used to sit in a card of their own beside the Ambient panels'
-         Scene menu, which put two "Scene" controls side by side and one of them three
-         controls away from the chamber it drives. */
-      '  <div class="rs-cymctl">' +
-      '    <label class="rs-sw"><span class="rs-swt">' +
-      '      <b id="rsFollowH">Follow the tone</b></span>' +
-      '      <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
-      '    <div class="rs-map" id="rsMap" aria-live="polite">No session.</div>' +
-      '    <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
-      '    <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
-      '    <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
-      '      <button data-k="sand" aria-pressed="true">Sand</button>' +
-      '      <button data-k="lines" aria-pressed="true">Lines</button>' +
-      '      <button data-k="dust" aria-pressed="true">Dust</button></div>' +
-      '  </div>' +
       '  <button class="rs-btn rs-filled" id="rsChamber" style="width:100%">Open the chamber</button>' +
       '</section>' +
       '<section class="card rs-cta" data-band="relax" data-art="focus" aria-labelledby="rsFocusH">' +
@@ -2814,6 +2805,25 @@
       '<section class="card" data-band="other" id="rsVizCard" data-art="ambient" aria-labelledby="rsVizH">' +
       '  <h3 id="rsVizH">Ambient panels</h3></section>' +
       '<div class="rs-pad"></div>';
+    /* The Visualise screen keeps one clean key per experience. The chamber's own controls now
+       live with the chamber (a Setup sheet inside it), so this section is title + door only. */
+    var stash = doc.createElement("div");
+    stash.id = "rsCymStash";
+    stash.hidden = true;
+    stash.innerHTML =
+      '<div class="rs-cymctl" id="rsCymCtl">' +
+      '  <label class="rs-sw"><span class="rs-swt">' +
+      '    <b id="rsFollowH">Follow the tone</b></span>' +
+      '    <input type="checkbox" id="rsFollow" checked><span class="rs-track" aria-hidden="true"></span></label>' +
+      '  <div class="rs-map" id="rsMap" aria-live="polite">No session.</div>' +
+      '  <div class="rs-chips" id="rsScenes" role="group" aria-label="Scenes"></div>' +
+      '  <div class="rs-chips" id="rsMedia" role="group" aria-label="Medium"></div>' +
+      '  <div class="rs-seg" id="rsVisToggles" role="group" aria-label="Layers">' +
+      '    <button data-k="sand" aria-pressed="true">Sand</button>' +
+      '    <button data-k="lines" aria-pressed="true">Lines</button>' +
+      '    <button data-k="dust" aria-pressed="true">Dust</button></div>' +
+      '</div>';
+    doc.body.appendChild(stash);
   }
 
   function cymApi() {
@@ -3007,6 +3017,31 @@
       leftPanel.insertBefore(row, leftPanel.firstChild);
     }
     act.insertBefore(info, act.querySelector("#cymClose"));
+
+    /* The chamber's own controls travel with it: a Setup sheet docked above the transport,
+       holding the follow switch, the mapping readout, the scene and medium chips and the
+       layer keys. The Visualise card keeps one door and nothing else. */
+    var setup = doc.createElement("button");
+    setup.id = "rsCymSetup";
+    setup.className = "cym-tempo";
+    setup.textContent = "Setup";
+    setup.setAttribute("aria-label", "Chamber setup");
+    setup.setAttribute("aria-expanded", "false");
+    var setupSheet = doc.createElement("div");
+    setupSheet.className = "rs-cym-setup";
+    setupSheet.id = "rsCymPanel";
+    var setupCtl = doc.getElementById("rsCymCtl");
+    if (setupCtl) setupSheet.appendChild(setupCtl);
+    root.appendChild(setupSheet);
+    setup.onclick = function (e) {
+      if (e && e.stopPropagation) e.stopPropagation();
+      var live = doc.getElementById("rsCymPanel") || setupSheet;
+      var on = !live.classList.contains("on");
+      live.classList.toggle("on", on);
+      var btn = doc.getElementById("rsCymSetup") || setup;
+      btn.setAttribute("aria-expanded", on ? "true" : "false");
+    };
+    act.insertBefore(setup, info);
 
     /* Two rows of hardware. Navigation (back / status / help / close) on the first,
        the transport (play, stop, fader, Controls) on the second; on a wide glass the
