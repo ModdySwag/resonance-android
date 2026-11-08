@@ -1,4 +1,68 @@
-# SAVE POINT — 2026-11-08 (session 13, end). READ THIS FIRST.
+# SAVE POINT — 2026-11-08 (session 14: the mini viewer is the focus view, small). READ THIS FIRST.
+
+## State
+- **HEAD `0774889`**, tree clean, **nothing pushed, nothing published**.
+- **Release APK `958,435 B`, sha256 `cfed84193c032a757c8046e2e406280d9f87c4df1ac7a3aaa571d94bd451bda8`**,
+  2.0.6-beta / versionCode 14, signed and installed on the phone `192.168.1.95:33139` and the Tab A9+
+  `adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp` (use the full mDNS name — the short serial is gone).
+- **Gates on these bytes**: harness **262/0**, tablet **82/0**, contrast **0**, eslint **0**, device gate
+  **19/0** (`cache/dev-gate2.log`), CI manifest leg green (`cache/probe_ci_manifest.py`, 63 files).
+
+## What this session found (the root cause of "Score/Traces don't work")
+The card ran **three look systems at once** — a preset select, a backdrop/overlay/palette chip drawer, and
+the focus scenes. `rebuildScenes()` gives `prefs.scene` precedence and **ignores backdrop and overlays
+entirely**, so with a scene chosen (the default) every chip wrote a preference nothing read. Measured:
+with `focus-ember` up, setting `backdrop:"score"` + `overlays:["traces"]` changed **6/576 blocks** — just the
+scene's own motion. The modes themselves are fine: driven directly with no scene, all 15 draw and move
+(`score` 146/576 blocks, `traces` 173/576).
+
+## Shipped
+1. **The card is the Mini viewer**, and speaks the focus view's language: the same eight scenes, the same
+   `prefs.scene`. Picking in the card changes the fullscreen view and vice versa; measured both directions.
+2. **The chip drawer and the preset select are gone from the card** (hidden, not folded). `scramble()` in the
+   page gained a **scene branch**, so the button, the shuffle key and auto-scramble all mean "another scene";
+   the retired Scramble button is off the card and `#vizShuffle` is the one randomiser.
+3. **A card with no scene adopts the focus default** (`focus-cathedral`) instead of falling back to the
+   retired look, so the window, the preview and the fullscreen view always name the same scene.
+4. **The focus bar's name is a BUTTON** — it was a dead `<span>`, and the only live target was the small
+   "Change" key, which is exactly "I press the pill and nothing happens". A real finger tap at physical
+   pixels opens the eight-card picker on glass (`cache/probe_device_pill.py`).
+5. **The bundle learned three asset families**: `sync-assets.py` now lists `vizgl.js` + `vizscenes.js` and
+   **globs the sixteen `app/ui/scene/*.webp` plates**; manifest regenerated (63 files, `1,166,922 B`).
+6. **The site tree was reconciled**: app was newest on all 8 drifting files (site and deploy agreed on 6),
+   so they were backported, plates + `vizgl.js` copied in, and `--check` now says **63/63**. Snapshot of the
+   old site bytes: `cache/site-backup-2026-11-08/` (webmusic-hub is NOT a git repo).
+
+## Measured, at card size (552x335 device px, 1.5 dpr, audio playing)
+All eight scenes draw and move: cathedral 291/576 blocks, deepfield 25 (worst 9.6), ink 144, aurora 322,
+ember 33, rain 216, spiral **6 (worst 3.8 — by design, it is a slow spiral)**, plankton 198.
+
+## Next moves, in order
+1. **Owner eye gate** on the Mini viewer pass: the card (heading/copy/preview/scene window), the picker in
+   both sizes, the focus bar, and the **transition** when a scene changes (a 1.2 s dissolve).
+2. **Publishing**: these are NEW bytes, so **cut 2.0.7-beta / code 15** rather than re-staging 2.0.6 with
+   them; bump `versionCode`, rebuild, regenerate with `make-updates-json.py --resonance-only`, then upload
+   only on his word.
+3. **Open asks still unanswered**: Setup sheet strip vs full drawer; grabber height; and now — does the
+   retired chip vocabulary come back as **scenes of its own** (Score, Traces, Meters would each need a
+   plate/geometry), or does it stay retired?
+4. `device_gate.py` / `tablet_pass.py` still `remove('rs-navhide')` as a wake-up — harmless, tidy later.
+
+## Traps learned this session
+- **A scene owns the look; backdrop/overlay prefs are dead while it is set.** Before shipping any new
+  visual control, check which of the three paths `rebuildScenes()` will actually read.
+- **`screen.width` in this WebView is CSS px.** `adb shell input tap` wants **physical** px from
+  `wm size` (1220x2712 here); scaling by `screen.width/innerWidth` put my finger mid-screen and produced a
+  false "the pill is dead" reproduction.
+- **Playwright's `visible` fails on `#rsApp` while the fullscreen layer is up** (and after the screen slept):
+  wait with `state="attached"`, click `#rsFs [data-rs=fsExit]` if `rs-fs` is on, and wake the device first.
+- **A non-button that looks like a control is a dead control.** The focus bar's name pill was a `<span>`;
+  the handler existed the whole time.
+- **MSYS `grep -c $'\r'` miscounts CRLF** (it matched every line); count bytes in Python. `vizmodes.js` was
+  stored CRLF in git despite `eol=lf`; the sync normalised it to LF (invisible to `git diff`, visible to
+  `git status`).
+
+# SAVE POINT — 2026-11-08 (session 13, end).
 
 ## State
 - **HEAD `722bac0`**, tree clean, **nothing pushed, nothing published**. Releases on top of `9db88aa`:
