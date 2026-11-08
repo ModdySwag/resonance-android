@@ -758,7 +758,13 @@
     for (var pi = 0; pi < state.panels.length; pi++) {
       var p = state.panels[pi];
       if (!p.visible) continue;
-      if (p.onScreen === false) continue;          /* no box on screen: nothing to paint */
+      if (p.onScreen === false) {
+        /* an observer can call a clipped canvas "out" while it still has a real box (the card's
+           preview sits inside a zero-height wrapper in the page's own grid). Only a canvas with
+           no box at all is genuinely un-drawable. */
+        var cr = p.canvas.getBoundingClientRect();
+        if (!(cr.width > 0 && cr.height > 0)) continue;
+      }
       if (p.canvas.width === 0) { fit(p, true); if (p.canvas.width === 0) continue; }
       var ctx = p.ctx, sc = scenes[pi];
       ctx.setTransform(p.dpr, 0, 0, p.dpr, 0, 0);

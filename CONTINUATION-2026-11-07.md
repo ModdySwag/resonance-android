@@ -151,6 +151,55 @@ should go away in favour of dark only.
   renames the window. **Harness 251/0**, contrast 0, tablet 82/0, eslint 0, device gate 19/0.
   Release **973,235 B, sha256 `7ab9bb7a7943837d4ca70611bce9de0ce13e77b02f142ffb0d7ede3aa734da59`**.
 
+## Follow-up 4: the scene window, its label, and the card's atmosphere
+
+Owner's corrections on the Ambient panels card:
+
+- **The scene window is now centred LED text** (13 px monospace, amber `#FFB454`, tabular numerals,
+  letter-spacing .12em, a double glow) with the stray chevron **removed** — the glyph he saw below the
+  wording was the menu's own `svg("chev")`.
+- **The label names what is loaded**: the window shows the selected scene's name (`Quiet Tide`) and reads
+  **"Select Scene"** when the page's select has no value. `sceneOptionText()` maps `value === ""` to
+  "Select Scene"; the 1 Hz tick keeps it current.
+- **The artwork is the Focus view's own**, not generated chrome: `ui/scene/aurora.webp` under a scrim that
+  runs **the full height of the card** (`inset:0`, `.42 → .96` from top to bottom), so the atmosphere
+  continues behind the scene box, the chips and the auto-scramble switch. `cta-ambient.webp` was deleted
+  (it read as a different app next to the focus plates).
+- **The amp language is on exactly the three controls he named**: the scene window, the ‹ › arrows, and the
+  **shuffle chip** (which had missed it because shuffle is moved into the label row, outside `.vz-scenes`,
+  so it needed its own `.rs-scene-shuffle` rule).
+- Measured on the phone: art `scene/aurora`, `::before` bottom 0, menu 235x44, label `Quiet Tide`, centred,
+  **0 svg glyphs** in the window, shuffle 44 px on a gradient plate, select and dash hidden; picking
+  "Tide and Pulse" sets the select, renames the window and closes the list.
+- **Harness 252/0**, contrast 0, tablet 82/0, eslint 0, device gate 19/0. Release **957,343 B, sha256
+  `ac7f69d9dfde55fc7b5aef4cb5b3bd7c179bb84e343a0e3686cc050b55e4fbe6`** (smaller than the previous build:
+  the generated plate is gone).
+
+## Follow-up 5: the Ambient panels section, made honest (owner asked what it even does)
+
+**What it is:** the page's own ambient visualiser — two canvas panels rendering a moving backdrop
+(Tide / Drift / Aurora / Rainfall / Score) with up to four overlay layers (Pulse, Phasors, Traces,
+Orbits, Harmonograph, Weave, Meters) in a palette, driven by the audio features of the session.
+
+**Why every control looked dead:** the panels lived in the page's own grid, which the shell hides —
+measured at **0×0 with their whole ancestor chain `display:none`** — so each chip wrote a preference
+only two invisible canvases (and the Focus view) ever read. The backdrop/overlay/palette chips also
+only drive the legacy path, which the focus scenes bypass. The section was a control panel with no
+screen on it; that is now fixed, not explained away.
+
+- **A live preview now lives in the card**: the page's left inline panel is moved inside `#rsVizCard`
+  (290×190, above the scene menu), so every control shows its work on the spot.
+- **The legacy chips fold away** under one disclosure, "Backdrop, layers and palette — for hand-built
+  looks, the scenes above ignore these", leaving the reading order preview → scene → intensity/calm →
+  auto-scramble.
+- **The off-screen draw gate needed one correction**: `IntersectionObserver` reports the preview "out"
+  because it sits inside the page's zero-height wrapper even though it has a real box, so the gate now
+  also checks the canvas's own rect and only skips a canvas with no box at all.
+- **Measured**: preview `[50, 1010, 290, 190]` painting (frames 78 → 244 → 299 after Turn off/Turn on,
+  frozen while off), and clicking the "Off" backdrop chip dropped its brightness 22.37 → 13.57 with
+  `backdrop: "off"` stored. **Harness 255/0**, contrast 0, tablet 82/0, eslint 0, device gate 19/0.
+  Release **957,671 B, sha256 `0ccccb986851af0eb7d63ad1459fad08075c70be8f71accdd2766839e945c083`**.
+
 ## What is left, in order
 
 1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker

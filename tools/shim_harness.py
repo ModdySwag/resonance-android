@@ -719,24 +719,56 @@ def main():
             "(() => { const c = document.getElementById('rsVizCard'); if (!c) return false;"
             " return !!c.querySelector('#vizPreset') && !c.querySelector('#rsScenes')"
             "   && !c.querySelector('#rsFollow'); })()"))
-        # the card wears the same generated plate under the same scrim as the two feature cards
-        suite.check("the Ambient panels card carries its own plate", page.evaluate(
+        # the card carries the Focus view's own atmosphere behind its whole height
+        suite.check("the Ambient panels card wears the focus view's own plate, full height", page.evaluate(
             "(() => { const c = document.getElementById('rsVizCard');"
-            " return getComputedStyle(c, '::before').backgroundImage.indexOf('cta-ambient') > -1; })()"))
+            " const s = getComputedStyle(c, '::before');"
+            " return s.backgroundImage.indexOf('scene/aurora') > -1"
+            "   && s.position === 'absolute' && s.bottom === '0px' && s.top === '0px'; })()"))
         # the scene picker is an LED window; the page's select is hidden but still drives
         sm = page.evaluate("""(() => {
           const menu = document.getElementById('rsSceneMenu'), sel = document.getElementById('vizPreset');
           if (!menu || !sel) return null;
           const sync = document.getElementById('vizSync');
-          return { h: Math.round(menu.getBoundingClientRect().height),
+          const mr = menu.getBoundingClientRect();
+          const span = document.getElementById('rsSceneName');
+          const sr = span ? span.getBoundingClientRect() : null;
+          const shuf = document.getElementById('vizShuffle'), sc = getComputedStyle(shuf);
+          return { h: Math.round(mr.height),
                    selDisplay: getComputedStyle(sel).display,
-                   label: document.getElementById('rsSceneName').textContent.trim(),
+                   label: span ? span.textContent.trim() : '',
+                   centred: sr ? Math.abs((sr.x + sr.width / 2) - (mr.x + mr.width / 2)) <= 2 : false,
                    expanded: menu.getAttribute('aria-expanded'),
-                   syncDisplay: sync ? getComputedStyle(sync).display : 'none' };
+                   syncDisplay: sync ? getComputedStyle(sync).display : 'none',
+                   shufH: Math.round(shuf.getBoundingClientRect().height),
+                   shufImg: sc.backgroundImage.slice(0, 24) };
         })()""")
-        suite.check("the scene picker is a smoked LED window, and the stray dash is gone",
+        suite.check("the scene window is centred LED text, and the stray dash is gone",
                     sm is not None and sm["h"] >= 44 and sm["selDisplay"] == "none"
-                    and sm["label"] and sm["expanded"] == "false" and sm["syncDisplay"] == "none", sm)
+                    and sm["label"] == "Select Scene" and sm["centred"]
+                    and sm["expanded"] == "false" and sm["syncDisplay"] == "none", sm)
+        suite.check("the shuffle chip is a brass key too",
+                    sm is not None and sm["shufH"] >= 40 and "gradient" in sm["shufImg"], sm)
+        # the card shows its own work: a live preview on the card, legacy chips folded away
+        prev = page.evaluate("""(() => {
+          const c = document.querySelector('#rsVizCard canvas.viz-canvas');
+          const d = document.querySelector('#rsVizCard details.rs-vizadv');
+          if (!c || !d) return null;
+          const r = c.getBoundingClientRect();
+          const st = window.ResonanceViz.api.debugState();
+          return { w: Math.round(r.width), h: Math.round(r.height), open: d.open,
+                   holds: ['vizBackdrops', 'vizOverlays', 'vizPalettes']
+                     .every(id => d.contains(document.getElementById(id))),
+                   frames: st.panels.map(p => p.frames) };
+        })()""")
+        suite.check("the card carries a live ambient preview of its own",
+                    prev is not None and prev["w"] > 120 and prev["h"] >= 120, prev)
+        page.wait_for_timeout(900)
+        prev2 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
+        suite.check("the preview is painting, not a still",
+                    prev is not None and sum(prev2) > sum(prev["frames"]), [prev["frames"], prev2])
+        suite.check("backdrop, layers and palette sit in one closed disclosure",
+                    prev is not None and prev["holds"] and not prev["open"], prev)
         page.click("#rsSceneMenu")
         page.wait_for_timeout(300)
         pop = page.evaluate("""(() => {
@@ -933,8 +965,8 @@ def main():
         fs1 = page.evaluate("window.ResonanceViz.api.debugState().panels"
                             ".map(p => ({ on: p.onScreen, n: p.frames }))")
         suite.check("a panel with no box on screen paints nothing",
-                    all(a["n"] == b["n"] for a, b in zip(fs0, fs1))
-                    and not any(a["on"] for a in fs0), [fs0, fs1])
+                    all(a["n"] == b["n"] for a, b in zip(fs0, fs1) if not a["on"])
+                    and any(not a["on"] for a in fs0), [fs0, fs1])
 
         # the chamber opens as a real instrument
         page.click("#rsChamber")

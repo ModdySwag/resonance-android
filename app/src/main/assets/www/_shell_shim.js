@@ -348,13 +348,19 @@
     "html[data-rs-ui=full] .rs-cta[data-art=focus]::before{background-image:",
     "  linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-focus.webp)}",
     "html[data-rs-ui=full] .rs-cta > *{position:relative;z-index:1}",
-    /* the Ambient panels card gets the same treatment as the two feature cards: one generated
-       plate behind its head, under the same scrim, at every width */
+    /* the card now carries the Focus view's own atmosphere through its whole height — the
+       aurora plate under a scrim that stays dark enough for text at every line, down to the
+       auto-scramble switch. Generated chrome art read as a different app next to it. */
     "html[data-rs-ui=full] #rsVizCard{position:relative;overflow:hidden}",
-    "html[data-rs-ui=full] #rsVizCard::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
-    "  background-size:cover;background-position:center;pointer-events:none;",
-    "  background-image:linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-ambient.webp)}",
+    "html[data-rs-ui=full] #rsVizCard::before{content:\"\";position:absolute;inset:0;",
+    "  background-size:cover;background-position:center top;pointer-events:none;",
+    "  background-image:linear-gradient(180deg,rgba(18,16,14,.42),rgba(15,13,11,.80) 46%,",
+    "  rgba(13,11,9,.92) 78%,rgba(12,10,9,.96)),url(ui/scene/aurora.webp)}",
     "html[data-rs-ui=full] #rsVizCard > *{position:relative;z-index:1}",
+    "#rsVizCard .rs-vizadv{margin:12px 0 6px;padding:0 12px;border:1px solid var(--rs-line);",
+    "  border-radius:12px;background-color:rgba(0,0,0,.22)}",
+    "#rsVizCard .rs-vizadv summary{min-height:48px}",
+    "#rsVizCard .rs-vizadv .row, #rsVizCard .rs-vizadv .chips{margin-top:2px}",
     /* the scene picker is faceplate too: a smoked LED window naming the scene in amber caps,
        brass arrows, and a list in the same language. The page's own <select> stays the source
        of truth (chips, arrows and the engine all drive it) but is hidden — its native popup is
@@ -370,16 +376,25 @@
     "html[data-rs-ui=full] .rs-scenebox select#vizPreset{display:none}",
     "html[data-rs-ui=full] #vizSync{display:none !important}",
     "html[data-rs-ui=full] .rs-scenemenu{flex:1 1 auto;min-width:0;min-height:46px;display:flex;align-items:center;",
-    "  justify-content:space-between;gap:8px;padding:0 12px;border-radius:10px;border:1px solid #5A4526;",
+    "  justify-content:center;gap:8px;padding:0 10px;border-radius:10px;border:1px solid #5A4526;",
     "  background-color:#120D07;background-image:linear-gradient(180deg,#0B0805,#171008 62%,#0A0704);",
-    "  box-shadow:inset 0 1px 4px rgba(0,0,0,.9);cursor:pointer;text-align:left}",
-    "html[data-rs-ui=full] .rs-scenemenu span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
-    "  font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#FFB454;",
-    "  letter-spacing:.10em;text-transform:uppercase;text-shadow:0 0 5px rgba(255,150,40,.45)}",
+    "  box-shadow:inset 0 1px 4px rgba(0,0,0,.9);cursor:pointer;text-align:center}",
+    "html[data-rs-ui=full] .rs-scenemenu span{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;",
+    "  white-space:nowrap;text-align:center;",
+    "  font:700 13px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#FFB454;",
+    "  letter-spacing:.12em;text-transform:uppercase;font-variant-numeric:tabular-nums;",
+    "  text-shadow:0 0 6px rgba(255,150,40,.55),0 0 2px rgba(255,200,120,.8)}",
     "html[data-rs-ui=full] .rs-scenemenu svg{flex:0 0 auto;color:#C9BFAC}",
     /* the arrows' sizing rule is more specific than a bare class; the picker has to win it
        or it renders as a third 46 px square */
     "html[data-rs-ui=full] .rs-scenebox .vz-scenes button.rs-scenemenu{flex:1 1 auto;width:auto;min-width:0}",
+    "html[data-rs-ui=full] .rs-scenebox .rs-scene-shuffle,html[data-rs-ui=full] .rs-scenebox .rs-scene-shuffle:hover,",
+    "html[data-rs-ui=full] .rs-scenebox .rs-scene-shuffle:active{min-height:40px;padding:0 12px;border-radius:9px;",
+    "  border:1px solid #5A4526;background-color:#1B140C !important;",
+    "  background-image:linear-gradient(180deg,#2B2115,#17110B 60%,#0F0A06) !important;",
+    "  box-shadow:inset 0 1px 0 rgba(255,226,180,.16),0 2px 6px rgba(0,0,0,.55);",
+    "  color:#E8D6B4 !important;font:700 10.5px/1 var(--rs-sans) !important;letter-spacing:.13em;",
+    "  text-transform:uppercase}",
     "html[data-rs-ui=full] .rs-scenepop{position:absolute;left:0;right:0;top:100%;z-index:30;max-height:264px;",
     "  overflow:auto;margin-top:6px;padding:6px;border-radius:12px;border:1px solid #5A4526;",
     "  background-color:#120D07;background-image:linear-gradient(180deg,#1B130B,#0E0906);",
@@ -4725,9 +4740,10 @@
      all drive it — but its native popup is the one surface Android will not let us style.
      The shell shows the value in a smoked LED window and opens a list in the same language. */
   function sceneOptionText(sel) {
-    if (!sel) return "Scene";
+    if (!sel) return "Select Scene";
     var o = sel.options[sel.selectedIndex];
-    return (o && text(o)) || "Custom";
+    if (!o || !sel.value) return "Select Scene";
+    return text(o) || "Select Scene";
   }
   function refreshSceneMenu() {
     var n = $id("rsSceneName"), sel = $id("vizPreset");
@@ -4962,7 +4978,7 @@
           menu.setAttribute("aria-haspopup", "listbox");
           menu.setAttribute("aria-expanded", "false");
           menu.setAttribute("aria-label", "Scene");
-          menu.innerHTML = '<span id="rsSceneName">Scene</span>' + svg("chev", 16);
+          menu.innerHTML = '<span id="rsSceneName">Select Scene</span>';
           menu.addEventListener("click", function (ev) {
             ev.stopPropagation();
             if (scenePopOpen()) closeScenePop(); else openScenePop();
@@ -4984,6 +5000,36 @@
           refreshSceneMenu();
         }
         $id("rsVizCard").appendChild(vc);
+        /* Backdrop, overlay and palette only matter when no scene is chosen — the focus scenes
+           bypass them — so they fold away under one disclosure and the card reads preview ->
+           scene -> intensity/calm -> auto-scramble. */
+        var bdRow = $id("vizBackdrops") ? $id("vizBackdrops").previousElementSibling : null;
+        var ovRow = $id("vizOverlays") ? $id("vizOverlays").previousElementSibling : null;
+        var plRow = $id("vizPalettes") ? $id("vizPalettes").previousElementSibling : null;
+        if (bdRow && ovRow && plRow) {
+          var adv = doc.createElement("details");
+          adv.className = "rs-fold rs-vizadv";
+          var sum = doc.createElement("summary");
+          sum.innerHTML = '<span class="rs-fold-t"><b>Backdrop, layers and palette</b>' +
+            '<span>For hand-built looks — the scenes above ignore these</span></span>' + svg("chev", 18);
+          adv.appendChild(sum);
+          vc.insertBefore(adv, bdRow);
+          [bdRow, $id("vizBackdrops"), ovRow, $id("vizOverlays"), plRow, $id("vizPalettes")]
+            .forEach(function (n) { if (n) adv.appendChild(n); });
+        }
+        /* The card was a control panel with no screen on it: the page's ambient canvases live in
+           its own grid, which the shell hides (both sat at 0x0), so every chip changed a picture
+           nobody could see. The left inline panel moves into the card — the shell's own CSS
+           already sizes it (#vizCard canvas.viz-canvas, 190 px) — so the controls show their work. */
+        var panels = doc.querySelectorAll("section.card.viz-inline");
+        for (var pi = 0; pi < panels.length; pi++) {
+          if (panels[pi].closest("#rsVizCard")) continue;
+          var ph = panels[pi].querySelector("h3");
+          if (ph) ph.style.display = "none";
+          var anchor = vc.querySelector(".rs-scenebox") || vc.firstChild;
+          vc.insertBefore(panels[pi], anchor);
+          break;
+        }
         decorateSwatches();
         return;
       }
