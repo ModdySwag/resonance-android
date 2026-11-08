@@ -872,6 +872,18 @@ def main():
                     not in ("", "Select scene", "Select Scene"))
         suite.check("the retired Scramble button is off the card",
                     page.evaluate("getComputedStyle(document.getElementById('vizScramble')).display") == "none")
+        # auto-scramble calls the page's scramble(); with a scene up it must pick another
+        # SCENE, not write backdrop/overlay prefs the scene never reads
+        before_api = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
+        page.evaluate("window.ResonanceViz.api.scramble()")
+        page.wait_for_timeout(700)
+        api_scene = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
+        suite.check("the page's own scramble picks another scene while one is chosen",
+                    bool(api_scene) and api_scene != before_api, [before_api, api_scene])
+        suite.check("and the card's window names the scrambled scene", page.evaluate(
+            "document.getElementById('rsSceneName').textContent.trim()") == page.evaluate(
+            "(() => { const s = window.GnauralVizScenes.byId(window.ResonanceViz.api.getPrefs().scene);"
+            " return s ? s.name : ''; })()"))
         page.click("#scr-vis [data-act=focus], #rsFocusGo")
         suite.check("Focus view opens full screen", suite.wait_until(
             "document.documentElement.classList.contains('rs-focus')", 8))

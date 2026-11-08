@@ -5,7 +5,7 @@
 - **Release APK `958,435 B`, sha256 `cfed84193c032a757c8046e2e406280d9f87c4df1ac7a3aaa571d94bd451bda8`**,
   2.0.6-beta / versionCode 14, signed and installed on the phone `192.168.1.95:33139` and the Tab A9+
   `adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp` (use the full mDNS name — the short serial is gone).
-- **Gates on these bytes**: harness **262/0**, tablet **82/0**, contrast **0**, eslint **0**, device gate
+- **Gates on these bytes**: harness **264/0**, tablet **82/0**, contrast **0**, eslint **0**, device gate
   **19/0** (`cache/dev-gate2.log`), CI manifest leg green (`cache/probe_ci_manifest.py`, 63 files).
 
 ## What this session found (the root cause of "Score/Traces don't work")
@@ -47,6 +47,9 @@ ember 33, rain 216, spiral **6 (worst 3.8 — by design, it is a slow spiral)**,
    retired chip vocabulary come back as **scenes of its own** (Score, Traces, Meters would each need a
    plate/geometry), or does it stay retired?
 4. `device_gate.py` / `tablet_pass.py` still `remove('rs-navhide')` as a wake-up — harmless, tidy later.
+5. **One leg was retired with its trigger**: the `#toast` "sits on the glass" check drove the page's Scramble
+   button, which is now off the card, so the shell has no page-originated toast to measure. The CSS fix
+   (`transform:none` on `html.rs-app #toast`) stays; re-pin it if a page path starts toasting again.
 
 ## Traps learned this session
 - **A scene owns the look; backdrop/overlay prefs are dead while it is set.** Before shipping any new
