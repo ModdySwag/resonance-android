@@ -1,7 +1,8 @@
 # SAVE POINT — 2026-11-08 (session 14: the mini viewer is the focus view, small). READ THIS FIRST.
 
 ## State
-- **HEAD `0774889`**, tree clean, **nothing pushed, nothing published**.
+- **HEAD `580ad21`**, tree clean, **nothing pushed, nothing published**. Three commits:
+  `0774889` (the pass), `1c77d27` (save block), `580ad21` (the two scramble legs + the retired-toast note).
 - **Release APK `958,435 B`, sha256 `cfed84193c032a757c8046e2e406280d9f87c4df1ac7a3aaa571d94bd451bda8`**,
   2.0.6-beta / versionCode 14, signed and installed on the phone `192.168.1.95:33139` and the Tab A9+
   `adb-R92XB0RWN3B-67B1Tm._adb-tls-connect._tcp` (use the full mDNS name — the short serial is gone).
