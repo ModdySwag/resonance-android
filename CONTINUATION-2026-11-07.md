@@ -1,3 +1,80 @@
+# SAVE POINT — 2026-11-08 (session 13, end). READ THIS FIRST.
+
+## State
+- **HEAD `722bac0`**, tree clean, **nothing pushed, nothing published**. Releases on top of `9db88aa`:
+  4d00bff (focus view + on-screen paint gate), e1707a7 (loop key), 0fe6a02 (hero readouts, toast, dark only),
+  541c1dd (ambient card art + scene menu + static player), e5aee5d (ambient preview + Advanced fold),
+  2c0732d (Visualise = one key per experience), 16dc3cd (Setup brass + grabber), bee96df + 722bac0 (Setup
+  labelled in the nav row, continuation fix).
+- **Release APK `958,319 B`, sha256 `34dc6931f905d04f231dc062ea2b0cefc045fa21eba3c80b0e2652a9b23d6e09`**,
+  2.0.6-beta / versionCode 14, installed on phone `192.168.1.95:33139` and Tab A9+
+  `adb-R92XB0RWN3B-67B1Tm`.
+- **Gates green on these bytes**: shim harness **260/0** (`cache/h33.log`), contrast **0**, tablet
+  **82/0**, eslint **0**, device gate **19/0** (`cache/dev-final.log`, after a 20 s settle), and
+  `lintRelease`/`testUnitTests` green from earlier in the session.
+
+## Shipped this session (all measured, all committed)
+1. **The harness's red was not a history bug.** Stack stays balanced (state 1→0, 2→0, 3→0; the page never
+   navigates). Real cause: viz panels with no box on screen kept painting (the one back from the focus view
+   held 585x1266), dragging the page to ~10 fps and starving Playwright's actionability. `viz.js` gained
+   `watchPanels()` + `p.onScreen`, now also re-checking the canvas rect (an observer calls the card preview
+   "out" inside a zero-height wrapper). 61 fps after exit (was 10–31).
+2. **Home loop key**: the page's `button:hover` shorthand wiped its generated face on first press and never
+   gave it back (a tap leaves a sticky hover). Face re-declared for hover/active/focus; group moved to the
+   card's right edge with label → lamp → key.
+3. **Hero readouts**: Volume % in a small LED window, Surprise me a brass key, idle/live a smoked window with
+   a pilot lamp that lights red while playing; the empty pill after Scramble was the page's `#toast` sitting
+   half off-screen (`transform:none` fix); **theme is dark only** — switcher gone, stored light migrated.
+4. **Ambient panels**: own full-height aurora plate (the Focus view's), scene picker an LED window with a
+   custom list (native `<select>` popup cannot be styled), stray dash removed, copy trimmed to "Follows the
+   audio", legacy chips folded, **plus a live preview panel in the card** so the controls visibly do
+   something — they previously drove canvases that measured 0x0 behind the shell.
+5. **The bottom player is static** — the 8 s auto-hide is gone everywhere.
+6. **Visualise is one clean key per experience**: the chamber's follow switch, mapping, scene/medium chips
+   and Sand/Lines/Dust moved into a **Setup sheet inside the chamber**; the card is title + "Open the
+   chamber". Setup is a labelled brass key in the nav row, left of ?, with a **grabber** to hide the sheet.
+
+## Where the tree is (same as session 12)
+- `assets-manifest.json` is **missing `app/vizscenes.js` and `app/ui/scene/*.webp`**, and
+  `tools/sync-assets.py` FILES does not name `vizscenes.js`. Add and regenerate **only after** the site-tree
+  drift below is reconciled (the manifest is generated from the source tree).
+- **Site drift unchanged**: `tools/sync-assets.py --check` says 37/45; `app/index.html`, `engine.js`,
+  `packs.js`, `vizmodes.js`, `viz.js`, `cymrender.js`, `cympresets.js`, `cym.js` differ from
+  `webmusic-hub/site/resonance`. Running sync **would revert app-side fixes**. The site tree already carries
+  `vizscenes.js` and the new `viz.js`.
+- `device_gate.py`, `tablet_pass.py`, `cache/emu4.py`, `cache/tablet_audit.py` still call
+  `remove('rs-navhide')` as a wake-up — harmless, tidy later.
+- Probes this session live in `cache/` (gitignored): `probe_history.py`, `probe_raf.py`, `probe_frames.py`,
+  `probe_loop.py`, `probe_loop2.py`, `probe_row.py`, `probe_hero.py`, `probe_scramble.py`,
+  `probe_device_loop.py`, `probe_device_final.py`, `probe_device_ambient.py`, `probe_ambient_truth.py`,
+  `probe_ambient_live.py`, `probe_setup*.py`, `probe_leg.py`.
+
+## Next moves, in order
+1. **Owner eye gate** on the whole Visualise/home pass: focus view scenes, picker cards, static tab bar and
+   player, loop key, hero readouts, Ambient preview + fold + scene menu, chamber Setup sheet + grabber,
+   dark-only theme. Do not sign the look off from stills.
+2. **Publishing is a separate decision.** Nothing uploaded. Re-stage **2.0.6** with `958,319 B` /
+   `34dc6931…` or cut **2.0.7-beta / versionCode 15**; regenerate with
+   `make-updates-json.py --resonance-only`; never hand-edit `updates.json`.
+3. **Manifest + site drift** (above) before any future release that wants green identity legs.
+4. **Open design questions awaiting his word**: does the Setup sheet stay a strip above the transport or grow
+   into a full drawer; is the grabber the right height; do the folded backdrop/layer/palette chips stay in the
+   app at all (they are the legacy path the focus scenes bypass).
+
+## Traps learned this session (also in the skill)
+- A page `button:hover{background: …}` **shorthand** resets `background-image`: every art-backed shell key
+  needs its `:hover/:active/:focus` variants, or it goes grey on first tap and stays grey.
+- The page's `.toast` centres with `translateX(-50%)`; the shell re-pins it, so the transform must be dropped.
+- `IntersectionObserver` calls a canvas "out" when a zero-height wrapper clips it — check the canvas's own
+  rect before skipping a draw.
+- `insertBefore(node, ref)` **throws** if `ref` is not yet a child (it killed `chamberChrome()` and the whole
+  chamber chrome).
+- `grab` already names a variable inside `chamberChrome`; a redeclare silently bound handlers to the page's
+  own handle (eslint caught it).
+- `.ghost` pins `background-color:transparent !important`; the arrows' 46 px rule beats a bare class; a bare
+  `margin-left:auto` loses to `.rs-transport > * + *`.
+- Device gate after `install -r` fails *different* transport legs per run — a 20 s settle makes it 19/0.
+
 # SAVE POINT — 2026-11-08 (session 12: the harness's red explained, and fixed in the page). READ THIS FIRST.
 
 ## Where the tree is
