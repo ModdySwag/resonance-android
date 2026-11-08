@@ -219,6 +219,20 @@ itself can do, so the card is now title + **Open the chamber** and nothing else.
 - **Harness 256/0**, contrast 0, tablet 82/0 (after giving Setup its 44 px), eslint 0, device gate 19/0.
   Release **957,927 B, sha256 `9a675bb7234b1d6ea45b2609aa29c970eff93cd9dc10e94e258505152ad0c9ca`**.
 
+## Follow-up 7: the Setup key wears the brass, and the sheet has a second way out
+
+- `ui/amp-setup.webp` (512 sq, 27 KB, generated brass control key with an engraved cog) and
+  `#rsCymSetup` is now the same face family as Play/Stop/Back/? — 44x44 round, art only, aria-label,
+  no text (`setup.textContent` removed, class `cym-setup` so the tempo key's 16 px !important cannot win).
+- The sheet carries `#rsCymSetupGrab`: a 28 px grabber you tap, or pull down >26 px, to hide it —
+  a real second exit besides pressing Setup again. Inline height, because the sheet's own button rules
+  collapsed it to 14 px.
+- Trap: `grab` is already a variable inside `chamberChrome` — the redeclare silently attached the
+  handlers to the page's own grab handle (eslint caught it; the tap did nothing until renamed).
+- Harness **260/0** (legs: brass face 44x44 with amp-setup and no text, grabber present, tap hides,
+  key reopens), contrast 0, tablet 82/0, eslint 0, device gate 19/0. Release **985,565 B, sha256
+  `bec32176986798deb757e0d685f1ec1836233ea8bfc997a80161a67d7a5de804`**.
+
 ## What is left, in order
 
 1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker

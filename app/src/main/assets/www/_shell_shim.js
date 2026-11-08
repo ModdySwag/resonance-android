@@ -343,8 +343,20 @@
     "  display:none;padding:12px 14px 16px;background-color:#120D07;border-top:1px solid #5A4526;",
     "  box-shadow:0 -14px 34px rgba(0,0,0,.65);z-index:9}",
     "html.rs-app .rs-cym-setup.on{display:block}",
-    "html.rs-app #rsCymSetup{min-height:44px;min-width:64px}",
+    /* Setup is a brass face like Back, ? and Controls, not a text pill: one round key, */
+    /* 44 px, the same generated metal as the transport beside it */
+    "html.rs-app #rsCymSetup{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;",
+    "  font-size:0;background-color:#100e0c;border:1px solid rgba(255,255,255,.22);",
+    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
+    "html[data-rs-ui=full] #rsCymSetup{background-image:url(ui/amp-setup.webp);",
+    "  background-size:cover;background-position:center;border:0}",
     "html.rs-app .rs-cym-setup .rs-cymctl{padding:0;margin:0;background:none;border:0}",
+    /* the sheet can be dismissed without aiming at the key again: a grabber you tap, */
+    /* or pull down, the same gesture the More sheet uses */
+    "html.rs-app .rs-cym-grab{display:block;width:100%;height:28px;margin:0 0 6px;padding:0;",
+    "  border:0;background:transparent;cursor:grab;touch-action:none}",
+    "html.rs-app .rs-cym-grab span{display:block;width:44px;height:4px;margin:12px auto 0;",
+    "  border-radius:2px;background:rgba(255,226,180,.38)}",
     /* a quiet picture bleeds in at the head of each way in, and fades into the card */
     "html[data-rs-ui=full] .rs-cta{position:relative;overflow:hidden}",
     "html[data-rs-ui=full] .rs-cta::before{content:\"\";position:absolute;top:0;left:0;right:0;height:96px;",
@@ -3023,8 +3035,7 @@
        layer keys. The Visualise card keeps one door and nothing else. */
     var setup = doc.createElement("button");
     setup.id = "rsCymSetup";
-    setup.className = "cym-tempo";
-    setup.textContent = "Setup";
+    setup.className = "cym-setup";
     setup.setAttribute("aria-label", "Chamber setup");
     setup.setAttribute("aria-expanded", "false");
     var setupSheet = doc.createElement("div");
@@ -3033,6 +3044,29 @@
     var setupCtl = doc.getElementById("rsCymCtl");
     if (setupCtl) setupSheet.appendChild(setupCtl);
     root.appendChild(setupSheet);
+    function closeSetup() {
+      var live = doc.getElementById("rsCymPanel");
+      if (live) live.classList.remove("on");
+      var btn = doc.getElementById("rsCymSetup");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+    var setupGrab = doc.createElement("button");
+    setupGrab.id = "rsCymSetupGrab";
+    setupGrab.className = "rs-cym-setupGrab";
+    setupGrab.setAttribute("aria-label", "Hide the chamber setup");
+    setupGrab.innerHTML = "<span></span>";
+    setupGrab.style.cssText = "display:block;width:100%;height:28px;min-height:28px;margin:0 0 6px;padding:0;border:0;background:transparent;";
+    setupSheet.insertBefore(setupGrab, setupSheet.firstChild);
+    var gd = { y0: 0, on: false };
+    setupGrab.addEventListener("pointerdown", function (e) {
+      gd.y0 = e.clientY; gd.on = true;
+      try { setupGrab.setPointerCapture(e.pointerId); } catch (err) { }
+    });
+    setupGrab.addEventListener("pointermove", function (e) {
+      if (gd.on && e.clientY - gd.y0 > 26) { gd.on = false; closeSetup(); }
+    });
+    setupGrab.addEventListener("pointerup", function () { gd.on = false; });
+    setupGrab.addEventListener("click", function (e) { e.stopPropagation(); closeSetup(); });
     setup.onclick = function (e) {
       if (e && e.stopPropagation) e.stopPropagation();
       var live = doc.getElementById("rsCymPanel") || setupSheet;

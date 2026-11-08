@@ -650,6 +650,29 @@ def main():
             " return !!p && p.classList.contains('on')"
             "   && p.contains(document.getElementById('rsScenes'))"
             "   && p.contains(document.getElementById('rsFollow')); })()"))
+        suite.check("Setup is a brass face like Back and ?, not a text pill", page.evaluate(
+            "(() => { const b = document.getElementById('rsCymSetup'); const s = getComputedStyle(b);"
+            " const r = b.getBoundingClientRect();"
+            " return Math.round(r.width) === 44 && Math.round(r.height) === 44"
+            "   && s.borderRadius === '50%' && s.backgroundImage.indexOf('amp-setup') > -1"
+            "   && (b.textContent || '').trim() === ''; })()"))
+        # a second way out: the grabber hides the sheet without aiming at the key again
+        g = page.evaluate("""(() => {
+          const p = document.getElementById('rsCymPanel');
+          const g = document.getElementById('rsCymSetupGrab');
+          if (!p || !g) return null;
+          const r = g.getBoundingClientRect();
+          return { h: Math.round(r.height), inside: p.contains(g), open: p.classList.contains('on') };
+        })()""")
+        suite.check("the sheet carries a grabber to hide it", g is not None and g["h"] >= 24 and g["inside"], g)
+        page.click("#rsCymSetupGrab")
+        page.wait_for_timeout(300)
+        suite.check("tapping the grabber hides the sheet", page.evaluate(
+            "!document.getElementById('rsCymPanel').classList.contains('on')"))
+        page.click("#rsCymSetup")
+        page.wait_for_timeout(300)
+        suite.check("and the key brings it back", page.evaluate(
+            "document.getElementById('rsCymPanel').classList.contains('on')"))
         suite.check("a scene chip is preselected to match", page.evaluate(
             "!!document.querySelector('#rsScenes button[aria-pressed=true]')"))
         page.click("#rsScenes button[data-scene=minnaert-cloud]")
