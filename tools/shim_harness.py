@@ -735,7 +735,7 @@ def main():
         suite.check("the card carries one line, and it is the plain one",
                     page.evaluate("(() => { const c = document.getElementById('rsVizCard');"
                                   " if (!c) return false; const t = c.textContent;"
-                                  " return /Follows the audio/.test(t) && !/flash threshold/i.test(t)"
+                                  " return /Same scenes as the focus view/.test(t) && !/flash threshold/i.test(t)"
                                   " && !/no microphone/i.test(t); })()"))
         suite.check("the two ways in are equal cards",
                     page.evaluate("(() => { const c = document.querySelectorAll('#scr-vis section.card.rs-cta');"
@@ -785,22 +785,28 @@ def main():
                    shufH: Math.round(shuf.getBoundingClientRect().height),
                    shufImg: sc.backgroundImage.slice(0, 24) };
         })()""")
-        suite.check("the scene window is centred LED text, and the stray dash is gone",
+        suite.check("the scene window is centred LED text, and names a real scene",
                     sm is not None and sm["h"] >= 44 and sm["selDisplay"] == "none"
-                    and sm["label"] == "Select Scene" and sm["centred"]
+                    and bool(sm["label"]) and sm["label"].lower() != "select scene" and sm["centred"]
                     and sm["expanded"] == "false" and sm["syncDisplay"] == "none", sm)
+        suite.check("the window shows the scene the engine is actually drawing",
+                    sm is not None and sm["label"] == page.evaluate(
+                        "(() => { const id = window.ResonanceViz.api.getPrefs().scene;"
+                        " const s = window.GnauralVizScenes.byId(id); return s ? s.name : ''; })()"), sm)
         suite.check("the shuffle chip is a brass key too",
                     sm is not None and sm["shufH"] >= 40 and "gradient" in sm["shufImg"], sm)
-        # the card shows its own work: a live preview on the card, legacy chips folded away
+        # the card shows its own work: a live preview, and no second look-system
         prev = page.evaluate("""(() => {
           const c = document.querySelector('#rsVizCard canvas.viz-canvas');
-          const d = document.querySelector('#rsVizCard details.rs-vizadv');
-          if (!c || !d) return null;
+          if (!c) return null;
           const r = c.getBoundingClientRect();
           const st = window.ResonanceViz.api.debugState();
-          return { w: Math.round(r.width), h: Math.round(r.height), open: d.open,
-                   holds: ['vizBackdrops', 'vizOverlays', 'vizPalettes']
-                     .every(id => d.contains(document.getElementById(id))),
+          const chips = ['vizBackdrops', 'vizOverlays', 'vizPalettes'].map(id => {
+            const n = document.getElementById(id);
+            return n ? getComputedStyle(n).display : 'absent';
+          });
+          return { w: Math.round(r.width), h: Math.round(r.height), chips: chips,
+                   fold: !!document.querySelector('#rsVizCard details.rs-vizadv'),
                    frames: st.panels.map(p => p.frames) };
         })()""")
         suite.check("the card carries a live ambient preview of its own",
@@ -809,8 +815,9 @@ def main():
         prev2 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
         suite.check("the preview is painting, not a still",
                     prev is not None and sum(prev2) > sum(prev["frames"]), [prev["frames"], prev2])
-        suite.check("backdrop, layers and palette sit in one closed disclosure",
-                    prev is not None and prev["holds"] and not prev["open"], prev)
+        suite.check("the old chip vocabulary is gone from the card, not folded",
+                    prev is not None and prev["fold"] is False
+                    and all(d == "none" for d in prev["chips"]), prev)
         page.click("#rsSceneMenu")
         page.wait_for_timeout(300)
         pop = page.evaluate("""(() => {
@@ -834,7 +841,7 @@ def main():
         page.wait_for_timeout(450)
         suite.check("choosing an entry sets the page's own scene and shuts the list",
                     picked is not None
-                    and page.evaluate("document.getElementById('vizPreset').value") == picked["v"]
+                    and page.evaluate("window.ResonanceViz.api.getPrefs().scene") == picked["v"]
                     and not page.evaluate(
                         "document.getElementById('rsScenePop').classList.contains('rs-on')"), picked)
         suite.check("the window names the scene that is now chosen", page.evaluate(
@@ -845,32 +852,26 @@ def main():
                      img: s.backgroundImage.slice(0, 24) }; };
           return { on: g('vizToggle'), sc: g('vizScramble') };
         })()""")
-        suite.check("Turn on/off and Scramble wear the brass plate too",
+        suite.check("Turn on/off wears the brass plate too",
                     keys["on"]["h"] >= 44 and "gradient" in keys["on"]["img"]
-                    and keys["on"]["bg"] not in ("rgba(0, 0, 0, 0)", "transparent")
-                    and keys["sc"]["h"] >= 44 and "gradient" in keys["sc"]["img"], keys)
+                    and keys["on"]["bg"] not in ("rgba(0, 0, 0, 0)", "transparent"), keys)
         suite.check("Focus view has its own way in",
                     page.evaluate("!!document.getElementById('rsFocusGo')"))
-        # the Visualise Scramble toggle toasts through the page's own #toast, which the shell
-        # moves to the top of the glass — and used to leave half its width off-screen (its own
-        # translateX(-50%) centring survived the move), so the only thing visible was the empty
-        # right end of the pill. The bar must sit inside the viewport and carry the message.
-        page.click("#vizScramble")
-        page.wait_for_timeout(400)
-        tst = page.evaluate("""(() => {
-          const t = document.getElementById('toast');
-          if (!t) return null;
-          const r = t.getBoundingClientRect(), cs = getComputedStyle(t);
-          return { txt: t.textContent.trim(), on: t.classList.contains('show'),
-                   op: parseFloat(cs.opacity), x: Math.round(r.x), right: Math.round(r.right),
-                   w: Math.round(r.width), vw: innerWidth };
-        })()""")
-        suite.check("the scramble toast is on the glass, with its message",
-                    tst is not None and tst["on"] and tst["op"] > 0.5 and tst["txt"]
-                    and tst["x"] >= 0 and tst["right"] <= tst["vw"], tst)
-        page.wait_for_timeout(2900)
-        suite.check("and it fades away by itself", page.evaluate(
-            "!document.getElementById('toast').classList.contains('show')"))
+        # Scramble is retired: with a scene chosen it wrote backdrop/overlay preferences the
+        # scene never reads, which is exactly what read as "Score and Traces don't work".
+        # The scene row's shuffle key is the only randomiser now, and it must always land on
+        # a different scene — never on the one already showing.
+        before_scene = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
+        page.click("#vizShuffle")
+        page.wait_for_timeout(600)
+        after_scene = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
+        suite.check("the shuffle key picks another scene",
+                    bool(after_scene) and after_scene != before_scene, [before_scene, after_scene])
+        suite.check("the scene window follows the shuffle, and names a real scene",
+                    page.evaluate("document.getElementById('rsSceneName').textContent.trim()")
+                    not in ("", "Select scene", "Select Scene"))
+        suite.check("the retired Scramble button is off the card",
+                    page.evaluate("getComputedStyle(document.getElementById('vizScramble')).display") == "none")
         page.click("#scr-vis [data-act=focus], #rsFocusGo")
         suite.check("Focus view opens full screen", suite.wait_until(
             "document.documentElement.classList.contains('rs-focus')", 8))

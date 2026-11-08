@@ -35,11 +35,18 @@ FILES = [
     "app/index.html", "app/studio.css", "app/app.js", "app/engine.js",
     "app/gnm.js", "app/presets.js", "app/packs.js", "app/rates.js",
     "app/pack.js", "app/studio.js", "app/vizmath.js", "app/vizpal.js",
-    "app/vizmodes.js", "app/vizpresets.js", "app/viz.js", "app/worklet-processor.js",
+    "app/vizmodes.js", "app/vizpresets.js", "app/vizscenes.js", "app/viz.js",
+    "app/vizgl.js", "app/worklet-processor.js",
     "app/cymatics.js", "app/cymfield.js", "app/cymrender.js", "app/cympresets.js", "app/cym.js", "app/cym.css",
     "app/NOTICE.txt", "app/COPYING", "app/COPYING.LESSER",
     "site.css",
 ]
+
+# The focus view's generated plates live under app/ui/scene/ and are globbed rather than named
+# so a new scene's art ships without editing this list. They must be in the bundle AND in the
+# manifest: index.html -> vizscenes.js asks for them by relative path, so a missing plate is a
+# 404 that only shows as a flat backdrop.
+SCENE_GLOB = ("app", "ui", "scene", "*.webp")
 
 DEFAULT_SITES = [
     r"C:\Users\Moddy\webmusic-hub\site\resonance",
@@ -81,10 +88,12 @@ def sha256(path):
 
 
 def bundle_list(site):
-    """FILES plus every pack zip that exists in the source tree."""
+    """FILES plus every pack zip and scene plate that exists in the source tree."""
     out = list(FILES)
     zips = sorted(os.path.basename(p) for p in glob.glob(os.path.join(site, "app", "pack", "*.zip")))
     out += ["app/pack/" + z for z in zips]
+    scene = sorted(os.path.basename(p) for p in glob.glob(os.path.join(site, *SCENE_GLOB)))
+    out += ["app/ui/scene/" + z for z in scene]
     return out
 
 

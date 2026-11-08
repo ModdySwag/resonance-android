@@ -2820,7 +2820,7 @@
       '  <button class="rs-btn rs-tonal" id="rsFocusGo" style="width:100%">Open focus view</button>' +
       '</section>' +
       '<section class="card" data-band="other" id="rsVizCard" data-art="ambient" aria-labelledby="rsVizH">' +
-      '  <h3 id="rsVizH">Ambient panels</h3></section>' +
+      '  <h3 id="rsVizH">Mini viewer</h3></section>' +
       '<div class="rs-pad"></div>';
     /* The Visualise screen keeps one clean key per experience. The chamber's own controls now
        live with the chamber (a Setup sheet inside it), so this section is title + door only. */
@@ -4205,7 +4205,7 @@
       '<button data-rs="fsExit" aria-label="Close the visualiser">✕</button></div>' +
       '<div id="rsFsCtl">' +
       '<div id="rsFocusBar"><button class="rs-fs-prev" data-rs="fPrev" aria-label="Previous visualisation"></button>' +
-      '<span id="rsFocusName">Visualisation</span>' +
+      '<button id="rsFocusName" data-rs="fPick" aria-haspopup="dialog" aria-label="Choose a visualisation">Visualisation</button>' +
       '<button class="rs-fs-next" data-rs="fNext" aria-label="Next visualisation"></button>' +
       '<button class="rs-fs-pick" data-rs="fPick">Change</button></div>' +
       '<div class="rs-fs-row">' +
@@ -4285,6 +4285,16 @@
     var i = 0, k;
     for (k = 0; k < l.length; k++) if (l[k].id === FOCUS.preset) i = k;
     applyFocusPreset(l[(i + dir + l.length) % l.length].id);
+  }
+
+  /* Shuffle means "another scene", never another vocabulary. Kept out of the current
+     scene so a tap always visibly does something. */
+  function surpriseScene() {
+    var l = focusPresets(), cur = FOCUS.preset || currentNode(), pool = [], i;
+    for (i = 0; i < l.length; i++) if (l[i].id !== cur) pool.push(l[i]);
+    if (!pool.length) return;
+    applyFocusPreset(pool[Math.floor(Math.random() * pool.length)].id);
+    refreshSceneMenu();
   }
 
   /* one card per scene: its own still (so the picker shows what you are
@@ -4815,16 +4825,20 @@
   /* The page's #vizPreset stays the source of truth — the arrows, the chips and the engine
      all drive it — but its native popup is the one surface Android will not let us style.
      The shell shows the value in a smoked LED window and opens a list in the same language. */
-  function sceneOptionText(sel) {
-    if (!sel) return "Select Scene";
-    var o = sel.options[sel.selectedIndex];
-    if (!o || !sel.value) return "Select Scene";
-    return text(o) || "Select Scene";
+  /* The mini viewer speaks the focus view's language: ONE scene, one name. prefs.scene is
+     the single source of truth, so a pick in this card changes the fullscreen view and a
+     pick there changes this card — no second look-system writing preferences the scene
+     never reads. */
+  function currentNode() {
+    var v = window.ResonanceViz && window.ResonanceViz.api;
+    var p = v ? v.getPrefs() : null;
+    return (p && p.scene) ? p.scene : "";
   }
   function refreshSceneMenu() {
-    var n = $id("rsSceneName"), sel = $id("vizPreset");
-    if (!n || !sel) return;
-    var want = sceneOptionText(sel);
+    var n = $id("rsSceneName");
+    if (!n) return;
+    var id = currentNode();
+    var want = id ? focusName(id) : "Select scene";
     if (n.textContent !== want) n.textContent = want;
   }
   function closeScenePop() {
@@ -4833,28 +4847,26 @@
     if (m) m.setAttribute("aria-expanded", "false");
   }
   function fillScenePop() {
-    var pop = $id("rsScenePop"), sel = $id("vizPreset");
-    if (!pop || !sel) return;
+    var pop = $id("rsScenePop");
+    if (!pop) return;
+    var cur = currentNode();
     pop.innerHTML = "";
-    for (var i = 0; i < sel.options.length; i++) {
-      (function (o) {
+    var list = focusPresets();
+    for (var i = 0; i < list.length; i++) {
+      (function (p) {
         var b = doc.createElement("button");
         b.type = "button";
         b.setAttribute("role", "option");
-        b.setAttribute("data-v", o.value);
-        b.setAttribute("aria-selected", o.value === sel.value ? "true" : "false");
-        b.textContent = text(o) || "Custom";
+        b.setAttribute("data-v", p.id);
+        b.setAttribute("aria-selected", p.id === cur ? "true" : "false");
+        b.textContent = p.name;
         b.addEventListener("click", function () {
-          var s2 = $id("vizPreset");
-          if (s2) {
-            s2.value = b.getAttribute("data-v");
-            try { s2.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) { }
-          }
+          applyFocusPreset(p.id);
           closeScenePop();
           refreshSceneMenu();
         });
         pop.appendChild(b);
-      })(sel.options[i]);
+      })(list[i]);
     }
   }
   function openScenePop() {
@@ -5018,7 +5030,7 @@
         $$("h3", vc).forEach(function (n) { n.style.display = "none"; });
         /* the page's paragraph described the panels' plumbing; one line is enough here */
         var vhint = vc.querySelector("p.hint");
-        if (vhint) vhint.textContent = "Follows the audio";
+        if (vhint) vhint.textContent = "Same scenes as the focus view";
         /* the shell's own chamber card is the entry to it; the page's copy of that button
            sat three controls away and read as a second, different door */
         var cymBtn = $id("cymCardBtn");
@@ -5028,13 +5040,13 @@
         var sceneHead = scenes && scenes.previousElementSibling;
         /* a scene set by hand leaves the picker with no value at all, which renders as a
            blank menu; name that state instead */
+        /* The page's select lists ambient PRESETS — a second vocabulary next to the focus
+           scenes. It is hidden and no longer read: the LED window and the list below speak
+           scenes, the same ones the focus view offers. */
         var vsel = $id("vizPreset");
-        if (vsel && !vsel.value) {
-          var custom = doc.createElement("option");
-          custom.value = ""; custom.textContent = "Custom (chips)";
-          vsel.insertBefore(custom, vsel.firstChild);
-          vsel.value = "";
-        }
+        if (vsel) vsel.style.display = "none";
+        var sNote = $id("vizSceneNote");
+        if (sNote) sNote.style.display = "none";
         if (scenes && sceneHead) {
           var sbox = doc.createElement("div");
           sbox.className = "rs-scenebox";
@@ -5066,6 +5078,13 @@
           pop.id = "rsScenePop"; pop.className = "rs-scenepop";
           pop.setAttribute("role", "listbox");
           sbox.appendChild(pop);
+          /* the page's arrows stepped PRESETS; in this card they step the same scene list
+             the focus view uses, so the two surfaces can never disagree */
+          var pvA = $id("vizPrev"), nxA = $id("vizNext");
+          if (pvA) pvA.onclick = function () { stepFocus(-1); refreshSceneMenu(); };
+          if (nxA) nxA.onclick = function () { stepFocus(1); refreshSceneMenu(); };
+          var shufA = $id("vizShuffle");
+          if (shufA) shufA.onclick = function () { surpriseScene(); };
           doc.addEventListener("pointerdown", function (ev) {
             if (!scenePopOpen()) return;
             if (ev.target && ev.target.closest &&
@@ -5076,23 +5095,32 @@
           refreshSceneMenu();
         }
         $id("rsVizCard").appendChild(vc);
-        /* Backdrop, overlay and palette only matter when no scene is chosen — the focus scenes
-           bypass them — so they fold away under one disclosure and the card reads preview ->
-           scene -> intensity/calm -> auto-scramble. */
-        var bdRow = $id("vizBackdrops") ? $id("vizBackdrops").previousElementSibling : null;
-        var ovRow = $id("vizOverlays") ? $id("vizOverlays").previousElementSibling : null;
-        var plRow = $id("vizPalettes") ? $id("vizPalettes").previousElementSibling : null;
-        if (bdRow && ovRow && plRow) {
-          var adv = doc.createElement("details");
-          adv.className = "rs-fold rs-vizadv";
-          var sum = doc.createElement("summary");
-          sum.innerHTML = '<span class="rs-fold-t"><b>Backdrop, layers and palette</b>' +
-            '<span>For hand-built looks — the scenes above ignore these</span></span>' + svg("chev", 18);
-          adv.appendChild(sum);
-          vc.insertBefore(adv, bdRow);
-          [bdRow, $id("vizBackdrops"), ovRow, $id("vizOverlays"), plRow, $id("vizPalettes")]
-            .forEach(function (n) { if (n) adv.appendChild(n); });
+        /* One vocabulary from the first frame. With no scene stored the card used to fall
+           back to the retired backdrop/overlay look, which is the state where every chip
+           looked dead; adopt the focus view's default instead, so the card, the window and
+           the fullscreen view always name the same scene. */
+        var vapi = window.ResonanceViz && window.ResonanceViz.api;
+        if (vapi && !vapi.getPrefs().scene) {
+          applyFocusPreset(prefs.focusPreset || FOCUS_DEFAULT, true);
         }
+        refreshSceneMenu();
+        /* One vocabulary. The backdrop / overlay / palette chips are the OLD look-system:
+           a scene bypasses all three, so with a scene chosen (the default since the focus
+           view shipped) every chip wrote a preference nothing read — which is exactly why
+           "Score" and "Traces" looked dead. They are gone from the card rather than folded,
+           and Scramble now means "another scene". */
+        var scrambleBtn = $id("vizScramble");
+        if (scrambleBtn) scrambleBtn.style.display = "none";
+        /* and the chip rows themselves, plus the label that introduced them */
+        ["vizBackdrops", "vizOverlays", "vizPalettes"].forEach(function (cid) {
+          var row = $id(cid);
+          if (!row) return;
+          row.style.display = "none";
+          var lab = row.previousElementSibling;
+          if (lab && (lab.tagName === "P" || (lab.className || "").toString().indexOf("row") >= 0)) {
+            lab.style.display = "none";
+          }
+        });
         /* The card was a control panel with no screen on it: the page's ambient canvases live in
            its own grid, which the shell hides (both sat at 0x0), so every chip changed a picture
            nobody could see. The left inline panel moves into the card — the shell's own CSS

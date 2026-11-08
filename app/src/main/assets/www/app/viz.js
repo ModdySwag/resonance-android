@@ -1043,6 +1043,19 @@
 
   function scramble(opts) {
     opts = opts || {};
+    /* A scene IS the look. With one chosen, scrambling must pick another SCENE: the
+       backdrop/overlay path below writes preferences the scene never reads, which is why
+       hand-picking "Score" or "Traces" while a scene was up changed nothing on screen. */
+    if (prefs.scene && SC && SC.LIST && SC.LIST.length > 1) {
+      var scenePool = [], sidx;
+      for (sidx = 0; sidx < SC.LIST.length; sidx++) if (SC.LIST[sidx].id !== prefs.scene) scenePool.push(SC.LIST[sidx]);
+      var rr = VP.mulberry32((Date.now() ^ frameCount) >>> 0);
+      var nextScene = scenePool[Math.floor(rr() * scenePool.length)] || SC.LIST[0];
+      prefs.seed = ((rr() * 0xFFFFFFFF) >>> 0);
+      applyScene(nextScene.id);
+      toastViz(nextScene.name);
+      return { seed: prefs.seed, scene: nextScene.id };
+    }
     var S = (window.__gnauralAPI && window.__gnauralAPI.state) || null;
     var ch = sessionCharacter(S);
     var r = VP.mulberry32((Date.now() ^ frameCount) >>> 0);
