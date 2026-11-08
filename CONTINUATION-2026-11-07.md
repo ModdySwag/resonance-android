@@ -243,9 +243,9 @@ itself can do, so the card is now title + **Open the chamber** and nothing else.
   `#rsCymSetup` missing, the whole chamber chrome gone).
 - `ui/amp-setup.webp` deleted — the art-only face was the previous pass; the labelled key is the design.
 - Harness **260/0** (leg: word Setup, 44 px, 999px radius, brass gradient, same row as ?, left of it),
-  contrast 0, tablet 82/0, eslint 0. Device gate on the fresh install is **flapping** — different
-  transport legs fail per run (pause/stop/mute, then the mini transport, then stop/mute), the documented
-  post-install settle flake; not yet a green run on this build.
+  contrast 0, tablet 82/0, eslint 0, **device gate 19/0** on the fourth run. The first three runs right
+  after `install -r` each failed a *different* transport leg (pause/stop/mute, then the mini transport,
+  then stop/mute) — the documented post-install settle flake; a run after a 20 s settle was clean.
 - Release **958,319 B, sha256 `34dc6931f905d04f231dc062ea2b0cefc045fa21eba3c80b0e2652a9b23d6e09`**.
 
 ## What is left, in order
