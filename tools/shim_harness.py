@@ -650,12 +650,15 @@ def main():
             " return !!p && p.classList.contains('on')"
             "   && p.contains(document.getElementById('rsScenes'))"
             "   && p.contains(document.getElementById('rsFollow')); })()"))
-        suite.check("Setup is a brass face like Back and ?, not a text pill", page.evaluate(
-            "(() => { const b = document.getElementById('rsCymSetup'); const s = getComputedStyle(b);"
-            " const r = b.getBoundingClientRect();"
-            " return Math.round(r.width) === 44 && Math.round(r.height) === 44"
-            "   && s.borderRadius === '50%' && s.backgroundImage.indexOf('amp-setup') > -1"
-            "   && (b.textContent || '').trim() === ''; })()"))
+        suite.check("Setup is a labelled brass key in the navigation row, left of ?", page.evaluate(
+            "(() => { const b = document.getElementById('rsCymSetup');"
+            " const info = document.getElementById('rsCymInfo');"
+            " if (!b || !info) return false;"
+            " const s = getComputedStyle(b), r = b.getBoundingClientRect();"
+            " const i = info.getBoundingClientRect();"
+            " return (b.textContent || '').trim() === 'Setup' && Math.round(r.height) === 44"
+            "   && s.borderRadius === '999px' && s.backgroundImage.indexOf('linear-gradient') > -1"
+            "   && Math.abs(r.top - i.top) <= 2 && r.right <= i.left + 1; })()"))
         # a second way out: the grabber hides the sheet without aiming at the key again
         g = page.evaluate("""(() => {
           const p = document.getElementById('rsCymPanel');

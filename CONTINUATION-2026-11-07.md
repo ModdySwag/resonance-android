@@ -233,6 +233,21 @@ itself can do, so the card is now title + **Open the chamber** and nothing else.
   key reopens), contrast 0, tablet 82/0, eslint 0, device gate 19/0. Release **985,565 B, sha256
   `bec32176986798deb757e0d685f1ec1836233ea8bfc997a80161a67d7a5de804`**.
 
+## Follow-up 8: Setup is a labelled brass key in the navigation row
+
+- Setup moved out of its own line into the chamber's **navigation row, left of ?** (order swapped as
+  asked) and now carries the word **Setup** on a brass plate like Controls — the label is the affordance,
+  and it no longer eats a row of glass.
+- `nav.insertBefore(setup, info)` must run **after** `nav.appendChild(info)`; inserting before the
+  reference node was attached throws NotFoundError and aborts `chamberChrome()` entirely (symptom:
+  `#rsCymSetup` missing, the whole chamber chrome gone).
+- `ui/amp-setup.webp` deleted — the art-only face was the previous pass; the labelled key is the design.
+- Harness **260/0** (leg: word Setup, 44 px, 999px radius, brass gradient, same row as ?, left of it),
+  contrast 0, tablet 82/0, eslint 0. Device gate on the fresh install is **flapping** — different
+  transport legs fail per run (pause/stop/mute, then the mini transport, then stop/mute), the documented
+  post-install settle flake; not yet a green run on this build.
+- Release **958,319 B, sha256 `34dc6931f905d04f231dc062ea2b0cefc045fa21eba3c80b0e2652a9b23d6e09`**.
+
 ## What is left, in order
 
 1. **Owner eye gate** (his phone, his call): the eight scenes switching in the focus view, the picker

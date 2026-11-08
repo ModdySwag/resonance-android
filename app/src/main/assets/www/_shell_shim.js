@@ -345,11 +345,16 @@
     "html.rs-app .rs-cym-setup.on{display:block}",
     /* Setup is a brass face like Back, ? and Controls, not a text pill: one round key, */
     /* 44 px, the same generated metal as the transport beside it */
-    "html.rs-app #rsCymSetup{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;",
-    "  font-size:0;background-color:#100e0c;border:1px solid rgba(255,255,255,.22);",
-    "  box-shadow:0 4px 12px rgba(0,0,0,.5)}",
-    "html[data-rs-ui=full] #rsCymSetup{background-image:url(ui/amp-setup.webp);",
-    "  background-size:cover;background-position:center;border:0}",
+    /* Setup is a labelled brass key: the word is the affordance, and it sits in the */
+    /* navigation row left of ?, so it costs no line of its own */
+    "html.rs-app #rsCymSetup{height:44px;min-height:44px;min-width:64px;padding:0 12px;",
+    "  border-radius:999px;font:700 11px/1 var(--rs-sans);letter-spacing:.10em;",
+    "  text-transform:uppercase;background:rgba(18,14,10,.62);color:#F2E6D8;",
+    "  border:1px solid rgba(255,255,255,.22)}",
+    "html[data-rs-ui=full] #rsCymSetup{background-image:linear-gradient(180deg,#E2C489,#B58C4C 56%,#7E5C2E);",
+    "  background-color:#B58C4C;border-color:#5E4623;color:#241A0F;",
+    "  text-shadow:0 1px 0 rgba(255,244,220,.35);",
+    "  box-shadow:inset 0 1px 0 rgba(255,248,230,.45),inset 0 -2px 4px rgba(0,0,0,.35),0 3px 9px rgba(0,0,0,.45)}",
     "html.rs-app .rs-cym-setup .rs-cymctl{padding:0;margin:0;background:none;border:0}",
     /* the sheet can be dismissed without aiming at the key again: a grabber you tap, */
     /* or pull down, the same gesture the More sheet uses */
@@ -3038,6 +3043,7 @@
     setup.className = "cym-setup";
     setup.setAttribute("aria-label", "Chamber setup");
     setup.setAttribute("aria-expanded", "false");
+    setup.textContent = "Setup";
     var setupSheet = doc.createElement("div");
     setupSheet.className = "rs-cym-setup";
     setupSheet.id = "rsCymPanel";
@@ -3075,7 +3081,7 @@
       var btn = doc.getElementById("rsCymSetup") || setup;
       btn.setAttribute("aria-expanded", on ? "true" : "false");
     };
-    act.insertBefore(setup, info);
+    /* placed in the navigation row below (left of ?), not as its own line */
 
     /* Two rows of hardware. Navigation (back / status / help / close) on the first,
        the transport (play, stop, fader, Controls) on the second; on a wide glass the
@@ -3094,6 +3100,7 @@
     nav.appendChild(back);
     if (live) { liveBox.appendChild(live); nav.appendChild(liveBox); }
     nav.appendChild(info);
+    nav.insertBefore(setup, info);
     if (close) nav.appendChild(close);
     if (playBtn) tr.appendChild(playBtn);
     tr.appendChild(stop);
