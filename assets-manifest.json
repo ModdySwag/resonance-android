@@ -60,10 +60,10 @@
     "app/vizmodes.js": "9f6e449534b13f1ae2042b27fd454a4e8079a1718266116c142942467e0e2a43",
     "app/vizpal.js": "d7f24a5cd55f014186b138f43743af18a73eb76792c3a28aee013b2b54f02aa7",
     "app/vizpresets.js": "b0035d3c30c6c28d28b67e02de146ecec091cb1222e750939bc8b645a31f34cb",
-    "app/vizscenes.js": "670929649175f40390c7a84ba5cf4e7a5474e327282ec1b3bfca7f4dc89c6ca4",
+    "app/vizscenes.js": "7c4596ad896e12eaed441251db75d46a08f66c5a8be6dab345215367e145c493",
     "app/worklet-processor.js": "face806669c3afa63e32f77510d8710e9d1926d9e56e65dcc90b7692362d29cd",
     "site.css": "0d890288f848f30b30adf34174539706b43b5f2f8465a1be487d6b0c477b81f9"
   },
-  "generated": "2026-11-08T02:58:24Z",
+  "generated": "2026-11-09T22:21:47Z",
   "source": "C:\\Users\\Moddy\\webmusic-hub\\site\\resonance"
 }

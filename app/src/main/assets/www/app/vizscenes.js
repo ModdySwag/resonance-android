@@ -37,6 +37,11 @@
 
   var TAU = Math.PI * 2;
   var TILE = 0.03;                         /* far-layer drift, radians/s      */
+  /* The plate is the biggest surface on the screen, and every scene's own drift for it
+     is a few pixels over minutes — which is why a calm scene reads as a still photo.
+     One shared camera breath moves the photography, not the artwork: the accents keep
+     their own timing and the field gains depth. Read by drawPlate via CUR_T. */
+  var CUR_T = 0;
 
   function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -242,7 +247,7 @@
     var im = p && p.img;
     if (!im || !p.ready || !im.naturalWidth) return false;
     var iw = im.naturalWidth, ih = im.naturalHeight;
-    var s = Math.max(W / iw, H / ih) * zoom;
+    var s = Math.max(W / iw, H / ih) * zoom * (1 + 0.030 * Math.sin(CUR_T * 0.14));
     var dw = iw * s, dh = ih * s;
     ctx.globalAlpha = alpha;
     ctx.drawImage(im, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
@@ -348,6 +353,7 @@
   Scene.prototype.draw = function (F) {
     var ctx = F.ctx, W = F.W, H = F.H, e = this.entry;
     if (reduced()) { this.drawStill(ctx, W, H); return; }
+    CUR_T = this.t;                         /* the plate breath follows the scene clock */
     var D = Drive(F, this.t);
     D.px = PAR.x; D.py = PAR.y;
     ctx.save();
@@ -532,7 +538,7 @@
           var par = (L2 === 0 ? 0.35 : (L2 === 1 ? 0.7 : 1.2)) * depth;
           for (var i2 = 0; i2 < arr.length; i2++) {
             var s = arr[i2];
-            var x = mod1(s.x + self.t * sp * 0.06) * W + D.px * par * 12;
+            var x = mod1(s.x + self.t * sp * 2.2) * W + D.px * par * 12;   /* 0.06 was ~0.4 px/s */
             var y = s.y * H + D.py * par * 9 + Math.sin(self.t * 0.05 + s.ph) * 1.5;
             var tw = 0.55 + 0.45 * Math.sin(self.t * (0.3 + s.tw) + s.ph);
             ctx.globalAlpha = clamp((0.18 + 0.72 * s.z) * tw * (0.75 + 0.25 * g), 0, 1);
@@ -593,7 +599,7 @@
         for (var k = 0; k < plumes.length; k++) {
           var p = plumes[k];
           if (t - p.born > p.life) { plumes[k] = make(t); continue; }
-          p.y = 1.04 - (t - p.born) * 0.014;
+          p.y = 1.04 - (t - p.born) * 0.024;   /* 0.014 = 13 px/s on a phone */
         }
       },
       draw: function (st, ctx, W, H, D, self) {
@@ -622,14 +628,14 @@
           }
           ctx.globalCompositeOperation = "lighter";
           /* the plume's front: an arc, so the ink has a boundary, not a smudge */
-          ctx.globalAlpha = clamp(0.30 * life * p.br * g, 0, 1);
+          ctx.globalAlpha = clamp(0.42 * life * p.br * g, 0, 1);
           ctx.strokeStyle = rgba(mixc(e.ink, e.acc, 0.35), 1);
           ctx.lineWidth = Math.max(1.2, W * 0.006);
           ctx.beginPath();
           ctx.arc(p.x * W, p.y * H - W * 0.10 * open, W * (0.14 + 0.10 * open), Math.PI * 1.08, Math.PI * 1.92);
           ctx.stroke();
           /* threads at the plume's edge: the ink's own striation */
-          ctx.globalAlpha = clamp(0.10 * life * p.br * g, 0, 1);
+          ctx.globalAlpha = clamp(0.17 * life * p.br * g, 0, 1);
           ctx.strokeStyle = rgba(mixc(e.ink, e.acc, 0.45), 1);
           ctx.lineWidth = 1;
           ctx.beginPath();
@@ -722,9 +728,9 @@
   function buildEmber(r) {
     var nodes = [], sparks = [], i;
     for (i = 0; i < 24; i++) {
-      nodes.push({ x: 0.08 + r() * 0.84, y: 0.10 + r() * 0.80, vx: (r() - 0.5) * 0.010, vy: (r() - 0.5) * 0.010, ph: r() * TAU, br: 0.4 + r() * 0.6 });
+      nodes.push({ x: 0.08 + r() * 0.84, y: 0.10 + r() * 0.80, vx: (r() - 0.5) * 0.032, vy: (r() - 0.5) * 0.032, ph: r() * TAU, br: 0.4 + r() * 0.6 });
     }
-    for (i = 0; i < 34; i++) sparks.push({ x: r(), y: r(), sp: 0.01 + r() * 0.03, ph: r() * TAU, br: 0.3 + r() * 0.7 });
+    for (i = 0; i < 34; i++) sparks.push({ x: r(), y: r(), sp: 0.025 + r() * 0.075, ph: r() * TAU, br: 0.3 + r() * 0.7 });
     return {
       step: function (dt, t, F) {
         var d = Drive(F, t);
@@ -745,7 +751,7 @@
       draw: function (st, ctx, W, H, D, self) {
         var e = self.entry.pal;
         var g = 0.75 + 0.5 * D.gain;
-        drawPlate(ctx, self.plate, W, H, 1.12, Math.sin(self.t * TILE) * W * 0.012, Math.cos(self.t * TILE) * H * 0.01, 0.5);
+        drawPlate(ctx, self.plate, W, H, 1.12, Math.sin(self.t * TILE) * W * 0.012, Math.cos(self.t * TILE) * H * 0.01, 0.64);
         drawBlur(ctx, self.plate, W, H, 1.3, Math.sin(self.t * 0.04) * -W * 0.015, 0, 0.3);
 
         var n = st._count || 10, i, j;
@@ -786,10 +792,10 @@
         /* the anchor: one ember that holds the centre */
         var ax = W * 0.5, ay = H * 0.5;
         var asz = W * 0.30 * (0.92 + 0.08 * D.breath);
-        ctx.globalAlpha = clamp((0.16 + 0.08 * D.breath) * g, 0, 1);
+        ctx.globalAlpha = clamp((0.24 + 0.10 * D.breath) * g, 0, 1);
         ctx.drawImage(sp1, ax - asz / 2, ay - asz / 2, asz, asz);
         /* coals low in the frame, so the lattice sits over a fire, not a void */
-        ctx.globalAlpha = clamp(0.22 * g, 0, 1);
+        ctx.globalAlpha = clamp(0.32 * g, 0, 1);
         ctx.drawImage(sp1, W * 0.12, H * 0.86, W * 0.30, W * 0.30);
         ctx.drawImage(sp1, W * 0.62, H * 0.90, W * 0.26, W * 0.26);
         ctx.globalAlpha = 0.9;
@@ -913,7 +919,7 @@
     }
     return {
       step: function (dt, t, F) {
-        this._spin = t * 0.02;
+        this._spin = t * 0.085;            /* was 0.02: a turn every 5 min read as a still */
         var d = Drive(F, t);
         this._beat = d.level;
         this._breath = d.breath;
