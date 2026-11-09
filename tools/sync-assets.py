@@ -47,6 +47,7 @@ FILES = [
 # manifest: index.html -> vizscenes.js asks for them by relative path, so a missing plate is a
 # 404 that only shows as a flat backdrop.
 SCENE_GLOB = ("app", "ui", "scene", "*.webp")
+FAST_GLOB = ("app", "ui", "fast", "*.webp")   # Home fast-tone tiles
 
 DEFAULT_SITES = [
     r"C:\Users\Moddy\webmusic-hub\site\resonance",
@@ -94,6 +95,8 @@ def bundle_list(site):
     out += ["app/pack/" + z for z in zips]
     scene = sorted(os.path.basename(p) for p in glob.glob(os.path.join(site, *SCENE_GLOB)))
     out += ["app/ui/scene/" + z for z in scene]
+    fast = sorted(os.path.basename(p) for p in glob.glob(os.path.join(site, *FAST_GLOB)))
+    out += ["app/ui/fast/" + z for z in fast]
     return out
 
 

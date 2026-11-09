@@ -1468,6 +1468,21 @@
        selected state or it stays pinned above whatever screen is open on a tablet */
     "  #scr-home.rs-on{display:flex;flex-direction:column;min-height:100%}",
     "  #scr-home .rs-hero,#scr-home .rs-build{flex:0 0 auto}",
+    "#scr-home .rs-fastsec{margin:10px 0 4px}",
+    "#scr-home .rs-fastsec h3{margin:0 0 8px;font:600 12px/1 var(--rs-sans);letter-spacing:.10em;",
+    "  text-transform:uppercase;color:var(--rs-dim)}",
+    "#scr-home .rs-fast{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;padding:2px 0 6px;",
+    "  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}",
+    "#scr-home .rs-fast::-webkit-scrollbar{display:none}",
+    "#scr-home .rs-fastb{position:relative;flex:0 0 150px;height:104px;border-radius:14px;overflow:hidden;",
+    "  border:1px solid var(--rs-line);background-size:cover;background-position:center;scroll-snap-align:start;",
+    "  display:flex;align-items:flex-end;padding:10px;text-align:left;color:#F3E9DC}",
+    "#scr-home .rs-fastb::after{content:\"\";position:absolute;inset:0;",
+    "  background:linear-gradient(180deg,rgba(10,8,6,.05) 30%,rgba(10,8,6,.86) 100%)}",
+    "#scr-home .rs-fastb b{position:relative;z-index:1;font:600 12.5px/1.25 var(--rs-sans);letter-spacing:.01em}",
+    "#scr-home .rs-fastb i{position:absolute;z-index:1;top:8px;left:10px;font:500 10px/1 var(--rs-sans);",
+    "  letter-spacing:.08em;text-transform:uppercase;color:#E7C79A;font-style:normal;opacity:.9}",
+    "#scr-home .rs-fastb:active{transform:scale(.985)}",
     "  #scr-home #rsStates{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;",
     "    grid-auto-rows:minmax(120px,1fr);gap:10px}",
     /* a 560 px sheet flush to the bottom edge of a tablet reads half-dialog: lift it */
@@ -1683,7 +1698,15 @@
     { label: "Relax", t: "relax", icon: "relax", re: [/relax|calm|unwind/i, /theta/i] },
     { label: "Meditate", t: "meditate", icon: "relax", re: [/meditat|breath/i, /theta|alpha/i] },
     { label: "Wake", t: "wake", icon: "sun", re: [/wake|energis|alarm/i, /gamma|beta/i] },
-    { label: "Morning", t: "morning", icon: "sun", re: [/morning|sunrise/i, /gamma|beta/i] }
+    { label: "Morning", t: "morning", icon: "sun", re: [/^Bright steady \(working a question\)$/i, /morning|sunrise/i, /gamma|beta/i] },
+    /* six more doors, drawn from the packs themselves and pinned to the exact session
+       name so a library edit cannot quietly repoint one */
+    { label: "Settle the room", t: "fast1", icon: "relax", art: "ui/fast/room.webp", re: [/^Settle the room \(five minutes\)$/i] },
+    { label: "Reset break", t: "fast2", icon: "focus", art: "ui/fast/reset.webp", re: [/^Reset Break \(16 to 10 Hz\)$/i] },
+    { label: "One tone 396", t: "fast3", icon: "relax", art: "ui/fast/one.webp", re: [/^First pass — one tone \(396 Hz\)$/i] },
+    { label: "Forty a second", t: "fast4", icon: "focus", art: "ui/fast/forty.webp", re: [/^First pass — forty a second$/i] },
+    { label: "Settling in", t: "fast5", icon: "moon", art: "ui/fast/settle.webp", re: [/^Settling in \(first pass\)$/i] },
+    { label: "Six breaths", t: "fast6", icon: "relax", art: "ui/fast/breaths.webp", re: [/^First pass — six breaths a minute$/i] }
   ];
 
   function presetByName(res, used) {
@@ -2041,19 +2064,81 @@
     return box;
   }
 
+  /* Six quick doors into the packs: the shortest, most useful sessions, one tap each.
+     The art is generated, the name is the library's own (so the match cannot drift). */
+  var FAST = [
+    { name: "Settle the room (five minutes)", short: "Settle the room", tag: "room · 5 min", art: "ui/fast/room.webp" },
+    { name: "Reset Break (16 to 10 Hz)", short: "Reset break", tag: "classic · 10 min", art: "ui/fast/reset.webp" },
+    { name: "First pass — one tone (396 Hz)", short: "One tone 396", tag: "solfeggio · 11 min", art: "ui/fast/one.webp" },
+    { name: "First pass — forty a second", short: "Forty a second", tag: "focus · 11 min", art: "ui/fast/forty.webp" },
+    { name: "Settling in (first pass)", short: "Settling in", tag: "wave I · 13 min", art: "ui/fast/settle.webp" },
+    { name: "First pass — six breaths a minute", short: "Six breaths", tag: "breathing · 13 min", art: "ui/fast/breaths.webp" }
+  ];
+
+  function buildFastTones() {
+    var box = $id("rsFast");
+    if (!box) return;
+    box.textContent = "";
+    FAST.forEach(function (f) {
+      var list = (pState() && pState().presetList) || [];
+      var idx = -1;
+      for (var i = 0; i < list.length; i++) if (list[i].name === f.name) { idx = i; break; }
+      var b = doc.createElement("button");
+      b.type = "button";
+      b.className = "rs-fastb";
+      /* inline, because this card inherits page rules that win over a bare class */
+      b.style.cssText = "position:relative;flex:0 0 150px;height:104px;border-radius:14px;" +
+        "overflow:hidden;border:1px solid var(--rs-line);background-size:cover;background-position:center;" +
+        "background-image:linear-gradient(180deg,rgba(10,8,6,.10) 35%,rgba(10,8,6,.86) 100%),url(" + f.art + ");" +
+        "display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;" +
+        "padding:9px 10px;text-align:left;color:#F3E9DC";
+      b.setAttribute("aria-label", f.short + " — " + f.tag);
+      b.innerHTML = '<i style="position:absolute;top:8px;left:10px;font-style:normal;' +
+        'font:500 9.5px/1 var(--rs-sans);letter-spacing:.09em;text-transform:uppercase;color:#E7C79A;opacity:.92">' +
+        esc(f.tag) + '</i><b style="font:600 12.5px/1.2 var(--rs-sans);letter-spacing:.01em">' +
+        esc(f.short) + '</b>';
+      b.disabled = idx < 0;
+      b.addEventListener("click", function () {
+        var l2 = (pState() && pState().presetList) || [];
+        var at = -1;
+        for (var k = 0; k < l2.length; k++) if (l2[k].name === f.name) { at = k; break; }
+        if (at < 0) return;
+        loadPresetAt(at, l2[at].preset || l2[at]);
+        pagePlay(); pushState(true);
+        toast(f.short);
+      });
+      box.appendChild(b);
+    });
+  }
+
   function wireHome() {
     var tiles = $id("rsStates");
     var used = [];
     var TILE_IDS = null;
+    /* the six art tiles name an exact session, so they claim it before the broad state
+       matches run — otherwise 'Morning' takes 'Reset Break' and the tile reads no match */
+    var reserved = {};
+    STATES.forEach(function (s) {
+      if (!s.art) return;
+      var list = (pState() && pState().presetList) || [];
+      for (var ri = 0; ri < list.length; ri++) {
+        if (s.re[0].test(list[ri].name)) { reserved[s.label] = { i: ri, it: list[ri] }; used.push(ri); break; }
+      }
+    });
     STATES.forEach(function (s, si) {
-      var hit = presetByName(s.re, used);
-      if (hit) used.push(hit.i);
+      var hit = s.art ? reserved[s.label] : presetByName(s.re, used);
+      if (hit && !s.art) used.push(hit.i);
       var b = doc.createElement("button");
       b.className = "rs-tile";
       b.setAttribute("data-rs-tile", s.t);
       b.type = "button";
       b.innerHTML = svg(s.icon) + "<div><b>" + s.label + "</b><span>" +
         (hit ? esc(hit.it.name) : "no match") + "</span></div>";
+      if (s.art) {
+        b.style.backgroundImage = "linear-gradient(180deg,rgba(10,8,6,.28) 0%,rgba(10,8,6,.90) 100%),url(" + s.art + ")";
+        b.style.backgroundSize = "cover";
+        b.style.backgroundPosition = "center";
+      }
       b.disabled = !hit;
       b.addEventListener("click", function () {
         if (!hit) return;
