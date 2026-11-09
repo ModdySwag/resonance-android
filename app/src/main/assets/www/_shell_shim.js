@@ -616,6 +616,10 @@
     ".rs-scenebox .vz-scenes{display:flex;gap:8px;align-items:stretch;grid-template-columns:none}",
     ".rs-scenebox .vz-scenes button{flex:0 0 46px;width:46px;min-width:46px;min-height:46px;",
     "  padding:0;border-radius:12px;font-size:22px;line-height:1;display:grid;place-items:center}",
+    ".rs-vizhead{display:flex;align-items:center;gap:10px}",
+    ".rs-vizhead h3{margin:0;flex:1 1 auto}",
+    "#rsVizCard .rs-vizhead #vizShuffle{margin-left:auto;flex:0 0 auto;min-height:44px;padding:0 14px;",
+    "  border-radius:12px}",
     ".rs-scenebox .vz-scenes button#vizShuffle{flex:0 0 auto;width:auto;min-width:0;padding:0 12px;",
     "  font-size:13px;letter-spacing:.04em;text-transform:uppercase}",
     ".rs-scenebox .vz-scenes select{flex:1 1 auto;min-width:0;min-height:46px;border-radius:12px;",
@@ -5047,7 +5051,7 @@
         $$("h3", vc).forEach(function (n) { n.style.display = "none"; });
         /* the page's paragraph described the panels' plumbing; one line is enough here */
         var vhint = vc.querySelector("p.hint");
-        if (vhint) vhint.textContent = "Same scenes as the focus view";
+        if (vhint) vhint.style.display = "none";
         /* the shell's own chamber card is the entry to it; the page's copy of that button
            sat three controls away and read as a second, different door */
         var cymBtn = $id("cymCardBtn");
@@ -5070,12 +5074,24 @@
           vc.insertBefore(sbox, sceneHead);
           sbox.appendChild(sceneHead);
           sbox.appendChild(scenes);
-          /* shuffle belongs with the label: the control row is then arrows and one wide
-             picker, which is what makes it read as a menu */
-          var shuf = $id("vizShuffle");
+          /* The header is the title and the one action: "Mini viewer … Shuffle". The page's
+             "Scene / one pick" label row and its hint are gone — the picker names itself. */
           var hint = sceneHead.querySelector(".hint");
           if (hint) hint.style.display = "none";
-          if (shuf) { shuf.classList.add("rs-scene-shuffle"); sceneHead.appendChild(shuf); }
+          sceneHead.style.display = "none";
+          var shuf = $id("vizShuffle");
+          if (shuf) {
+            shuf.classList.add("rs-scene-shuffle");
+            shuf.textContent = "Shuffle";
+            var myH3 = $id("rsVizH");
+            if (myH3 && myH3.parentNode) {
+              var head = doc.createElement("div");
+              head.className = "rs-vizhead";
+              myH3.parentNode.insertBefore(head, myH3);
+              head.appendChild(myH3);
+              head.appendChild(shuf);
+            }
+          }
           /* the picker a person actually uses: an LED window between the arrows, and a list
              in the same language (the page's select stays hidden but keeps driving) */
           var menu = doc.createElement("button");
