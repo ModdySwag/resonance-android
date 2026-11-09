@@ -818,7 +818,8 @@
         var n0 = (v0.kind === "binaural") ? v0.env.N : v0.gate.N;
         if (n0 > 1) lab = "\u00d7" + n0 + " slowed";
       }
-      var txt = (feat.syncText || "") + (lab ? "  \u00b7  " + lab : "");
+      /* the play key is the switch now, so a stopped session says nothing rather than "paused" */
+      var txt = feat.playing ? ((feat.syncText || "") + (lab ? "  \u00b7  " + lab : "")) : "";
       for (var b2 = 0; b2 < els.badge.length; b2++) els.badge[b2].textContent = state.enabled ? txt : "";
       if (els.sync) els.sync.textContent = txt || "\u2014";
     }

@@ -431,6 +431,7 @@
     "html[data-rs-ui=full] .rs-scenepop button[aria-selected=true]{color:#FFB454;background:rgba(120,84,32,.22)}",
     "html[data-rs-ui=full] .rs-scenepop button:active{background:rgba(120,84,32,.32)}",
     /* Turn on/off and Scramble are the same brass keys as Surprise me */
+    "#vizCard #vizToggle{display:none !important}",
     "html[data-rs-ui=full] #vizCard #vizToggle,html[data-rs-ui=full] #vizCard #vizToggle:hover,",
     "html[data-rs-ui=full] #vizCard #vizToggle:active,",
     "html[data-rs-ui=full] #vizCard #vizScramble,html[data-rs-ui=full] #vizCard #vizScramble:hover,",
@@ -4721,6 +4722,21 @@
 
   /* ==================================================================== tick === */
 
+  /* The visualiser has no switch of its own any more: the app's own play key is the only
+     control a person needs. Play animates the mini viewer and the focus view; pause and stop
+     leave the last frame on the glass, so a stopped app shows a still of the scene. */
+  var VIZ_WANT = null;
+  function vizFollowsPlayback(on) {
+    try {
+      var vz = window.ResonanceViz && window.ResonanceViz.api;
+      if (!vz || VIZ_WANT === on) return;
+      VIZ_WANT = on;
+      if (on) { vz.enable(true); return; }
+      vz.enable(true);                      /* paint one fresh frame ... */
+      window.setTimeout(function () { try { vz.enable(false); } catch (e) { } }, 500);  /* ... then hold it */
+    } catch (e) { }
+  }
+
   function syncHero() {
     var t = $id("rsNowTitle"), s = $id("rsNowSrc"), m = $id("rsMode");
     var sess = sessionTitle();
@@ -4738,6 +4754,7 @@
         p.classList.toggle("rs-live", on);
       }
       doc.documentElement.classList.toggle("rs-playing", on);
+      vizFollowsPlayback(on);
     }
     paintLevel(masterNow());
     var lp = $id("rsLoop"), lel = $id("loop");
