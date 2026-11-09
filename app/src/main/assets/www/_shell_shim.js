@@ -2615,8 +2615,7 @@
     var need = $id("rsStuNeed");
     if (need) {
       var n = !vs.length ? "" :
-        needsPhones(vs) ? "Headphones — the beat is made between your ears."
-          : "Speaker-safe — nothing here needs headphones.";
+        needsPhones(vs) ? "" : "Speaker-safe — nothing here needs headphones.";
       if (need.textContent !== n) need.textContent = n;
     }
 
@@ -3739,8 +3738,8 @@
         body: "Search it or filter by band, then tap a row to load it. Quick picks are in " +
               "Studio's Add a sound, beside the mix." },
       { nav: "studio", sel: "#rsAdvDet", title: "The raw schedule",
-        body: "Each voice's entries and the live meters sit here, folded away until you want " +
-              "that control. Nothing in this app is hidden, only put down." },
+        body: "Each voice's entries and the live meters sit here. Nothing in this app is " +
+              "hidden, only put down." },
       { nav: "viz", sel: "#rsChamber", title: "See the tone",
         body: "The chamber draws the figure the session actually drives. Focus view beside it " +
               "is the gentle one for leaving on." },
@@ -4935,7 +4934,7 @@
       var fold = doc.createElement("section");
       fold.className = "card rs-fold";
       fold.innerHTML = '<details><summary><span class="rs-fold-t"><b>What you are hearing</b>' +
-        '<span>Layers, rate and level — folded away until you want it</span></span>' + svg("chev", 18) + '</summary></details>';
+        '</span>' + svg("chev", 18) + '</summary></details>';
       hear.classList.remove("card", "rs-screen");
       $id("hearinfo").classList.remove("readout");
       fold.querySelector("details").appendChild(hear);
