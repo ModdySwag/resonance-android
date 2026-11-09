@@ -3442,6 +3442,10 @@
       '  <button class="rs-mrow" data-act="upd">' + svg("down", 22) +
       '    <span class="rs-mtxt"><b>Check for updates</b><span>Asks moddys.net</span></span>' + svg("chev", 18) + '</button>' +
       '</section>' +
+      '<section class="card" data-band="other" aria-labelledby="rsPacksH">' +
+      '  <h3 id="rsPacksH">Session packs</h3>' +
+      '  <div id="rsPacksHost"></div>' +
+      '</section>' +
       '<section class="card" data-band="relax" aria-labelledby="rsDataH">' +
       '  <h3 id="rsDataH">Data</h3>' +
       '  <div class="rs-kv"><b>Saved files</b><span>Downloads/Resonance Studio</span></div>' +
@@ -5115,14 +5119,17 @@
       var n = packs.querySelectorAll("a").length;
       var det = doc.createElement("details");
       det.className = "tool";
-      det.innerHTML = '<summary>Session packs <span class="cnt">' + n + '</span></summary>';
+      det.innerHTML = '<summary class="rs-mrow rs-packsrow">' + svg("book", 22) +
+        '<span class="rs-mtxt"><b>Session packs</b><span>' + n + ' packs available</span></span>' +
+        svg("chev", 18) + '</summary>';
       var body = doc.createElement("div");
       body.className = "body";
       var hint = packs.querySelector("p.hint");
       if (hint) body.appendChild(hint);
       body.appendChild(packs);
       det.appendChild(body);
-      screenEls.settings.appendChild(det);
+      var packsHost = $id("rsPacksHost");
+      if (packsHost) packsHost.appendChild(det); else screenEls.settings.appendChild(det);
     }
 
     var kb = $$("section.card").filter(function (c) { return /Keyboard/.test(text(c.querySelector("h3"))); })[0];
