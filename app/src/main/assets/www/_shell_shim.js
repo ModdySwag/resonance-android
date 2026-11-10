@@ -4370,6 +4370,7 @@
       if (window.GnauralVizScenes && window.GnauralVizScenes.isScene(id)) v.applyScene(id);
       else v.applyPreset(id);
       v.enable(true);
+      if (!isPlaying()) vizPreviewOn();     /* shuffle / arrows / picker start a preview */
     } catch (e) { }
     var n = $id("rsFocusName");
     if (n) n.textContent = focusName(id);
@@ -4824,12 +4825,38 @@
      control a person needs. Play animates the mini viewer and the focus view; pause and stop
      leave the last frame on the glass, so a stopped app shows a still of the scene. */
   var VIZ_WANT = null;
+  /* Picking a scene is a preview: the picture runs without sound, and a tap on the picture
+     itself puts it back to a still. The play key always wins, and a stop always returns to
+     the still — so sound keeps its authority without taking the preview away. */
+  var VIZ_PREVIEW = false;
+
+  function vizPreviewOn() {
+    try {
+      var vz = window.ResonanceViz && window.ResonanceViz.api;
+      if (!vz) return;
+      VIZ_PREVIEW = true;
+      vz.enable(true);
+    } catch (e) { }
+  }
+
+  function vizPreviewOff() {
+    try {
+      VIZ_PREVIEW = false;
+      if (isPlaying()) return;
+      var vz = window.ResonanceViz && window.ResonanceViz.api;
+      if (!vz) return;
+      vz.enable(true);                     /* paint one fresh frame ... */
+      window.setTimeout(function () { try { vz.enable(false); } catch (e) { } }, 900);  /* ... then hold it */
+    } catch (e) { }
+  }
+
   function vizFollowsPlayback(on) {
     try {
       var vz = window.ResonanceViz && window.ResonanceViz.api;
       if (!vz || VIZ_WANT === on) return;
       VIZ_WANT = on;
-      if (on) { vz.enable(true); return; }
+      if (on) { VIZ_PREVIEW = false; vz.enable(true); return; }
+      if (VIZ_PREVIEW) return;             /* started from the picker: let it run */
       vz.enable(true);                      /* paint one fresh frame ... */
       window.setTimeout(function () { try { vz.enable(false); } catch (e) { } }, 1200);  /* ... then hold it */
     } catch (e) { }
@@ -5229,6 +5256,12 @@
           refreshSceneMenu();
         }
         $id("rsVizCard").appendChild(vc);
+        /* a tap on the picture itself ends a preview it started; taps on controls pass through */
+        $id("rsVizCard").addEventListener("click", function (ev) {
+          if (!VIZ_PREVIEW || isPlaying()) return;
+          if (ev.target && ev.target.closest && ev.target.closest("button")) return;
+          vizPreviewOff();
+        });
         /* One vocabulary from the first frame. With no scene stored the card used to fall
            back to the retired backdrop/overlay look, which is the state where every chip
            looked dead; adopt the focus view's default instead, so the card, the window and

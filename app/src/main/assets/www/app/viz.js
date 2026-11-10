@@ -930,6 +930,15 @@
     } else {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      /* leave a real picture on the glass: snap the dissolve in and draw the frame that
+         will be held, so a stopped card shows the scene rather than an empty window */
+      try {
+        for (var sf = 0; sf < scenes.length; sf++) {
+          var s0 = scenes[sf] && scenes[sf].scene;
+          if (s0) s0.fade = 1;
+        }
+        tick(performance.now());
+      } catch (e) { }
       for (var bi = 0; bi < els.badge.length; bi++) els.badge[bi].textContent = "";
       if (els.sync) els.sync.textContent = "\u2014";
     }
