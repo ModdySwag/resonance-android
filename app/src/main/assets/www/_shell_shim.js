@@ -376,10 +376,9 @@
        aurora plate under a scrim that stays dark enough for text at every line, down to the
        auto-scramble switch. Generated chrome art read as a different app next to it. */
     "html[data-rs-ui=full] #rsVizCard{position:relative;overflow:hidden}",
-    "html[data-rs-ui=full] #rsVizCard::before{content:\"\";position:absolute;inset:0;",
-    "  background-size:cover;background-position:center top;pointer-events:none;",
-    "  background-image:linear-gradient(180deg,rgba(18,16,14,.42),rgba(15,13,11,.80) 46%,",
-    "  rgba(13,11,9,.92) 78%,rgba(12,10,9,.96)),url(ui/scene/aurora.webp)}",
+    "html[data-rs-ui=full] #rsVizCard::before{content:\"\";position:absolute;top:0;left:0;right:0;",
+    "  height:96px;background-size:cover;background-position:center;pointer-events:none;",
+    "  background-image:linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.94)),url(ui/cta-viz.webp)}",
     "html[data-rs-ui=full] #rsVizCard > *{position:relative;z-index:1}",
     "#rsVizCard .rs-vizadv{margin:12px 0 6px;padding:0 12px;border:1px solid var(--rs-line);",
     "  border-radius:12px;background-color:rgba(0,0,0,.22)}",
@@ -618,8 +617,13 @@
     "  padding:0;border-radius:12px;font-size:22px;line-height:1;display:grid;place-items:center}",
     ".rs-vizhead{display:flex;align-items:center;gap:10px}",
     ".rs-vizhead h3{margin:0;flex:1 1 auto}",
-    "#rsVizCard .rs-vizhead #vizShuffle{margin-left:auto;flex:0 0 auto;min-height:44px;padding:0 14px;",
-    "  border-radius:12px}",
+    "#rsVizCard .rs-vizhead h3{margin:0;padding:0;line-height:1;align-self:center}",
+    "#rsVizCard .rs-vizhead #vizShuffle,#rsVizCard .rs-vizhead #vizShuffle:hover,",
+    "#rsVizCard .rs-vizhead #vizShuffle:active,#rsVizCard .rs-vizhead #vizShuffle:focus{",
+    "  margin:0 0 0 auto;flex:0 0 auto;align-self:center;transform:translateY(-3px);width:48px;height:48px;min-height:0;",
+    "  padding:0;border:0;border-radius:50%;background-color:#100E0C;",
+    "  background-image:url(ui/viz-shuffle.webp);background-size:cover;background-position:center;",
+    "  font-size:0;line-height:0;box-shadow:0 1px 0 rgba(255,220,170,.16) inset,0 6px 14px rgba(0,0,0,.45)}",
     ".rs-scenebox .vz-scenes button#vizShuffle{flex:0 0 auto;width:auto;min-width:0;padding:0 12px;",
     "  font-size:13px;letter-spacing:.04em;text-transform:uppercase}",
     ".rs-scenebox .vz-scenes select{flex:1 1 auto;min-width:0;min-height:46px;border-radius:12px;",
@@ -4825,7 +4829,7 @@
       VIZ_WANT = on;
       if (on) { vz.enable(true); return; }
       vz.enable(true);                      /* paint one fresh frame ... */
-      window.setTimeout(function () { try { vz.enable(false); } catch (e) { } }, 500);  /* ... then hold it */
+      window.setTimeout(function () { try { vz.enable(false); } catch (e) { } }, 1200);  /* ... then hold it */
     } catch (e) { }
   }
 
