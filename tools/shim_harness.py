@@ -1652,10 +1652,27 @@ def main():
             page.click("#rsTour .rs-t-next")
             page.wait_for_timeout(850)
             bubble = page.evaluate("""(() => { const q = document.querySelector('#rsTour .rs-t-bub')
-                .getBoundingClientRect(); return { x: Math.round(q.x), y: Math.round(q.y),
-                w: Math.round(q.width), h: Math.round(q.height), vw: innerWidth, vh: innerHeight }; })()""")
-            if (bubble["x"] < 0 or bubble["y"] < 0 or bubble["x"] + bubble["w"] > bubble["vw"]
-                    or bubble["y"] + bubble["h"] > bubble["vh"]):
+                .getBoundingClientRect();
+                const rs = getComputedStyle(document.documentElement);
+                const st = parseFloat(rs.getPropertyValue('--rs-safe-t')) || 0;
+                const sb = parseFloat(rs.getPropertyValue('--rs-safe-b')) || 0;
+                const ceil = Math.max(8, st + 8);
+                let floor = innerHeight - 8 - sb;
+                const nav = document.getElementById('rsNav');
+                if (nav) { const nr = nav.getBoundingClientRect();
+                  if (nr.height && nr.top > 0) floor = Math.min(floor, nr.top - 10); }
+                const next = document.querySelector('#rsTour .rs-t-next');
+                const nr2 = next.getBoundingClientRect();
+                const hit = document.elementFromPoint(nr2.left + nr2.width / 2, nr2.top + nr2.height / 2);
+                return { x: Math.round(q.x), y: Math.round(q.y),
+                w: Math.round(q.width), h: Math.round(q.height), vw: innerWidth, vh: innerHeight,
+                ceil: Math.round(ceil), floor: Math.round(floor),
+                nextOk: !!hit && (hit === next || next.contains(hit)) }; })()""")
+            # the bubble must sit inside the band it can be seen in - not merely inside
+            # innerHeight, which is how a bubble ended up under the gesture bar
+            if (bubble["x"] < 0 or bubble["y"] < bubble["ceil"]
+                    or bubble["x"] + bubble["w"] > bubble["vw"]
+                    or bubble["y"] + bubble["h"] > bubble["floor"] or not bubble["nextOk"]):
                 bad.append((n, bubble))
             count = page.evaluate("document.getElementById('rsTourN').textContent")
             if count != "%d of 9" % n:

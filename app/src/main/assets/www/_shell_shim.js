@@ -3808,7 +3808,8 @@
      talking about, and the tour itself moves between sections. It runs once on first
      launch, ends on the tick or Skip, and can be replayed from Settings. */
 
-  var TOUR = { on: false, i: 0, gen: 0, el: null, hole: null, bub: null, steps: [], timer: 0 };
+  var TOUR = { on: false, i: 0, gen: 0, el: null, hole: null, bub: null, steps: [], timer: 0,
+               tx: 0, ty: 0, bw: 0, bh: 0, watch: false };
 
   var TOUR_TICK =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
@@ -3851,6 +3852,16 @@
       "  transform:rotate(45deg);display:none}",
       "#rsTour .rs-t-caret.rs-t-top{display:block;top:-8px;border-top:1px solid var(--rs-line2);border-left:1px solid var(--rs-line2)}",
       "#rsTour .rs-t-caret.rs-t-bottom{display:block;bottom:-8px;border-bottom:1px solid var(--rs-line2);border-right:1px solid var(--rs-line2)}",
+      /* a short glass (landscape phone, small screen) gets tighter spacing before the
+         bubble is allowed to outgrow the band */
+      "#rsTour .rs-t-bub.rs-t-snug{padding:10px 14px 8px;border-radius:16px}",
+      "#rsTour .rs-t-bub.rs-t-snug .rs-t-t{font-size:16px;margin-bottom:2px}",
+      "#rsTour .rs-t-bub.rs-t-snug .rs-t-b{font-size:13px;line-height:1.42;margin-bottom:8px}",
+      /* and when even that cannot fit, the copy scrolls inside a bubble pinned to the
+         band, so the foot keeps its Next / Back keys on the glass */
+      "#rsTour .rs-t-bub.rs-t-tight{display:flex;flex-direction:column;overflow:hidden}",
+      "#rsTour .rs-t-bub.rs-t-tight .rs-t-b{flex:1 1 auto;min-height:0;overflow-y:auto;",
+      "  overscroll-behavior:contain;-webkit-overflow-scrolling:touch}",
       "#rsTour.rs-t-first .rs-t-hole,#rsTour.rs-t-first .rs-t-bub{transition:none}",
       "@media (prefers-reduced-motion: reduce){#rsTour .rs-t-hole,#rsTour.rs-t-first .rs-t-ring,",
       "  #rsTour .rs-t-ring,#rsTour .rs-t-bub{transition:none}}"
@@ -3915,6 +3926,9 @@
     TOUR.hole = el.querySelector(".rs-t-hole");
     TOUR.hole2 = el.querySelector(".rs-t-ring");
     TOUR.bub = el.querySelector(".rs-t-bub");
+    TOUR.bub.addEventListener("transitionend", function (ev) {
+      if (ev.target === TOUR.bub && ev.propertyName === "transform" && TOUR.on) tourSettle();
+    });
     el.addEventListener("click", function (ev) {
       var b = ev.target.closest("button");
       if (!b) return;
@@ -3935,6 +3949,88 @@
     bub.querySelector(".rs-t-next").textContent = TOUR.i === n - 1 ? "Done" : "Next";
   }
 
+  /* Fit the bubble to the band before it is placed: tuck the spacing in on a short
+     glass, and if it still cannot fit, cap it to the band and let the copy scroll
+     inside so the foot's Next / Back keys stay on the glass. Without this a tall
+     bubble was clamped to the ceiling and ran off the floor - half the card gone. */
+  function tourFit(ceil, floor) {
+    var bub = TOUR.bub;
+    var band = Math.max(88, floor - ceil);
+    bub.classList.remove("rs-t-snug", "rs-t-tight");
+    bub.style.maxHeight = "";
+    if (bub.offsetHeight <= band) return;
+    if (band < 320) bub.classList.add("rs-t-snug");
+    if (bub.offsetHeight <= band) return;
+    bub.classList.add("rs-t-tight");
+    bub.style.maxHeight = Math.round(band) + "px";
+  }
+
+  function tourPut() {
+    TOUR.bub.style.transform =
+      "translate(" + Math.round(TOUR.tx) + "px," + Math.round(TOUR.ty) + "px)";
+  }
+
+  /* The usable band: the glass minus the status bar, the gesture bar and (except on the
+     nav's own step) the tab bar. */
+  function tourBand() {
+    var rootStyle = window.getComputedStyle(doc.documentElement);
+    var safeT = parseFloat(rootStyle.getPropertyValue("--rs-safe-t")) || 0;
+    var safeB = parseFloat(rootStyle.getPropertyValue("--rs-safe-b")) || 0;
+    var ceil = Math.max(8, safeT + 8);
+    var floor = window.innerHeight - 8 - safeB;
+    var nav = doc.getElementById("rsNav");
+    var st = TOUR.steps[TOUR.i] || {};
+    if (nav && st.sel !== "#rsNav") {
+      var nr = nav.getBoundingClientRect();
+      if (nr.height && nr.top > 0) floor = Math.min(floor, nr.top - 10);
+    }
+    return { ceil: ceil, floor: floor, vw: window.innerWidth };
+  }
+
+  /* Clamp the TARGET, not the live rect: the bubble animates to its position, so a
+     measured correction taken mid-flight feeds its own error back (measured moving
+     375 -> 172 -> 249 on a rotation before this was split). Width and height here are
+     the real CSS sizes, so this is exact. */
+  function tourClamp(ceil, floor, vw) {
+    if (TOUR.ty + TOUR.bh > floor) TOUR.ty = floor - TOUR.bh;
+    if (TOUR.ty < ceil) TOUR.ty = ceil;
+    if (TOUR.tx + TOUR.bw > vw - 8) TOUR.tx = vw - 8 - TOUR.bw;
+    if (TOUR.tx < 8) TOUR.tx = 8;
+  }
+
+  /* The check, run only when the bubble has come to rest (transitionend, or a timeout
+     fallback): by then a measured rect is the truth, and it catches what the estimate
+     cannot - copy that reflowed after placement, a font that resolved late. */
+  function tourSettle() {
+    if (!TOUR.on || !TOUR.bub) return;
+    var b = TOUR.bub, band = tourBand();
+    if (b.offsetHeight !== TOUR.bh || b.offsetWidth !== TOUR.bw) { tourPlace(); return; }
+    var r = b.getBoundingClientRect(), dx = 0, dy = 0;
+    if (r.height > band.floor - band.ceil) {
+      /* taller than the band after all: pin the top, the copy scrolls */
+      dy = band.ceil - r.top;
+    } else {
+      if (r.bottom > band.floor) dy = band.floor - r.bottom;
+      if (r.top + dy < band.ceil) dy = band.ceil - r.top;
+    }
+    if (r.right > band.vw - 8) dx = (band.vw - 8) - r.right;
+    if (r.left + dx < 8) dx = 8 - r.left;
+    if (!dx && !dy) return;
+    TOUR.tx += dx; TOUR.ty += dy;
+    tourPut();
+  }
+
+  /* Re-aim whenever the glass changes under an open tour. Rotation is the one that used
+     to bite: the bubble kept its portrait coordinates on a landscape screen. */
+  function tourWatch() {
+    if (TOUR.watch) return;
+    TOUR.watch = true;
+    var again = function () { if (TOUR.on && TOUR.bub) tourPlace(); };
+    window.addEventListener("resize", again);
+    window.addEventListener("orientationchange", function () { window.setTimeout(again, 140); });
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", again);
+  }
+
   function tourPlace() {
     var st = TOUR.steps[TOUR.i] || {};
     var vw = window.innerWidth, vh = window.innerHeight;
@@ -3945,23 +4041,19 @@
        placement code measures the bubble right after setting it */
     var bw = Math.min(vw >= 600 ? 400 : 340, vw - 28);
     bub.style.width = Math.round(bw) + "px";
-    var bh = bub.offsetHeight, margin = 16, x, y, w, h, top, left, below, above;
     var caret = bub.querySelector(".rs-t-caret");
     /* The usable band is the glass minus the status bar and the tab bar. Without this a
        bubble placed below a low target slides under the nav (or behind the gesture bar),
        which reads as "the help is off screen" even though it is technically in the
        viewport. The nav is the one step that may sit below the band - for it the bubble
        goes above the bar. */
-    var rootStyle = window.getComputedStyle(doc.documentElement);
-    var safeT = parseFloat(rootStyle.getPropertyValue("--rs-safe-t")) || 0;
-    var safeB = parseFloat(rootStyle.getPropertyValue("--rs-safe-b")) || 0;
-    var ceil = Math.max(8, safeT + 8);
-    var floor = vh - 8 - safeB;
-    var nav = doc.getElementById("rsNav");
-    if (nav && st.sel !== "#rsNav") {
-      var nr = nav.getBoundingClientRect();
-      if (nr.height && nr.top > 0) floor = Math.min(floor, nr.top - 10);
-    }
+    var band = tourBand();
+    var ceil = band.ceil, floor = band.floor;
+    /* fit before measuring: the height used below has to be the height the bubble will
+       really have on this glass */
+    tourFit(ceil, floor);
+    var bh = bub.offsetHeight, margin = 16, x, y, w, h, top, left, below, above;
+    TOUR.bh = bh; TOUR.bw = bub.offsetWidth;
     if (tgt) {
       var r = tgt.getBoundingClientRect();
       x = Math.max(6, r.left - 6);
@@ -3987,7 +4079,8 @@
       if (top + bh > floor) top = floor - bh;
       if (top < ceil) top = ceil;
       left = Math.max(14, Math.min(vw - bw - 14, x + w / 2 - bw / 2));
-      bub.style.transform = "translate(" + Math.round(left) + "px," + Math.round(top) + "px)";
+      TOUR.tx = left; TOUR.ty = top;
+      tourPut();
       var cx = Math.max(20, Math.min(bw - 34, x + w / 2 - left - 7));
       caret.style.left = Math.round(cx) + "px";
     } else {
@@ -3998,9 +4091,12 @@
       var centred = (vh - bh) / 2;
       if (centred < ceil) centred = ceil;
       if (centred + bh > floor) centred = Math.max(ceil, floor - bh);
-      bub.style.transform = "translate(" + Math.round((vw - bw) / 2) + "px," +
-        Math.round(centred) + "px)";
+      TOUR.tx = (vw - bw) / 2; TOUR.ty = centred;
+      tourPut();
     }
+    /* the last word before painting: whatever the estimate was, the target is inside */
+    tourClamp(ceil, floor, vw);
+    tourPut();
   }
 
   function tourStep(i) {
@@ -4030,6 +4126,20 @@
       tourPlace();
       TOUR.bub.classList.add("rs-t-show");
       try { TOUR.bub.focus({ preventScroll: true }); } catch (e) { }
+      /* the bubble's first paint can be a different height from the one just measured
+         (a style or font that lands with the show class); re-aim once the frame is real,
+         so the placed position is the measured one, not an estimate of it */
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () {
+          if (gen === TOUR.gen && TOUR.on) tourPlace();
+        });
+      });
+      /* once it has come to rest the rect is the truth: check it there, not mid-ease.
+         The transitionend listener is armed once, in tourBuild, so replaying the tour
+         cannot stack them. */
+      window.setTimeout(function () {
+        if (gen === TOUR.gen && TOUR.on) tourSettle();
+      }, 700);
       /* a smooth scroll keeps moving after the first measure; re-aim once it has settled */
       if (scrolled) {
         window.clearTimeout(TOUR.timer);
@@ -4054,6 +4164,7 @@
     TOUR.el.setAttribute("aria-hidden", "false");
     doc.documentElement.classList.add("rs-locked");
     markBack();
+    tourWatch();
     tourStep(0);
     window.setTimeout(function () { TOUR.el.classList.remove("rs-t-first"); }, 60);
   }
