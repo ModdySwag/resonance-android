@@ -1,4 +1,6 @@
-# SAVE POINT — 2026-11-08 (session 14: the mini viewer is the focus view, small). READ THIS FIRST.
+# SUPERSEDED — see CONTINUATION-2026-11-10.md (session 15). The block below is session 14.
+
+# SAVE POINT — 2026-11-08 (session 14: the mini viewer is the focus view, small).
 
 ## State
 - **HEAD `580ad21`**, tree clean, **nothing pushed, nothing published**. Three commits:
