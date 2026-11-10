@@ -48,7 +48,10 @@ A CDP devtools attachment also defeats the throttle — that asymmetry is the te
    (almost certainly a missed tap, not dead code). Tab the chip with sound stopped and watch.
 2. **Rest frame reads dark** (card mean luminance 13/255): the scene is there; lift exposure of
    the held frame if his eye says "black".
-3. Gates on the final bytes (see above), then the publish path he already approved in principle:
+3. ~~Gates on the final bytes~~ **DONE 2026-11-10: harness 265/0, contrast 0, tablet 82/0, eslint 0**
+   (four legs rewritten to the new contract: rest holds a frame, a pick previews, no toggle key,
+   banner plate, shuffle key is an image, tiles must all resolve, window label waits 1.4 s).
+   Then the publish path he already approved in principle:
    bump to **2.0.7-beta / code 15**, rebuild, `make-updates-json.py --resonance-only`, upload
    **only on his word**.
 4. Wireless adb pairing dies when he toggles Wireless debugging or reboots — re-pair with a fresh code.

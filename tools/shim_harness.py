@@ -477,8 +477,10 @@ def main():
                     page.evaluate("!document.querySelector('#scr-home #rsBuild') && "
                                   "!document.querySelector('#scr-home .rs-fold') && "
                                   "!!document.querySelector('#scr-home #rsStates')"))
-        suite.check("the module grid offers eight ways in",
-                    page.evaluate("document.querySelectorAll('#rsStates .rs-tile').length") == 8)
+        suite.check("every module tile names a real session",
+                    page.evaluate("(() => { const t = Array.from(document.querySelectorAll('#rsStates .rs-tile'));"
+                                  " return t.length >= 8 && t.every(b => !/no match/i.test(b.textContent))"
+                                  " && t.every(b => !b.disabled); })()"))
         suite.tab("studio")
         suite.check("Build a tone moved to Studio",
                     page.evaluate("!!document.querySelector('#scr-studio #rsBuild')"))
@@ -732,11 +734,13 @@ def main():
                                   "document.querySelector('#scr-vis section.card.rs-cta')"))
         suite.check("the page's long motion caption is folded away",
                     page.evaluate("getComputedStyle(document.getElementById('vizNote')).display") == "none")
-        suite.check("the card carries one line, and it is the plain one",
+        suite.check("the card carries no plumbing prose",
                     page.evaluate("(() => { const c = document.getElementById('rsVizCard');"
-                                  " if (!c) return false; const t = c.textContent;"
-                                  " return /Same scenes as the focus view/.test(t) && !/flash threshold/i.test(t)"
-                                  " && !/no microphone/i.test(t); })()"))
+                                  " if (!c) return false; const h = c.querySelector('p.hint');"
+                                  " const hidden = !h || getComputedStyle(h).display === 'none';"
+                                  " const seen = c.innerText || '';"
+                                  " return hidden && !/flash threshold/i.test(seen)"
+                                  " && !/no microphone/i.test(seen); })()"))
         suite.check("the two ways in are equal cards",
                     page.evaluate("(() => { const c = document.querySelectorAll('#scr-vis section.card.rs-cta');"
                                   " if (c.length !== 2) return false;"
@@ -762,11 +766,11 @@ def main():
             " return !!c.querySelector('#vizPreset') && !c.querySelector('#rsScenes')"
             "   && !c.querySelector('#rsFollow'); })()"))
         # the card carries the Focus view's own atmosphere behind its whole height
-        suite.check("the Ambient panels card wears the focus view's own plate, full height", page.evaluate(
+        suite.check("the card wears a banner plate like the two cards above", page.evaluate(
             "(() => { const c = document.getElementById('rsVizCard');"
             " const s = getComputedStyle(c, '::before');"
-            " return s.backgroundImage.indexOf('scene/aurora') > -1"
-            "   && s.position === 'absolute' && s.bottom === '0px' && s.top === '0px'; })()"))
+            " return s.backgroundImage.indexOf('cta-viz') > -1"
+            "   && s.position === 'absolute' && parseInt(s.height, 10) >= 80; })()"))
         # the scene picker is an LED window; the page's select is hidden but still drives
         sm = page.evaluate("""(() => {
           const menu = document.getElementById('rsSceneMenu'), sel = document.getElementById('vizPreset');
@@ -794,7 +798,7 @@ def main():
                         "(() => { const id = window.ResonanceViz.api.getPrefs().scene;"
                         " const s = window.GnauralVizScenes.byId(id); return s ? s.name : ''; })()"), sm)
         suite.check("the shuffle chip is a brass key too",
-                    sm is not None and sm["shufH"] >= 40 and "gradient" in sm["shufImg"], sm)
+                    sm is not None and sm["shufH"] >= 40 and "url(" in sm["shufImg"], sm)
         # the card shows its own work: a live preview, and no second look-system
         prev = page.evaluate("""(() => {
           const c = document.querySelector('#rsVizCard canvas.viz-canvas');
@@ -813,8 +817,14 @@ def main():
                     prev is not None and prev["w"] > 120 and prev["h"] >= 120, prev)
         page.wait_for_timeout(900)
         prev2 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
-        suite.check("the preview is painting, not a still",
-                    prev is not None and sum(prev2) > sum(prev["frames"]), [prev["frames"], prev2])
+        suite.check("at rest the preview holds one frame instead of painting",
+                    prev is not None and sum(prev2) == sum(prev["frames"]), [prev["frames"], prev2])
+        # the play key is the switch, but picking a scene is a silent preview of its own
+        page.evaluate("document.getElementById('vizShuffle').click()")
+        page.wait_for_timeout(1000)
+        prev3 = page.evaluate("window.ResonanceViz.api.debugState().panels.map(p => p.frames)")
+        suite.check("a scene pick starts a preview with no sound", sum(prev3) > sum(prev2),
+                    [prev2, prev3])
         suite.check("the old chip vocabulary is gone from the card, not folded",
                     prev is not None and prev["fold"] is False
                     and all(d == "none" for d in prev["chips"]), prev)
@@ -852,9 +862,8 @@ def main():
                      img: s.backgroundImage.slice(0, 24) }; };
           return { on: g('vizToggle'), sc: g('vizScramble') };
         })()""")
-        suite.check("Turn on/off wears the brass plate too",
-                    keys["on"]["h"] >= 44 and "gradient" in keys["on"]["img"]
-                    and keys["on"]["bg"] not in ("rgba(0, 0, 0, 0)", "transparent"), keys)
+        suite.check("the card has no Turn on/off switch (the play key is the switch)",
+                    keys["on"]["h"] == 0, keys)
         suite.check("Focus view has its own way in",
                     page.evaluate("!!document.getElementById('rsFocusGo')"))
         # Scramble is retired: with a scene chosen it wrote backdrop/overlay preferences the
@@ -876,7 +885,7 @@ def main():
         # SCENE, not write backdrop/overlay prefs the scene never reads
         before_api = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
         page.evaluate("window.ResonanceViz.api.scramble()")
-        page.wait_for_timeout(700)
+        page.wait_for_timeout(1400)   # the window label refreshes on the 1 Hz tick
         api_scene = page.evaluate("window.ResonanceViz.api.getPrefs().scene")
         suite.check("the page's own scramble picks another scene while one is chosen",
                     bool(api_scene) and api_scene != before_api, [before_api, api_scene])
