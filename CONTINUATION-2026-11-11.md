@@ -1,6 +1,6 @@
 # Resonance Studio Android — 2026-11-11
 
-## LATEST — 2.1.2-beta (code 17): the session dies with the app. NOT PUBLISHED.
+## SHIPPED — 2.1.2-beta (code 17) is live, published 2026-11-11
 
 Owner report: sound kept playing after Stop; sound survived shutting the app down and clearing
 recents, and the phone needed a restart.
@@ -38,12 +38,16 @@ The scenario matrix (34 rows: play/stop/pause/Home/background/screen/focus/headp
 rotation/multi-window/OEM kill/update) is `docs/PLAYBACK-LIFECYCLE-AUDIT.md` — read it before
 touching audio again.
 
-**Open.** Publish path untouched: the site still serves 2.1.1, `updates.json` still says 2.1.1/16,
-the GitHub release is still v2.1.1. On his word: copy the APK to `deploy/downloads/`, regenerate
-the feed, bump the card, upload, tag — and re-scan with VirusTotal (new hash). He has not tested
-2.1.2 on his **phone** (only the tablet was attached); a real headphone unplug is also his to try
-(the receiver is registered; the adb shell cannot deliver a protected broadcast to a
-`RECEIVER_NOT_EXPORTED` receiver).
+**Published (2026-11-11).** Site https://moddys.net/downloads/resonance-studio-v2.1.2-beta.apk
+(re-downloaded and hashed to the scanned sha) · feed 17 / 2.1.2-beta / 993501 / `46290c25…` ·
+card v2.1.2-beta with the sha, the certutil line, the tag link and the VirusTotal 0/66 line ·
+GitHub `main` 23c3468, tag `v2.1.2-beta`, release asset digest = the same sha · tablet
+reinstalled **from the downloaded bytes**: versionCode 17, `page: shim ready`, Home, no update
+offered, empty crash buffer. `upload-site.py --verify`: 0 file(s) not in sync.
+
+**Still open.** His **phone** was not attached, so 2.1.2 has not run there; and a real headphone
+unplug (the receiver is registered but the adb shell cannot deliver a protected broadcast to a
+`RECEIVER_NOT_EXPORTED` receiver, so the gate proves wiring, not delivery).
 
 ## SHIPPED — 2.1.1 (versionCode 16) is live
 
