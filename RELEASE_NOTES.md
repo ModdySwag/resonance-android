@@ -1,3 +1,36 @@
+# Resonance Studio 2.1.2-beta
+
+**The sound now ends when the app does.**
+
+## What changed
+
+- **Leaving the app stops the session.** Swiping the app out of recents, or backing out of it,
+  used to leave the audio playing inside a WebView whose window was gone: no notification, no
+  service left to tap, and a Stop in a freshly opened app could not reach it. The activity now
+  stops the page and destroys the WebView, which closes the audio graph.
+- **Stop wins while the sound is starting.** A Stop tapped in the moment the audio graph was
+  still booting was undone when that boot finished; the stop now sticks.
+- **Headphones out pauses** instead of carrying on through the speaker.
+- **No phantom notification.** Opening the app without playing anything no longer leaves a
+  paused media notification and a foreground service on the lock screen.
+- **Stop from the notification stays stopped** — the page's own one-second state tick could
+  bring the service back a beat later.
+- A system font-size change no longer restarts the session.
+
+## Installing
+
+`resonance-studio-v2.1.2-beta.apk` (versionCode 17) installs straight over 2.1.1 — same signing
+key. Built for the sideload channel; the Google Play build is delivered by Play.
+
+**VirusTotal:** 0 detections. `resonance-studio-v2.1.2-beta.apk`, sha256
+`46290c25234d970203d4aec7cd5dc67f3379c3f58dcd80c6fb85fc6eb6373efd`, 993,501 B — 0 malicious,
+0 suspicious across 66 engines that returned a verdict (8 do not analyse APKs, 1 timed out).
+Report: https://www.virustotal.com/gui/file/46290c25234d970203d4aec7cd5dc67f3379c3f58dcd80c6fb85fc6eb6373efd
+The app itself says the same thing without a hash, because embedding the hash would change the
+file that was scanned.
+
+---
+
 # Resonance Studio 2.1.1
 
 **Two edges smoothed: the chamber's Setup sheet and the walkthrough's bubbles.**
