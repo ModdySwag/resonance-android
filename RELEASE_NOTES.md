@@ -1,3 +1,26 @@
+# Resonance Studio 2.1.1
+
+**Two edges smoothed: the chamber's Setup sheet and the walkthrough's bubbles.**
+
+## What changed
+
+- **The Setup sheet has a second way out.** In the Cymatic Chamber, a tap anywhere on the
+  picture now puts it away — the Setup key is no longer the only exit. Opening the page's
+  Controls drawer puts the sheet away too, so the two panels never stack on one stage.
+  Taps inside the sheet (its chips, its faders, the grabber) are left alone.
+- **The walkthrough bubble always lands on the glass.** It is now fitted to the safe band
+  (status bar, gesture bar, tab bar) before it is placed: tighter spacing first, and copy that
+  still cannot fit scrolls inside a bubble capped to the band, so Next and Back stay reachable.
+  The placement is re-aimed when the glass changes — rotation, resize — and checked again once
+  the bubble has come to rest, which catches copy that reflowed after the estimate.
+  Found on a phone this was never tested on: rotate with the tour open and the bubble kept its
+  portrait coordinates, 278 px past the bottom of the band with Next unreachable.
+
+## Installing
+
+`resonance-studio-2.1.1.apk` (versionCode 16) installs straight over 2.1.0 — same signing key.
+Built for the sideload channel; the Google Play build is delivered by Play.
+
 # Resonance Studio 2.1.0
 
 **Fourteen doors on Home, and every number now tells the truth.**
