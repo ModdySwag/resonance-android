@@ -617,6 +617,8 @@
     "  padding:0;border-radius:12px;font-size:22px;line-height:1;display:grid;place-items:center}",
     ".rs-vizhead{display:flex;align-items:center;gap:10px}",
     ".rs-vizhead h3{margin:0;flex:1 1 auto}",
+    "#rsVizCard .rs-vizhead .rs-vizart{flex:0 0 auto;align-self:center;width:30px;height:30px;",
+    "  margin:0 9px 0 0;border-radius:9px;background:url(ui/viz-icon.webp) center/cover no-repeat}",
     "#rsVizCard .rs-vizhead h3{margin:0;padding:0;line-height:1;align-self:center}",
     "#rsVizCard .rs-vizhead #vizShuffle,#rsVizCard .rs-vizhead #vizShuffle:hover,",
     "#rsVizCard .rs-vizhead #vizShuffle:active,#rsVizCard .rs-vizhead #vizShuffle:focus{",
@@ -5182,7 +5184,11 @@
             if (myH3 && myH3.parentNode) {
               var head = doc.createElement("div");
               head.className = "rs-vizhead";
+              var vart = doc.createElement("span");
+              vart.className = "rs-vizart";
+              vart.setAttribute("aria-hidden", "true");
               myH3.parentNode.insertBefore(head, myH3);
+              head.appendChild(vart);
               head.appendChild(myH3);
               head.appendChild(shuf);
             }
