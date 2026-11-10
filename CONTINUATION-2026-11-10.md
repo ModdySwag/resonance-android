@@ -3,11 +3,16 @@
 Supersedes the session-14 block below. Same project, same gates, same signing material.
 
 ## State
-- **HEAD `2a720f0`**, tree clean, **nothing pushed, nothing published**. Ten commits this session:
+- **HEAD `c02fe27`**, tree clean, **nothing pushed, nothing published**. Eleven commits this session:
   `5343e13` calm-scene motion · `32eaf69` play key is the only switch · `e4a9611` card header ·
   `22e004b` Studio wording · `d2c72b5` six Home tiles + art · `a940d2b` search/packs ·
   `974ffd1` brass shuffle + banner · `abccdc7` card icon · `8bb53ef` scene preview + still at rest ·
-  `2a720f0` harness legs rewritten to the new card contract (265/0).
+  `2a720f0` harness legs rewritten to the new card contract (265/0) · `c02fe27` the Play audit.
+- **PLAY AUDIT = `AUDIT-2026-11-10-PLAY.md`** (measured from the APK). Five blocking items: AAB not
+  APK, `REQUEST_INSTALL_PACKAGES` must go, privacy policy + data-safety form, `allowBackup` pinned
+  false, POST_NOTIFICATIONS in-context rationale. Then: baseline profile, crash/ANR signal, image
+  re-export (~150-200 KB), FGS start-path audit. Clean facts: targetSdk 36, 966 KB total
+  (dex 2.3 %), no PII in any bundled asset, v2 signature verified.
 - Release **2.0.6-beta / versionCode 14** built and installed on the **phone over wireless adb**
   (`192.168.1.95:46017`, paired this session with code at `:33049`) and on the **Tab A9+**
   (`adb-R92XB0RWN3B-67B1Tm`). Site tree is the source of truth: `C:/Users/Moddy/webmusic-hub/site/resonance`.
