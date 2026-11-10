@@ -1704,6 +1704,51 @@ def main():
             "!document.getElementById('rsTour').classList.contains('rs-t-on')", 4)
             and page.evaluate("!!document.getElementById('rsApp')"))
 
+        # ---- playback lifecycle: a stop wins, and leaving the page silences the graph ---
+        # audio state, not just the button's look: the engine reports `playing`, the graph
+        # reports `ctx.state`, and hardStop is the host's off-switch (Android calls it from
+        # Activity.onDestroy before destroying the WebView).
+        page.evaluate("window.__gnauralAPI.play && window.__gnauralAPI.play(); true")
+        suite.wait_until("window.__gnauralAPI.state.ctx !== null", 8)
+        pre = page.evaluate("!!window.__gnauralAPI.state.ctx")
+        page.evaluate("window.__gnauralAPI.hardStop && window.__gnauralAPI.hardStop(); true")
+        suite.check("a hard stop closes the graph and clears the node",
+                    pre and page.evaluate("window.__gnauralAPI.state.ctx === null && "
+                                          "window.__gnauralAPI.state.node === null && "
+                                          "window.__gnauralAPI.state.mode === ''"),
+                    "ctx before=%s, mode after=%s" % (pre, page.evaluate("window.__gnauralAPI.state.mode")))
+        # play() boots asynchronously (two fetches + addModule). A stop in the same breath
+        # must not be undone by that boot finishing — the owner's "stop did nothing".
+        page.evaluate("window.__gnauralAPI.play(); window.__gnauralAPI.stopPlayback(false);")
+        page.wait_for_timeout(2500)
+        suite.check("a stop issued while the audio graph boots is not undone by the boot",
+                    not page.evaluate("window.__gnauralAPI.state.playing"),
+                    page.evaluate("JSON.stringify({p:window.__gnauralAPI.state.playing,"
+                                  "m:window.__gnauralAPI.state.mode})"))
+        page.evaluate("window.__gnauralAPI.play(); true")
+        started = suite.wait_until("window.__gnauralAPI.state.playing === true", 8)
+        suite.check("the same page can still play after a hard stop", started)
+        suite.check("and the rebuilt graph is running",
+                    page.evaluate("!!window.__gnauralAPI.state.ctx && "
+                                  "window.__gnauralAPI.state.ctx.state === 'running'"),
+                    page.evaluate("window.__gnauralAPI.state.ctx && window.__gnauralAPI.state.ctx.state"))
+        # the Stop key goes through the page API; the engine must be paused, not just the UI
+        page.evaluate("window.__rs.stop(); true")
+        page.wait_for_timeout(600)
+        suite.check("the Stop key pauses the engine itself",
+                    page.evaluate("window.__gnauralAPI.state.playing === false && "
+                                  "window.__gnauralAPI.state.live.sample === 0"),
+                    page.evaluate("JSON.stringify({p:window.__gnauralAPI.state.playing,"
+                                  "s:window.__gnauralAPI.state.live.sample})"))
+        # a page being unloaded must not leave its audio graph running in the renderer
+        page.evaluate("window.__gnauralAPI.play(); true")
+        suite.wait_until("window.__gnauralAPI.state.playing === true", 8)
+        page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide'))")
+        page.wait_for_timeout(400)
+        suite.check("pagehide closes the audio graph",
+                    page.evaluate("window.__gnauralAPI.state.ctx === null"), 
+                    page.evaluate("window.__gnauralAPI.state.mode"))
+
         # reload: the shell reinjects and the frame comes back
         page.reload(wait_until="load")
         page.add_script_tag(content=SHIM)

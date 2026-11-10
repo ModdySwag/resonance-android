@@ -86,8 +86,14 @@ public class MainActivity extends Activity {
     /** True while the in-context notification rationale is on screen. */
     private boolean notifPromptShowing;
 
+    /** True while the activity is being destroyed: the page's farewell state message must
+     *  not restart the playback service (that produced a paused notification for a session
+     *  nobody could hear). */
+    private boolean destroying;
+
+
     /** The page owns playback; PlaybackService reaches it through this handle. */
-    private static WeakReference<WebView> pageRef = new WeakReference<>(null);
+    static WeakReference<WebView> pageRef = new WeakReference<>(null);
 
     private WebView web;
     private String shim;
@@ -376,7 +382,47 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         pageRef = new WeakReference<>(null);
+        stopPageAudio();
         super.onDestroy();
+    }
+
+    /**
+     * Tear the page down when the activity goes away.
+     *
+     * <p>This is the audio off-switch that was missing. The page synthesises in the WebView's
+     * own renderer, and a WebView that is merely detached (task swiped away, Back out of the
+     * app, activity destroyed) keeps its renderer alive: the AudioContext keeps feeding an
+     * AAudio stream, so the session keeps playing with no window, no notification and no
+     * service left to tap. Measured on the tablet: after removing the task the service was
+     * gone while the AAudio track for this uid was still in AudioFlinger's active table, and
+     * only a process kill (or a reboot) silenced it.
+     *
+     * <p>So the JS gets one last synchronous command (best effort — a destroyed page cannot
+     * run it), and then the WebView is actually destroyed, which unloads the page and closes
+     * any context it owns. {@code destroying} stops the page's last {@code state(false)}
+     * message from resurrecting the playback service as a zombie notification.
+     */
+    private void stopPageAudio() {
+        destroying = true;
+        WebView w = web;
+        web = null;
+        if (w == null) return;
+        try {
+            w.evaluateJavascript(
+                    "(window.__rs && window.__rs.hardStop) ? window.__rs.hardStop() : "
+                            + "(window.__gnauralAPI && window.__gnauralAPI.hardStop && "
+                            + "window.__gnauralAPI.hardStop())", null);
+        } catch (Throwable ignored) {
+            // the page is already gone; destroy() below is the real stop
+        }
+        try {
+            if (root != null && w.getParent() == root) root.removeView(w);
+        } catch (Throwable ignored) { }
+        try {
+            w.destroy();
+        } catch (Throwable t) {
+            Log.w(TAG, "web destroy: " + t);
+        }
     }
 
     /** Open a link in whatever app the phone uses for it. App-internal URLs are refused. */
@@ -653,8 +699,14 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void state(boolean playing, String session, String error) {
+            if (destroying) return;                 // the page is on its way out
             String label = (session == null || session.trim().isEmpty())
                     ? getString(R.string.app_name) : session.trim();
+            /* A page that never played also reports "not playing" on boot. Starting the
+               service for that message is what put a paused media notification on the glass
+               at every launch, and it could resurrect the service after teardown. Only talk
+               to the service when it is already alive or there is something to play. */
+            if (!playing && !PlaybackService.isLive()) return;
             Intent i = new Intent(MainActivity.this, PlaybackService.class);
             i.setAction(playing ? PlaybackService.ACTION_PLAYING : PlaybackService.ACTION_STOPPED);
             i.putExtra(PlaybackService.EXTRA_SESSION, label);

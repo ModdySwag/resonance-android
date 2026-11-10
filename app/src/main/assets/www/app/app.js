@@ -105,6 +105,11 @@
         var blob = new Blob([src[0], "\n", src[1]], { type: "text/javascript" });
         var url = URL.createObjectURL(blob);
         return ctx.audioWorklet.addModule(url).then(function () {
+          /* The person may have stopped — or the page may have been told to hard stop —
+             while these two files were being fetched. Then state.ctx/state.master are gone
+             and connecting into them throws "Overload resolution failed" out of a promise
+             nobody can catch. Abandon this boot instead. */
+          if (state.ctx !== ctx || !state.master) { try { ctx.close(); } catch (e) { } return; }
           var node = new AudioWorkletNode(ctx, "gnaural-processor", {
             numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2]
           });
@@ -116,7 +121,7 @@
         });
       }).catch(function (err) {
         console.warn("AudioWorklet unavailable, using ScriptProcessor:", err);
-        bootFallback(ctx);
+        if (state.ctx === ctx) bootFallback(ctx);
       });
     }
     bootFallback(ctx);
@@ -125,6 +130,7 @@
 
   function bootFallback(ctx) {
     if (state.node) return;
+    if (state.ctx !== ctx || !state.master) return;   /* the graph was closed under us */
     var sp = ctx.createScriptProcessor(4096, 0, 2);
     state.fallback = new E.Engine();
     state.fallback.setSchedule(state.schedule.voices.map(cloneVoice));
@@ -161,8 +167,17 @@
     if (m.completed) { stopPlayback(false); toast("Schedule complete"); }
   }
 
+  /* Every play takes a ticket; pause and stop cancel the ones in flight.
+     Without this, a Stop tapped while the engine was still booting (two fetch()es plus
+     addModule) was undone by that boot's own .then(), which started the sound after the
+     person had already stopped it. */
+  var playTicket = 0;
+
   function play() {
+    var ticket = ++playTicket;
     ensureAudio().then(function () {
+      if (ticket !== playTicket) return;      /* a stop or pause landed while it booted */
+      if (!state.ctx) return;
       if (state.ctx.state === "suspended") state.ctx.resume();
       if (state.mode === "worklet") { state.node.port.postMessage({ t: "play" }); }
       else if (state.fallback) { state.fallback.paused = false; }
@@ -172,6 +187,7 @@
     });
   }
   function pause() {
+    playTicket++;
     if (state.mode === "worklet" && state.node) state.node.port.postMessage({ t: "pause" });
     if (state.fallback) state.fallback.paused = true;
     state.playing = false;
@@ -183,6 +199,23 @@
     syncToWorklet(); // resets position to 0
     state.live = { sample: 0, total: 0, completed: false, peakL: 0, peakR: 0, voices: [] };
     if (!quiet) drawGraph();
+  }
+  /* The page itself is leaving: task swiped away, Back out of the app, WebView destroyed.
+     Pause, then close the context so the renderer releases its audio stream instead of
+     playing on with no window and no notification (the bug the owner hit: sound survived
+     the app and only a reboot stopped it). The Stop key does NOT use this — closing the
+     context would blind the visualiser's analyser tap until the next play. */
+  function hardStop() {
+    pause();
+    state.playing = false;
+    state.live = { sample: 0, total: 0, completed: false, peakL: 0, peakR: 0, voices: [] };
+    var ctx = state.ctx;
+    state.ctx = null;
+    state.node = null;
+    state.master = null;
+    state.mode = "";
+    state.fallback = null;
+    if (ctx) { try { ctx.close(); } catch (e) { } }
   }
   function togglePlay() { state.playing ? pause() : play(); }
 
@@ -762,6 +795,9 @@
       if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]) loadFile(ev.dataTransfer.files[0]);
     });
     window.addEventListener("resize", drawGraph);
+    /* A page being unloaded (navigation, reload, WebView destroy) must not leave its audio
+       graph running in a renderer that outlives the window. */
+    window.addEventListener("pagehide", function () { try { hardStop(); } catch (e) { } });
     /* debug/QA hooks (used by the hub's headless checks; harmless in normal use) */
     window.__gnaural = state;
     /* Studio API: what the standalone site's panels (studio.js) drive. Kept
@@ -779,6 +815,7 @@
       drawGraph: drawGraph,
       refresh: function () { renderVoiceList(); renderEntryEditor(); drawGraph(); updateMeta(); },
       play: play, pause: pause, stopPlayback: stopPlayback, togglePlay: togglePlay,
+      hardStop: hardStop,
       exportWav: exportWav,
       toast: toast,
       fmtTime: fmtTime,

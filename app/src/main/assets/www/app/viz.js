@@ -472,7 +472,7 @@
   };
   var syncBuf = { pred: new Float32Array(30), meas: new Float32Array(30), i: 0, n: 0, tick: 0 };
   var analyser = null, freqDb = null, timeBytes = null, specNorm = null, synthBytes = null, sampleRate = SR, fftSize = 2048;
-  var analyserNode = null, ctxWaitSince = 0;
+  var analyserNode = null, analyserCtx = null, ctxWaitSince = 0;
   var lastFrameT = 0, frameRng = VP.mulberry32(12345), frameCount = 0;
   var govScale = 1, frameMs = 6, govStepT = 0;
   var nextAuto = 0;
@@ -500,7 +500,10 @@
   }
 
   function ensureAnalyser(S) {
-    if (analyser || !S.ctx || !S.node) return analyser;
+    /* Re-tap when the graph was rebuilt: a closed context (hardStop) or a fresh worklet
+       node leaves the cached analyser silent, which reads as "the scene stopped moving". */
+    if (analyser && analyserNode === S.node && analyserCtx === S.ctx) return analyser;
+    if (!S.ctx || !S.node) return analyser;
     if (!ctxWaitSince) { ctxWaitSince = performance.now(); return null; }
     if (performance.now() - ctxWaitSince < 900) return null;   /* let studio wire first */
     try {
@@ -520,6 +523,7 @@
       synthBytes = new Uint8Array(analyser.frequencyBinCount);
       sampleRate = S.ctx.sampleRate || SR;
       analyserNode = S.node;
+      analyserCtx = S.ctx;
     } catch (e) {
       console.warn("[viz] analyser tap failed:", e && e.message);
       analyser = null;

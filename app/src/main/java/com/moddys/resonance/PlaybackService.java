@@ -5,7 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
@@ -77,11 +80,43 @@ public class PlaybackService extends Service {
     private String pauseText;         // non-null while sitting in the paused state
     private boolean foreground = false;
 
+    private BroadcastReceiver noisy;
+    /** True while this service instance exists. The bridge refuses to start a service for a
+     *  page that has never played (that is what created a paused notification at every
+     *  launch) and refuses to resurrect it after teardown. */
+    private static boolean live;
+
+    static boolean isLive() { return live; }
+
+    /** The page that owns the sound; false once the activity is gone. */
+    private static boolean pageAlive() { return MainActivity.pageRef.get() != null; }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        live = true;
         title = getString(R.string.app_name);
         audio = getSystemService(AudioManager.class);
+
+        /* Headphones out (or a Bluetooth headset walking away) is not an audio-focus event:
+           the system tells media apps directly, and an app that ignores it keeps a binaural
+           session going through the speaker. Pause, the way a media player does. */
+        noisy = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) return;
+                if (pauseText != null) return;              // already paused/stopped
+                pausedForFocus = false;
+                tellPage("pause");
+                showPaused(getString(R.string.notification_paused));
+            }
+        };
+        try {
+            registerReceiver(noisy, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+                    Context.RECEIVER_NOT_EXPORTED);
+        } catch (Throwable t) {
+            Log.w(TAG, "noisy receiver: " + t);
+        }
 
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, getString(R.string.channel_name), NotificationManager.IMPORTANCE_LOW);
@@ -95,6 +130,7 @@ public class PlaybackService extends Service {
         session.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
+                if (!pageAlive()) { showPaused(getString(R.string.notification_paused)); return; }
                 requestFocus();                 // the session may only play while it holds focus
                 tellPage("play");
                 showPlaying();
@@ -138,6 +174,10 @@ public class PlaybackService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_RESUME.equals(action)) {
+            if (!pageAlive()) {                     // nothing to resume into
+                showPaused(getString(R.string.notification_paused));
+                return START_NOT_STICKY;
+            }
             requestFocus();                         // before the page is told to make a sound
             tellPage("play");
             showPlaying();
@@ -161,9 +201,19 @@ public class PlaybackService extends Service {
         return START_NOT_STICKY;
     }
 
-    /** Swiping the app away kills its WebView, so the notification must go with it. */
+    /**
+     * The task left the recents list: the app is gone, so the sound must go with it.
+     *
+     * <p>Order matters. The page is told to stop first (it may still be alive for a beat),
+     * then focus, the wake lock and the notification are dropped. The activity's own
+     * onDestroy destroys the WebView, which is what actually unloads the renderer's
+     * AudioContext — without that the AAudio track survived the swipe and kept playing with
+     * no notification left to stop it.
+     */
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        live = false;
+        tellPage("stop");
         abandonFocus();
         releaseWake();
         stopForegroundCompat();
@@ -173,6 +223,11 @@ public class PlaybackService extends Service {
 
     @Override
     public void onDestroy() {
+        live = false;
+        if (noisy != null) {
+            try { unregisterReceiver(noisy); } catch (Throwable ignored) { }
+            noisy = null;
+        }
         abandonFocus();
         releaseWake();
         if (session != null) {
@@ -190,6 +245,7 @@ public class PlaybackService extends Service {
     /* ------------------------------------------------------------------ states ---- */
 
     private void teardown() {
+        live = false;                 // the page's next state(false) must not re-create us
         abandonFocus();
         releaseWake();
         pauseText = null;

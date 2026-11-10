@@ -95,7 +95,18 @@
   function pagePlay()   { var a = api(); if (a) { try { a.play(); } catch (e) { } } }
   function pagePause()  { var a = api(); if (a) { try { a.pause(); } catch (e) { } } }
   function pageToggle() { var a = api(); if (a) { try { a.togglePlay(); } catch (e) { } } }
-  function pageStop()   { var a = api(); if (a) { try { a.stopPlayback(false); } catch (e) { } } }
+  function pageStop()   {
+    var a = api();
+    if (a) { try { a.stopPlayback(false); } catch (e) { } }
+    /* A page whose API is not up yet cannot stop anything, so at least take the media
+       session and the notification down instead of leaving them claiming a session. */
+    else { native("state", [false, "", ""]); }
+  }
+  function pageHardStop() {
+    var a = api();
+    if (a && a.hardStop) { try { a.hardStop(); return; } catch (e) { } }
+    if (a) { try { a.stopPlayback(false); } catch (e2) { } }
+  }
   function masterNow()  { var m = $id("master"); return m ? parseFloat(m.value) : 0.7; }
   function setMaster(v) {
     v = Math.max(0, Math.min(1, isFinite(v) ? v : 0.7));
@@ -5618,6 +5629,9 @@
     pause: function () { pagePause(); pushState(true); },
     stop: function () { pageStop(); pushState(true); },
     toggle: function () { if (isPlaying()) pagePause(); else pagePlay(); pushState(true); },
+    /* Leaving for good: silence the page and release its audio stream. The host calls this
+       from MainActivity.onDestroy before it destroys the WebView. */
+    hardStop: function () { pageHardStop(); return true; },
     info: info,
     back: function () { return shellBack(); },
     sheet: function () { return SHEET; },
