@@ -5,5 +5,9 @@
     <string name="channel_desc">Keeps the session playing while the app is in the background</string>
     <string name="notification_tagline">Resonance Studio &#8212; Gnaural Web</string>
     <string name="notification_paused">Paused &#8212; tap play to continue</string>
+    <string name="notif_rationale_title">Playback controls</string>
+    <string name="notif_rationale_body">A session keeps playing with the screen off. The notification is how pause and stop stay within reach, and how you get back to the app.\n\nAllow notifications for that? You can change this later in Android Settings.</string>
+    <string name="notif_rationale_allow">Allow</string>
+    <string name="notif_rationale_later">Not now</string>
     <string name="no_webview">This device has no working Android System WebView, so the studio cannot run.\n\nOpen the Play Store and install or update "Android System WebView" (on some devices it is called "Google Chrome" that provides it), then open this app again. Devices without Google Play can use a browser that supplies a WebView instead.</string>
 </resources>

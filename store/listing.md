@@ -1,4 +1,4 @@
-# Play listing copy — Resonance Studio 2.0.0-beta
+# Play listing copy — Resonance Studio 2.1.0
 
 Every field below is inside its hard limit and the counts are checked by
 `tools/check_listing.py`. Paste the text between the markers, nothing else.

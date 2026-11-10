@@ -43,6 +43,16 @@
   }
   function report(msg) { native("log", [String(msg)]); }
 
+  /* Which build is this? "sideload" reads the update feed on moddys.net; "play" is updated by
+     Google Play and carries no network permission, so its update rows are not built at all.
+     A browser (the site itself, or the test harness) has no bridge and counts as sideload. */
+  var CHANNEL = "sideload";
+  var IS_APP = false;
+  try {
+    var chName = native("channel", []);
+    if (chName === "play" || chName === "sideload") { CHANNEL = chName; IS_APP = true; }
+  } catch (e0) { }
+
   var doc = document;
   var $id = function (id) { return doc.getElementById(id); };
   var $ = function (sel) { return doc.querySelector(sel); };
@@ -3443,10 +3453,13 @@
       '    <span class="rs-mtxt"><b>Replay the welcome tour</b><span>The bubble guide, from the start</span></span>' + svg("chev", 18) + '</button>' +
       '  <button class="rs-mrow" data-act="check">' + svg("shield", 22) +
       '    <span class="rs-mtxt"><b>Check device</b><span>What this phone reports</span></span>' + svg("chev", 18) + '</button>' +
+      '  <button class="rs-mrow" data-act="notice">' + svg("shield", 22) +
+      '    <span class="rs-mtxt"><b>Safety notice</b><span>Warnings and licence</span></span>' + svg("chev", 18) + '</button>' +
       '  <button class="rs-mrow" data-act="about">' + svg("info", 22) +
       '    <span class="rs-mtxt"><b>About Resonance Studio</b><span>Version and licences</span></span>' + svg("chev", 18) + '</button>' +
+      (CHANNEL === "play" ? "" :
       '  <button class="rs-mrow" data-act="upd">' + svg("down", 22) +
-      '    <span class="rs-mtxt"><b>Check for updates</b><span>Asks moddys.net</span></span>' + svg("chev", 18) + '</button>' +
+      '    <span class="rs-mtxt"><b>Check for updates</b><span>Asks moddys.net</span></span>' + svg("chev", 18) + '</button>') +
       '</section>' +
       '<section class="card" data-band="other" aria-labelledby="rsPacksH">' +
       '  <h3 id="rsPacksH">Session packs</h3>' +
@@ -3455,7 +3468,9 @@
       '<section class="card" data-band="relax" aria-labelledby="rsDataH">' +
       '  <h3 id="rsDataH">Data</h3>' +
       '  <div class="rs-kv"><b>Saved files</b><span>Downloads/Resonance Studio</span></div>' +
-      '  <div class="rs-kv"><b>Network</b><span>update check + help pages</span></div>' +
+      '  <div class="rs-kv"><b>Network</b><span>' + (CHANNEL === "play"
+        ? "None — updates come from Play"
+        : "update check + help pages") + '</span></div>' +
       '  <div class="rs-kv"><b>Version</b><span id="rsVer">—</span></div>' +
       '</section>' +
       '<div class="rs-pad"></div>';
@@ -3511,6 +3526,7 @@
       else if (a === "check") openCheck();
       else if (a === "about") openAbout();
       else if (a === "tour") tourStart();
+      else if (a === "notice") showNotice();
       else if (a === "focus") openFocus();
       else if (a === "upd") askUpdate();
     });
@@ -3524,6 +3540,10 @@
     ["about", "About Resonance Studio", "Version and licences", "info"],
     ["upd", "Check for updates", "Asks moddys.net", "down"]
   ];
+
+  /* The Play build has no updater and no network permission: the row would open a feed it
+     cannot read, so it is not offered at all. */
+  if (CHANNEL === "play") ROWS = ROWS.filter(function (r) { return r[0] !== "upd"; });
 
   var sheetEl = null;
   var SHEET = { open: false };
@@ -3902,6 +3922,21 @@
     bub.style.width = Math.round(bw) + "px";
     var bh = bub.offsetHeight, margin = 16, x, y, w, h, top, left, below, above;
     var caret = bub.querySelector(".rs-t-caret");
+    /* The usable band is the glass minus the status bar and the tab bar. Without this a
+       bubble placed below a low target slides under the nav (or behind the gesture bar),
+       which reads as "the help is off screen" even though it is technically in the
+       viewport. The nav is the one step that may sit below the band - for it the bubble
+       goes above the bar. */
+    var rootStyle = window.getComputedStyle(doc.documentElement);
+    var safeT = parseFloat(rootStyle.getPropertyValue("--rs-safe-t")) || 0;
+    var safeB = parseFloat(rootStyle.getPropertyValue("--rs-safe-b")) || 0;
+    var ceil = Math.max(8, safeT + 8);
+    var floor = vh - 8 - safeB;
+    var nav = doc.getElementById("rsNav");
+    if (nav && st.sel !== "#rsNav") {
+      var nr = nav.getBoundingClientRect();
+      if (nr.height && nr.top > 0) floor = Math.min(floor, nr.top - 10);
+    }
     if (tgt) {
       var r = tgt.getBoundingClientRect();
       x = Math.max(6, r.left - 6);
@@ -3916,9 +3951,16 @@
       });
       below = y + h + margin;
       above = y - bh - margin;
-      if (below + bh <= vh - 8) { top = below; caret.className = "rs-t-caret rs-t-top"; }
-      else if (above >= 8) { top = above; caret.className = "rs-t-caret rs-t-bottom"; }
-      else { top = Math.max(8, vh - bh - 16); caret.className = "rs-t-caret"; }
+      if (below + bh <= floor) { top = below; caret.className = "rs-t-caret rs-t-top"; }
+      else if (above >= ceil) { top = above; caret.className = "rs-t-caret rs-t-bottom"; }
+      else {
+        /* neither side fits whole: centre on the target inside the band, then keep the
+           bubble inside it - the caret is dropped because it would point at nothing */
+        top = y + h / 2 - bh / 2;
+        caret.className = "rs-t-caret";
+      }
+      if (top + bh > floor) top = floor - bh;
+      if (top < ceil) top = ceil;
       left = Math.max(14, Math.min(vw - bw - 14, x + w / 2 - bw / 2));
       bub.style.transform = "translate(" + Math.round(left) + "px," + Math.round(top) + "px)";
       var cx = Math.max(20, Math.min(bw - 34, x + w / 2 - left - 7));
@@ -3928,8 +3970,11 @@
         e.style.width = "0px"; e.style.height = "0px"; e.style.opacity = "0";
       });
       caret.className = "rs-t-caret";
+      var centred = (vh - bh) / 2;
+      if (centred < ceil) centred = ceil;
+      if (centred + bh > floor) centred = Math.max(ceil, floor - bh);
       bub.style.transform = "translate(" + Math.round((vw - bw) / 2) + "px," +
-        Math.round((vh - bh) / 2) + "px)";
+        Math.round(centred) + "px)";
     }
   }
 
@@ -4130,6 +4175,65 @@
     showOverlay(ov, keepBack);
   }
 
+  /* First launch in the installed app: the safety and licence notice. A listening tool with
+     pulsed tones needs the epilepsy, volume and "not a medical device" warnings in front of
+     the person once, not buried in Settings. The acknowledgement is remembered per install;
+     the website never shows this (no bridge). Answered, not dismissed: the X is hidden, so
+     Back or a stray tap cannot silently accept it. */
+  /* The notice's action is pinned: on a 320x568 screen the paragraphs alone are taller than
+     the glass, and a button at the end of the text scrolls out of reach - which reads as a
+     dialog that cannot be answered. The foot sticks to the bottom of the scroller instead. */
+  function noticeCss() {
+    injectCss([
+      "#rsNotice .rs-ov-body{display:flex;flex-direction:column;padding-bottom:0}",
+      "#rsNotice .rs-notice-foot{position:sticky;bottom:0;margin-top:auto;display:flex;gap:10px;",
+      "  align-items:center;padding:12px 0 calc(14px + " + SAFE_B + ");background:var(--rs-bg);",
+      "  border-top:1px solid var(--rs-line)}",
+      "#rsNotice .rs-notice-foot button{margin:0;min-height:48px;border-radius:var(--rs-r-sm);",
+      "  font:700 15px/1 var(--rs-sans);cursor:pointer}",
+      "#rsNotice .rs-notice-foot #rsNoticeOk{flex:1 1 auto;width:auto;border:1px solid var(--rs-pri) !important;",
+      "  background:var(--rs-pri) !important;color:var(--rs-on-pri) !important}",
+      "#rsNotice .rs-notice-foot #rsNoticePol{flex:0 0 auto;width:auto;padding:0 16px;",
+      "  border:1px solid var(--rs-line2);background:none;color:var(--rs-ink)}"
+    ].join("\n"), "rsNoticeCss");
+  }
+
+  function showNotice() {
+    noticeCss();
+    var ov = doc.getElementById("rsNotice");
+    if (!ov) {
+      ov = buildOverlay("rsNotice", "Before you start",
+        '<p><b>Steady tones and pulses for sleep, focus and relaxation.</b></p>' +
+        '<ul style="margin:.2rem 0 .9rem;padding-left:1.1rem">' +
+        '<li>Headphones for binaural sessions — speakers cannot produce the beat.</li>' +
+        '<li>Keep the volume comfortable. If your ears ring or you feel unwell, stop.</li>' +
+        '<li>If you have epilepsy or a seizure disorder, ask a clinician before using pulsed tones.</li>' +
+        '<li>Not while driving or operating machinery.</li></ul>' +
+        '<p>A listening tool, not a medical device: it does not diagnose, treat, cure or ' +
+        'prevent any condition. Free software (GPL-2.0-or-later), provided as-is without ' +
+        'warranty; to the extent the law allows, the publisher is not liable for loss from ' +
+        'using it. Your statutory rights, including the Australian Consumer Law, are unaffected.</p>' +
+        '<div class="rs-notice-foot">' +
+        '<button id="rsNoticePol">Privacy policy</button>' +
+        '<button class="rs-cta" id="rsNoticeOk">I understand</button>' +
+        '</div>');
+      var x = ov.querySelector("[data-ov-x]");
+      if (x) x.style.display = "none";
+      ov.addEventListener("click", function (ev) {
+        if (ev.target.closest("#rsNoticeOk")) {
+          prefs.notice = 1; savePrefs();
+          closeOverlay(ov);
+          if (!prefs.tour) window.setTimeout(tourAuto, 600);
+          return;
+        }
+        if (ev.target.closest("#rsNoticePol")) {
+          native("url", ["https://moddys.net/resonance/privacy"]);
+        }
+      });
+    }
+    showOverlay(ov);
+  }
+
   function openAbout(keepBack) {
     var ov = doc.getElementById("rsAbout");
     if (!ov) {
@@ -4148,10 +4252,12 @@
         'GPL-2.0-or-later. The full texts ship inside the app (app/COPYING, app/COPYING.LESSER) ' +
         'and on the site. Not affiliated with the upstream project, the Monroe Institute or any ' +
         'other programme.</p>' +
+        '<p>Release builds are scanned with VirusTotal before publication; the report for each ' +
+        'build is linked from the download page.</p>' +
         '<h4>More</h4>' +
         '<button class="rs-cta" data-about-ext="https://moddys.net/resonance/help/">Full help on moddys.net</button>' +
         '<button class="rs-cta" data-about-ext="https://moddys.net/resonance/credits/">Credits &amp; licence</button>' +
-        '<button class="rs-cta" id="rsAboutUpd">Check for updates</button>');
+        (CHANNEL === "play" ? "" : '<button class="rs-cta" id="rsAboutUpd">Check for updates</button>'));
       ov.addEventListener("click", function (ev) {
         var b = ev.target.closest("[data-about-ext]");
         if (b) { native("url", [b.getAttribute("data-about-ext")]); return; }
@@ -5348,8 +5454,9 @@
     try { schedLoop(0); } catch (e) { }
     doc.addEventListener("visibilitychange", function () { if (!doc.hidden) tick(); });
     window.addEventListener("beforeunload", function () { native("state", [false, "", ""]); });
-    /* first launch: the tour introduces the shape of the app, once */
-    if (!prefs.tour) window.setTimeout(tourAuto, 1600);
+    /* first launch: the safety notice gates a listening tool; the tour follows it */
+    if (IS_APP && !prefs.notice) window.setTimeout(showNotice, 500);
+    else if (!prefs.tour) window.setTimeout(tourAuto, 1600);
     report("shim ready | session=" + (sessionTitle() || "none"));
   }
 
@@ -5381,6 +5488,10 @@
     check: function () { openCheck(); },
     checkReport: checkReport,
     about: function () { openAbout(); },
+    notice: {
+      show: function () { showNotice(); return !!doc.getElementById("rsNotice"); },
+      ack: function () { prefs.notice = 1; savePrefs(); return true; }
+    },
     tour: {
       start: tourStart,
       end: function () { tourEnd(true); },

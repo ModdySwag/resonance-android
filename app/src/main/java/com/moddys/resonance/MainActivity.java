@@ -79,6 +79,13 @@ public class MainActivity extends Activity {
     private static final int REQ_NOTIFICATIONS = 1001;
     private static final int REQ_FILE = 1002;
 
+    /** One-shot flags for prompts that must never reappear on their own. */
+    private static final String META = "rs_meta";
+    private static final String META_NOTIF_ASKED = "notif_explained";
+
+    /** True while the in-context notification rationale is on screen. */
+    private boolean notifPromptShowing;
+
     /** The page owns playback; PlaybackService reaches it through this handle. */
     private static WeakReference<WebView> pageRef = new WeakReference<>(null);
 
@@ -94,7 +101,6 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         edgeToEdge();
         registerBack();
-        askForNotificationPermission();
 
         root = new FrameLayout(this);
         setContentView(root, new ViewGroup.LayoutParams(
@@ -437,12 +443,37 @@ public class MainActivity extends Activity {
         return shim;
     }
 
-    private void askForNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIFICATIONS);
-        }
+    /**
+     * Explain the playback notification at the moment it matters - the first time a session
+     * is started - and only then open the system dialog.
+     *
+     * <p>A cold prompt at first launch is what Play review objects to, and the permission is
+     * only meaningful to a person who actually plays something: Android 13+ hides the
+     * foreground notification when it is denied, while playback itself keeps working. This is
+     * shown once per install, and "Not now" is remembered as firmly as "Allow", so nobody is
+     * asked twice. The page's state report arrives on a WebView thread, hence the UI post.
+     */
+    private void maybeExplainNotifications() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (notificationsGranted() || notifPromptShowing) return;
+        if (getSharedPreferences(META, MODE_PRIVATE).getBoolean(META_NOTIF_ASKED, false)) return;
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed() || notifPromptShowing) return;
+            if (notificationsGranted()) return;
+            notifPromptShowing = true;
+            getSharedPreferences(META, MODE_PRIVATE).edit()
+                    .putBoolean(META_NOTIF_ASKED, true).apply();
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle(R.string.notif_rationale_title)
+                    .setMessage(R.string.notif_rationale_body)
+                    .setPositiveButton(R.string.notif_rationale_allow, (d, w) ->
+                            requestPermissions(
+                                    new String[]{"android.permission.POST_NOTIFICATIONS"},
+                                    REQ_NOTIFICATIONS))
+                    .setNegativeButton(R.string.notif_rationale_later, null)
+                    .setOnDismissListener(d -> notifPromptShowing = false)
+                    .show();
+        });
     }
 
     /* ------------------------------------------------------------- file import ---- */
@@ -629,6 +660,7 @@ public class MainActivity extends Activity {
             i.putExtra(PlaybackService.EXTRA_SESSION, label);
             try {
                 if (playing) {
+                    maybeExplainNotifications();   // in context: the person just started a session
                     startForegroundService(i);
                 } else {
                     startService(i);
@@ -639,6 +671,17 @@ public class MainActivity extends Activity {
             if (error != null && !error.isEmpty()) {
                 Log.i(TAG, "session error: " + error);
             }
+        }
+
+        /**
+         * Which delivery channel this build is: "play" (Google Play, updated by the store, no
+         * network permission) or "sideload" (the site's APK, which checks moddys.net). The
+         * shell hides the update rows on the Play build instead of advertising a feed the
+         * build cannot reach.
+         */
+        @JavascriptInterface
+        public String channel() {
+            return BuildConfig.SELF_UPDATE ? "sideload" : "play";
         }
 
         /** The system accent, as Material colour roles. Empty when the platform has no

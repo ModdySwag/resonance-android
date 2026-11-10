@@ -64,3 +64,46 @@ the APK and a byte scan of the bundled assets — not from memory or the build l
 5. Privacy policy page on moddys.net, linked from About and the listing; draft the Data safety answers.
 6. Baseline profile + a cold-start measurement; then cut 2.1.0 / code 15 as an AAB for internal
    testing, and only then the production push.
+
+
+## Remediation — 2.1.0 / versionCode 15 (10 November 2026)
+
+Everything below is measured on the built artifacts, not on the source tree:
+
+- `app/build/outputs/bundle/playRelease/app-play-release.aab` — **1,009,200 B**,
+  sha256 `c0c27053d8c1338013aea609e8dd9db782ab1cb08fecbd6b45ba2b945aaa43eb` (the Play build).
+- `app/build/outputs/apk/release/app-release.apk` — **991,973 B**,
+  sha256 `6a81812559e4c05cc90c37c557333fb304798716be3f4becfc27c8a442bd63b9` (the sideload build,
+  cert `08:B8:CB:BF…:B6`). Both report `versionCode=15`, `versionName=2.1.0`.
+
+| # | Finding | State now | Evidence |
+| --- | --- | --- | --- |
+| 1 | AAB, not APK | **DONE** | `bundlePlayRelease` produced the signed bundle above; baseline profile rides in `BUNDLE-METADATA/com.android.tools.build.profiles/`. Play App Signing enrolment is the remaining Console step. |
+| 2 | `REQUEST_INSTALL_PACKAGES` / self-update | **DONE for the Play build** | The AAB's manifest has **0** occurrences of `REQUEST_INSTALL_PACKAGES`, `INTERNET` and `ACCESS_NETWORK_STATE`. The shell now asks the bridge `channel()` and, on the Play channel, does not build the update row in Settings, the row in the More sheet, or the About update button; the Data card reads "None — updates come from Play". The sideload APK keeps all three, deliberately. |
+| 3 | Privacy policy + Data safety | **POLICY READY, PAGE NOT LIVE** | `docs/play/PRIVACY.md` and `privacy.html` updated to 2.1.0/code 15, contact `admin@moddys.net`, and the purchases section now states there is nothing to buy (the old text sold an unlock that has no code). The page is staged at `webmusic-hub/site/resonance/privacy/index.html` and `radio-browser/deploy/resonance/privacy/index.html`, byte-identical, 12,823 B, no scripts. Upload waits for the owner. |
+| 4 | `allowBackup` | **DONE** | Packaged manifest: `allowBackup="false"`, `fullBackupContent="false"`, `dataExtractionRules="@xml/data_extraction_rules"`; the rules exclude root, file, database, sharedpref and external for both cloud backup and device transfer. |
+| 5 | Notification rationale | **DONE** | The cold `requestPermissions` in `onCreate` is gone. `maybeExplainNotifications()` runs when the page first reports playback, shows an AlertDialog ("Playback controls" → allow / not now) once per install, then opens the system prompt; "Not now" is remembered as firmly as "Allow". Seen on the phone. |
+| 6 | Baseline profile + cold start | **DONE, measured** | `app/src/main/baseline-prof.txt` (methods verified against the four Java classes) is compiled by AGP and packaged as `assets/dexopt/baseline.prof`. Cold start on the phone: **median 269.5 ms**, six force-stopped launches, min 267 / max 277, `am start -W` TotalTime. There is no Macrobenchmark A/B, so the profile is packaged-but-unproven; the number is the artifact's own. |
+| 7 | Crash/ANR signal | **NO CODE NEEDED** | Play Console's Android vitals collects crashes and ANRs for Play-distributed builds without any SDK, so adding a crash reporter would only create a Data safety disclosure for data we do not need. The sideload channel's logcat remains the debugging surface. |
+| 8 | FGS start path (API 34+) | **PROVEN ON GLASS** | While playing: `isForeground=true foregroundId=4230 types=0x00000002` (mediaPlayback), notification channel `playback`, MediaSession state `PLAYING`. ActivityManager logged `Background started FGS: Allowed … uidState: TOP`, i.e. the service was started from the visible activity, and `startForeground` runs inside the first `onStartCommand` (well under the 5 s deadline). |
+| 9 | Image oversampling | **MEASURED, NOT FORCED** | 55 images, 488,092 B on disk. Current art is already 2–3× its CSS box: knobs are 256 px for 56–64 px keys, scene plates 1280 px for full-screen use, tiles 880 px for 331 px cards. The earlier "~150–200 KB" estimate came from five 512 px knobs that no longer exist. A safe downsample buys roughly 30 KB and softens the signature controls, so it was left alone and the number was corrected instead. |
+| 10 | Storage permissions | **KEPT, DELIBERATE** | `WRITE_EXTERNAL_STORAGE` maxSdk 28 still backs the Downloads save path on API 26–28; Android 10+ writes through MediaStore. |
+| 11 | 16 KB page size | **TRIVIALLY MET** | No `.so` files in either artifact (`mergePlayReleaseNativeLibs NO-SOURCE`). |
+| 12 | VirusTotal | **BLOCKED — no key** | There is no VirusTotal API key on this host and no `vt` CLI. The public upload page was driven twice with Playwright; the file chooser accepted the APK but the anonymous SPA never started a scan. A scan must be run against the exact 991,973-byte APK above and can only be documented **outside** the APK (editing the APK to embed its own hash changes the hash). |
+
+### The first-run notice (added this session)
+
+A safety and licence gate now appears once per install, before the tour: headphones for binaural,
+comfortable volume / stop if ringing, ask a clinician first if epilepsy or a seizure disorder, not
+while driving, not a medical device, GPL-2.0-or-later as-is without warranty with statutory rights
+(the Australian Consumer Law) expressly unaffected. It is answered, not dismissed — the close X is
+hidden so Back cannot silently accept it — and it is re-openable from Settings → Safety notice. The
+website never shows it (no bridge). Its action is pinned to the foot of the scroller because on a
+320×568 screen the text alone is taller than the glass and an unpinned button scrolls out of reach.
+
+### Tour bubble placement (fixed this session)
+
+Measured at 320×568, 390×844, 433×962 and 844×390. The bubbles were inside the raw viewport but two
+sat low enough to slide under the tab bar once real insets exist. `tourPlace()` now clamps to the band
+between `--rs-safe-t` and the nav bar's top edge, centres inside that band when neither side fits, and
+drops the caret rather than pointing it at nothing. All nine steps clear the nav at every size.

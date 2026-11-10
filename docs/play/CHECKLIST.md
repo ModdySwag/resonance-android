@@ -1,7 +1,7 @@
-# Play submission checklist — Resonance Studio 2.0.5-beta
+# Play submission checklist — Resonance Studio 2.1.0
 
-Package: `com.moddys.resonance` · versionCode 12 · versionName 2.0.5-beta · targetSdk 36 · minSdk 26
-Prepared: 8 November 2026
+Package: `com.moddys.resonance` · versionCode 15 · versionName 2.1.0 · targetSdk 36 · minSdk 26
+Prepared: 8 November 2026 · refreshed for 2.1.0 on 10 November 2026
 
 Work top to bottom. The tags tell you who owns each line:
 
@@ -22,8 +22,8 @@ Do not submit while a **[CODE TODO]** or an incomplete **[OWNER]** item sits abo
 | FGS type | **CODE DONE** | `app/src/main/AndroidManifest.xml`: `.PlaybackService` with `android:foregroundServiceType="mediaPlayback"`, `exported="false"` |
 | Audio focus | **CODE DONE** | `PlaybackService.java`: `AUDIOFOCUS_GAIN`, loss / transient loss / duck handling |
 | Play Billing | **CODE TODO** | Needed only if shipping the Studio Unlock and per-pack unlocks |
-| Privacy page | **OWNER TODO** | `docs/play/privacy.html` must be live at https://moddys.net/resonance/privacy |
-| Contact address | **OWNER TODO** | Replace `[OWNER: ...]` in `PRIVACY.md` / `privacy.html` |
+| Privacy page | **READY TO DEPLOY** | `docs/play/privacy.html` staged as `site/resonance/privacy/index.html`; needs the upload |
+| Contact address | **CODE DONE** | `admin@moddys.net` in `PRIVACY.md` and `privacy.html` |
 | Play Console account + US$25 | **OWNER TODO** | One-time registration fee, if not already paid |
 | Signing enrolment | **OWNER TODO** | Play App Signing + upload key |
 | Store listing | **OWNER TODO** | Paste from `LISTING.md` |
@@ -37,9 +37,9 @@ Do not submit while a **[CODE TODO]** or an incomplete **[OWNER]** item sits abo
 ## Phase 0 — decisions that change the copy
 
 - [ ] **0.1 [OWNER] Choose the launch model.** Free-only, or free with the two unlocks. If free-only: delete the PRICE section from `LISTING.md`, answer **No** to in-app purchases in `CONTENT-RATING.md`, and skip Phase 1 billing. If with unlocks: do 1.6 first and do not publish the price copy until it is real.
-- [ ] **0.2 [OWNER] Decide the production version name.** `2.0.5-beta` is allowed, but a production listing that says "beta" invites the question. Options: keep it, or bump to `2.0.5` and increment `versionCode` to 13. `[OWNER: choose]`
+- [x] **0.2 Version name.** `2.1.0` / `versionCode 15`, no "beta" suffix; set in `app/build.gradle` and `compat.json`.
 - [ ] **0.3 [OWNER] Define the entitlements.** One sentence each: what the Studio Unlock opens, and which packs have their own A$2.99 SKU. The listing currently says "opens the full studio"; replace that phrase if it is not accurate.
-- [ ] **0.4 [OWNER] Confirm the contact.** Use a real email address or contact page, and make sure it is monitored. Replace the placeholder in both privacy files before deploying. Do not invent a postal address; add one only if your jurisdiction requires it.
+- [x] **0.4 Contact.** `admin@moddys.net`, in both privacy files and the listing table.
 - [ ] **0.5 [OWNER] Confirm the public developer name.** The pack uses **ModdySwag** and **moddys.net**. If Play shows a different legal entity on the developer profile, keep the privacy policy and the profile consistent.
 - [ ] **0.6 [OWNER] Confirm the target audience: 13 and over, not Designed for Families.** This is the assumption in `CONTENT-RATING.md` and `DATA-SAFETY.md`.
 
@@ -50,9 +50,10 @@ Do not submit while a **[CODE TODO]** or an incomplete **[OWNER]** item sits abo
 - [ ] **1.3 [CODE DONE] Confirm the foreground service.** `.PlaybackService` declares `android:foregroundServiceType="mediaPlayback"`, `android:exported="false"`, and the app declares `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK`.
 - [ ] **1.4 [CODE DONE] Confirm audio focus.** `PlaybackService` requests `AUDIOFOCUS_GAIN` before reporting playing, pauses on loss/transient loss, ducks on can-duck, and abandons focus on stop.
 - [ ] **1.5 [CODE DONE] Build the AAB.** `./gradlew :app:bundlePlayRelease`. The output is the `playRelease` bundle under `app/build/outputs/bundle/playRelease/`. Do not upload the `sideload` bundle: it has `INTERNET` and the updater.
-- [ ] **1.6 [CODE TODO] Implement Play Billing (only if 0.1 chose the paid model).** Dependency, product IDs, purchase flow, restore flow, entitlement check, price display, and a test purchase in a closed track. The free build must still work if billing is unavailable.
+- [x] **1.6 No billing in this build.** The 2.1.0 artifact has no billing library and no `BILLING` permission; the listing and data-safety answers say free, no in-app purchases. (Re-open this line only if a paid build is planned.) ~~Implement Play Billing~~ Dependency, product IDs, purchase flow, restore flow, entitlement check, price display, and a test purchase in a closed track. The free build must still work if billing is unavailable.
 - [ ] **1.7 [CODE TODO] Re-check the permissions after billing.** A billing library can add `com.android.vending.BILLING` and is a third-party SDK. If it does, update the permission table in both privacy files, the data-safety answer, and the listing's privacy sentence (it currently says no ads, analytics or crash-reporting SDKs). Do not leave "exactly five permissions" on a build that has six.
-- [ ] **1.8 [OWNER/QA] Inspect the artifact, not the source.** Upload the AAB to internal testing, then check the merged manifest in Play Console or with `bundletool dump manifest --bundle <file>.aab`. It must show no `INTERNET`, no `ACCESS_NETWORK_STATE`, no `REQUEST_INSTALL_PACKAGES`, and the `mediaPlayback` service.
+- [x] **1.8 Artifact inspected.** `app-play-release.aab` (2.1.0, code 15): no `INTERNET`, no `ACCESS_NETWORK_STATE`, no `REQUEST_INSTALL_PACKAGES`, no installer `<queries>`; `mediaPlayback` service present. Evidence in `AUDIT-2026-11-10-PLAY.md`.
+- [ ] **1.8b [OWNER] Re-inspect in Play Console** after upload (the Console's merged view is the authority the reviewer sees). Upload the AAB to internal testing, then check the merged manifest in Play Console or with `bundletool dump manifest --bundle <file>.aab`. It must show no `INTERNET`, no `ACCESS_NETWORK_STATE`, no `REQUEST_INSTALL_PACKAGES`, and the `mediaPlayback` service.
 - [ ] **1.9 [OWNER] Enrol in Play App Signing.** Create or upload the upload key, store the keystore and both passwords in a password manager, and keep the CI secrets `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` current. A lost upload key can be reset through Play support; a lost app signing key can end the app's update path, so back it up.
 - [ ] **1.10 [OWNER] Upload the playRelease AAB to internal testing and install it from Play** on a physical device. Confirm the installed package is `com.moddys.resonance`, not the `.debug` suffix.
 
@@ -124,7 +125,7 @@ Do not submit if any of these is true:
 | Contact email or contact page URL | The privacy policy and the Play listing both require a working contact | `PRIVACY.md`, `privacy.html`, `LISTING.md` |
 | What Studio Unlock includes | The price copy says "opens the full studio"; that must be exact | `LISTING.md` |
 | Per-pack SKU list and prices | The A$2.99 per-pack claim must match the products | Play Console, `LISTING.md` |
-| Production versionName | `2.0.5-beta` or `2.0.5` changes the release | `CHECKLIST.md`, build |
+| Production versionName | Set to `2.1.0` / code 15 | `app/build.gradle`, `compat.json` |
 | Billing go/no-go | It changes the permission list, data safety, privacy page and listing | Phases 0, 1, 3 |
 | Tester list and start date | The 14-day clock cannot start without 12 opted-in testers | Phase 4 |
 | FGS video URL | The declaration cannot be submitted without it | `FGS-DECLARATION.md` |

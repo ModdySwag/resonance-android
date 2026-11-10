@@ -1,0 +1,31 @@
+# Baseline profile — the app's own startup path.
+#
+# The app is a WebView shell: 1,885 lines of Java across four classes, 21 KB of dex in a
+# 966 KB APK. Almost all of a cold start is Android System WebView initialising itself and
+# the bundled page booting, which no app-side profile can influence. What this file can do
+# is keep the shell's own classes ahead of the interpreter: MainActivity (build the WebView,
+# the bridge, the shim), the Bridge (@JavascriptInterface targets, reached on every page
+# call), and PlaybackService (started from the first Play).
+#
+# Method-level entries are deliberate rather than generated: there is no Macrobenchmark
+# module here, and a guessed Hot method list would be decoration. These are the calls that
+# run before the first frame, in the order they run.
+HSPLcom/moddys/resonance/MainActivity;-><init>()V
+HSPLcom/moddys/resonance/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLcom/moddys/resonance/MainActivity;->buildWeb()Z
+HSPLcom/moddys/resonance/MainActivity;->shim()Ljava/lang/String;
+HSPLcom/moddys/resonance/MainActivity;->edgeToEdge()V
+HSPLcom/moddys/resonance/MainActivity;->registerBack()V
+HSPLcom/moddys/resonance/MainActivity;->pageCommand(Ljava/lang/String;)V
+Lcom/moddys/resonance/MainActivity$Bridge;
+HSPLcom/moddys/resonance/MainActivity$Bridge;->state(ZLjava/lang/String;Ljava/lang/String;)V
+HSPLcom/moddys/resonance/MainActivity$Bridge;->channel()Ljava/lang/String;
+HSPLcom/moddys/resonance/MainActivity$Bridge;->palette()Ljava/lang/String;
+HSPLcom/moddys/resonance/MainActivity$Bridge;->chrome(Z)V
+HSPLcom/moddys/resonance/MainActivity$Bridge;->device()Ljava/lang/String;
+HSPLcom/moddys/resonance/MainActivity$Bridge;->log(Ljava/lang/String;)V
+Lcom/moddys/resonance/Compat;
+HSPLcom/moddys/resonance/PlaybackService;->onCreate()V
+HSPLcom/moddys/resonance/PlaybackService;->onStartCommand(Landroid/content/Intent;II)I
+HSPLcom/moddys/resonance/PlaybackService;->showPlaying()V
+HSPLcom/moddys/resonance/PlaybackService;->startForegroundCompat()V

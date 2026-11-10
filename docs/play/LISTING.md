@@ -1,6 +1,6 @@
 # Store listing — Resonance Studio
 
-App: **Resonance Studio** · package `com.moddys.resonance` · version 2.0.5-beta (versionCode 12) · Google Play build
+App: **Resonance Studio** · package `com.moddys.resonance` · version 2.1.0 (versionCode 15) · Google Play build
 
 Every field below is inside Play's hard limit. Counts include spaces and line breaks, and are printed next to each field. Paste only the text inside the quoted block — not the heading, not the count.
 
@@ -91,7 +91,7 @@ No account. No ads. No analytics. No telemetry. No tracking. The Play build asks
 
 PRICE
 
-Resonance Studio is free to download. A one-time Studio Unlock (A$7.99 in Australia; Google Play shows the local price elsewhere) opens the full studio, and individual packs are A$2.99 each. There is no subscription, nothing renews, and no separate account is needed to buy or restore.
+Resonance Studio is free. There is nothing to buy in this version: no unlock, no subscription and no advertising. Every session, every pack and every tool is included.
 
 WHAT IT IS NOT
 
@@ -104,7 +104,7 @@ Built by ModdySwag. More at moddys.net.
 
 **2816/4,000.**
 
-The price paragraph reflects the planned commercial model: one-time Studio Unlock at A$7.99, per-pack unlocks at A$2.99, no subscription. Do not publish it until those Play Billing products exist. The phrase “opens the full studio” also assumes the unlock covers the studio; confirm the entitlement, or replace that phrase with one sentence naming exactly what it unlocks.
+This build contains no billing code and no `BILLING` permission, so the listing says free with no in-app purchases and the Data safety form says the same. If a paid unlock ever ships, that is a new build: write the entitlement sentence then, add Play Billing, and update the listing, the privacy page and the data-safety answers in the same pass.
 
 ## 4. A/B test plan
 
@@ -136,12 +136,12 @@ The category does not change the content rating, but it does trigger Play’s he
 | Field | Answer |
 | --- | --- |
 | App or game | App |
-| Free or paid | Free (with in-app purchases) |
+| Free or paid | Free |
 | App access | No special access: all functionality is available without a login or credentials |
 | Ads | No |
-| In-app purchases | Yes — one-time Studio Unlock (A$7.99) and per-pack unlocks (A$2.99); no subscription, no physical goods |
+| In-app purchases | No |
 | Privacy policy | https://moddys.net/resonance/privacy |
-| Contact email | [OWNER: use the same address entered on the Play developer profile] |
+| Contact email | admin@moddys.net |
 | Website | https://moddys.net |
 | Default language | English (Australia); the copy uses Australian spelling (“synthesised”, “favourites”) |
 
@@ -161,5 +161,5 @@ Optional, not required for launch: 7-inch and 10-inch tablet screenshots. `[OWNE
 
 - **Treatment claims:** “treats insomnia”, “cures anxiety”, “helps depression”, “relieves tinnitus”, “clinically proven”, “therapy”, “heals”. The app is not a medical device.
 - **Rankings:** any claim to be the top app, number one, or the world’s most popular. There is no evidence for them and Play does not need them.
-- **False absolutes:** “completely free” (there is an optional unlock), “no in-app purchases” (there are), “no permissions” (there are five), “works on every device” (it needs a working WebView).
+- **False absolutes:** “no permissions” (there are five), “works on every device” (it needs a working WebView). “Free” and “no in-app purchases” are true in this build and stay true only while no billing code ships.
 - **Keyword stuffing:** the title and short description above are sentences. Do not add a comma-separated keyword tail.

@@ -1,4 +1,4 @@
-# Data safety answers — Resonance Studio 2.0.0-beta
+# Data safety answers — Resonance Studio 2.1.0
 
 Play's form is a claim about the code, so each answer carries the evidence that makes it
 true. Re-check every line before a submission; if a line stops being true, the answer is

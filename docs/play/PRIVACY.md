@@ -1,14 +1,14 @@
 # Privacy policy — Resonance Studio for Android
 
-**Effective date:** 8 November 2026  
-**Applies to:** Resonance Studio 2.0.5-beta (versionCode 12) for Android, Google Play build, package com.moddys.resonance  
+**Effective date:** 10 November 2026  
+**Applies to:** Resonance Studio 2.1.0 (versionCode 15) for Android, Google Play build, package com.moddys.resonance  
 **Publisher:** ModdySwag, moddys.net  
 
 Resonance Studio collects nothing, shares nothing and sends nothing off your phone. This page explains what that means, in plain language.
 
 ## Who this policy covers
 
-Resonance Studio is an Android app published by ModdySwag (moddys.net). This policy covers the Google Play build of the app, including version 2.0.5-beta (versionCode 12). If you installed the app from somewhere else, that build may behave differently, and this policy does not describe it.
+Resonance Studio is an Android app published by ModdySwag (moddys.net). This policy covers the Google Play build of the app, including version 2.1.0 (versionCode 15). If you installed the app from somewhere else, that build may behave differently, and this policy does not describe it.
 
 ## The short version
 
@@ -58,7 +58,7 @@ The audio you hear is synthesised on the device. The app does not record through
 
 ## Permissions and why the app asks for them
 
-Version 2.0.5-beta of the Play build asks for exactly these permissions:
+Version 2.1.0 of the Play build asks for exactly these permissions:
 
 | Permission | Why the app asks |
 | --- | --- |
@@ -72,9 +72,7 @@ The app does not ask for internet, location, microphone, camera, contacts, calen
 
 ## Purchases
 
-The app is free to download. If you choose to buy the one-time Studio Unlock or a pack unlock, Google Play processes the payment. The app never sees your card or bank details. Google Play tells the app whether the purchase is active so it can unlock what you paid for, and that state is kept on your phone.
-
-Purchases are tied to your Google Play account, not to an account in this app. Google's handling of payment data is covered by Google's own privacy policy, not this one. We do not receive your payment details. There is no subscription and nothing renews.
+There is nothing to buy in this version. The app is free, with no in-app purchases, no subscription and no advertising. No payment code and no billing library are included, and the app never sees or asks for payment details.
 
 ## Children's privacy
 
@@ -112,7 +110,7 @@ If you find a security problem, contact us.
 
 If this policy changes, the new version will be published at https://moddys.net/resonance/privacy with a new effective date. A change to the app's permissions will be reflected here before that version is published. If the change matters, the app's Play listing or release notes will say so. There is no mailing list to notify, because the app has no account and no email address for you.
 
-This version is effective 8 November 2026.
+This version is effective 10 November 2026.
 
 ## Not a medical device
 
@@ -124,7 +122,7 @@ If you have epilepsy or a seizure disorder, ask a clinician before using repetit
 
 ModdySwag, moddys.net
 
-Contact: [OWNER: add a contact email address or contact page URL before publishing]
+Contact: admin@moddys.net
 
 Privacy policy URL: https://moddys.net/resonance/privacy
 

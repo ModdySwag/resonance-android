@@ -1,6 +1,6 @@
 # Data safety — Resonance Studio (Google Play build)
 
-App: **Resonance Studio** · package `com.moddys.resonance` · version 2.0.5-beta (versionCode 12)
+App: **Resonance Studio** · package `com.moddys.resonance` · version 2.1.0 (versionCode 15)
 Form: Play Console → **App content** → **Data safety**
 Prepared: 8 November 2026
 
@@ -64,7 +64,7 @@ If any one of those stops being true, the answer to the first question is no lon
 
 ## The one future change that needs a new answer: Play Billing
 
-The planned commercial model adds a one-time Studio Unlock and per-pack unlocks. That is not in the 2.0.5-beta build described above. Before you ship a billing build:
+There is no billing code and no `BILLING` permission in the 2.1.0 build described above, so the Console answers are **No** in-app purchases and no purchase history. If a paid unlock is ever added, that is a new build and these answers change with it:
 
 - **Re-check the merged permission list.** A billing library can add `com.android.vending.BILLING` (a normal permission). The privacy policy's "exactly these permissions" table and the listing's permission sentence must be updated if it does.
 - **Decide the purchase-history answer honestly.** Google Play processes the payment, and Play's FAQ says you do not declare the card data that the payment service collects directly. But Play also says to consider whether your app collects other financial information such as purchase history, and whether it receives data back from the payment service. If the app only asks "is this SKU owned?" and stores that locally, say so; if it keeps a purchase history or sends receipts anywhere, declare it.

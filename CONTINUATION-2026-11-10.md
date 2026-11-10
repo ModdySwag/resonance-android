@@ -1,3 +1,81 @@
+# SAVE POINT — 2026-11-10 (session 16: the Play submission build). READ THIS FIRST.
+
+Supersedes the session-15 block below; same project, same gates, same signing material.
+
+## State
+- **Version 2.1.0 / versionCode 15** (no beta suffix). Both channels built from one tree.
+- **Play AAB** `app/build/outputs/bundle/playRelease/app-play-release.aab` — 1,009,200 B,
+  sha256 `c0c27053d8c1338013aea609e8dd9db782ab1cb08fecbd6b45ba2b945aaa43eb`.
+  Manifest on the artifact: **no INTERNET, no ACCESS_NETWORK_STATE, no REQUEST_INSTALL_PACKAGES**,
+  no installer `<queries>`, `mediaPlayback` service, `allowBackup=false` + dataExtractionRules,
+  baseline profile in `BUNDLE-METADATA/…/baseline.prof`.
+- **Sideload APK** `app/build/outputs/apk/release/app-release.apk` — 991,973 B,
+  sha256 `6a81812559e4c05cc90c37c557333fb304798716be3f4becfc27c8a442bd63b9`,
+  signed with `resonance-release.p12` (cert 08:B8:…:B6). Keeps INTERNET + the updater, deliberately.
+- Installed on the **phone** (`192.168.1.95:46017`) and the **Tab A9+**
+  (`adb-R92XB0RWN3B-67B1Tm`); both read back `versionCode=15`. The app had been absent from both
+  devices at session start (previous installs gone), so this is a fresh install, not an update.
+- **Cold start, phone:** median **269.5 ms** over six force-stopped launches (267–277),
+  `am start -W` TotalTime.
+- **FGS proof on glass:** `isForeground=true`, `types=0x00000002` (mediaPlayback), notification
+  channel `playback`, state PLAYING, and ActivityManager logged
+  `Background started FGS: Allowed … uidState: TOP`.
+- Tests: harness **265/0**, eslint **0**, contrast **0**, tablet **82/0** (see Gates — re-run on the
+  final bytes before publishing).
+
+## Shipped this session
+- **Play channel UI**: `channel()` bridge method; on `play` the Settings update row, the More-sheet
+  row and the About update button are not built, and the Data card reads "None — updates come
+  from Play". The site/harness (no bridge) stays "sideload".
+- **In-context notification rationale**: cold `requestPermissions` removed from `onCreate`;
+  `maybeExplainNotifications()` fires on the first playback with a one-per-install dialog, then the
+  system prompt. "Not now" is remembered.
+- **First-run safety notice** (`#rsNotice`): four safety lines, not-a-medical-device, GPL as-is,
+  statutory rights unaffected; one tap "I understand"; X hidden so Back cannot accept it; re-open
+  from Settings → Safety notice; action pinned to the foot of the scroller (320×568 proof).
+- **Tour bubble placement** clamped to the safe band above the nav; caret dropped when neither side
+  fits. Measured at 320×568, 390×844, 433×962, 844×390 — all nine steps clear the nav.
+- **Baseline profile** `app/src/main/baseline-prof.txt` (methods verified against the Java source;
+  class rules carry no flags, method rules must carry HSP) — packaged as
+  `assets/dexopt/baseline.prof`.
+- **Docs**: `AUDIT-2026-11-10-PLAY.md` gained a full remediation table (12 findings) plus the
+  notice/bubble sections; `docs/play/PRIVACY.md` + `privacy.html` are 2.1.0/code 15 with
+  `admin@moddys.net` and a truthful "nothing to buy" purchases section; `LISTING.md` and the store
+  copies say free, no in-app purchases (the old A$7.99 unlock described code that does not exist);
+  `CHECKLIST.md` and `DATA-SAFETY.md` refreshed.
+
+## Open, in order
+1. **VirusTotal is the one blocked item.** No API key on the host; the public upload page was
+   driven twice with Playwright and never started a scan. Needs `VT_API_KEY`, then scan
+   `app-release.apk` (991,973 B) and record engines/detections/sha/report URL **outside** the APK
+   (embedding the result changes the hash). The About screen already says releases are scanned and
+   the report is linked from the download page.
+2. **Privacy page is staged, not uploaded**: `webmusic-hub/site/resonance/privacy/index.html` and
+   `radio-browser/deploy/resonance/privacy/index.html`, byte-identical (12,823 B, no scripts).
+   Upload with `upload-site.py --only resonance/privacy/index.html` then `--verify`, on his word.
+3. **Play Console work** (owner): create the app, Play App Signing with the existing upload key,
+   paste the listing, data-safety answers (No collection / No IAP), content rating, FGS declaration.
+4. **Sideload publish path** (owner's word): copy the APK to `deploy/downloads/`, regenerate
+   `updates.json` (`make-updates-json.py --resonance-only`), update the card's sha/size, upload.
+5. Re-install the final APK on both devices after any further change (the tablet currently has a
+   build one compile older than the phone's).
+
+## Traps added this session
+- **A ZipFile left open in the execute_code kernel locks the built AAB**: Gradle then fails at
+  `signPlayReleaseBundle` with "being used by another process", and the file cannot even be
+  renamed. Close every `zipfile.ZipFile` before rebuilding.
+- **`.rs-cta` pins `background:linear-gradient(...) !important`** — any coloured variant of it needs
+  `!important` on background/border too, or you get dark text on the dark gradient (the notice's
+  "I understand" was invisible until this was fixed).
+- **A class rule in baseline-prof.txt must not carry flags** ("Class rules don't support flags"),
+  while **method rules must** ("At least one of flags 'H','S','P'"), and the profile compiler
+  rejects the build until both are right — it is a real gate, not a packaging formality.
+- **Tour placement must use the safe band, not `innerHeight`**: a bubble can be inside the raw
+  viewport and still sit under the tab bar once `--rs-safe-b` and the nav are real.
+- The harness suite that reads `compat.json` starts before a version bump: a run launched across a
+  bump reports `X vs Y` on that one leg even though nothing is wrong. Bump `compat.json` with
+  `app/build.gradle` in the same edit.
+
 # SAVE POINT — 2026-11-10 (session 15: the visualiser actually runs now). READ THIS FIRST.
 
 Supersedes the session-14 block below. Same project, same gates, same signing material.
