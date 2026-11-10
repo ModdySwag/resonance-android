@@ -3,10 +3,11 @@
 Supersedes the session-14 block below. Same project, same gates, same signing material.
 
 ## State
-- **HEAD `8bb53ef`**, tree clean, **nothing pushed, nothing published**. Nine commits this session:
+- **HEAD `2a720f0`**, tree clean, **nothing pushed, nothing published**. Ten commits this session:
   `5343e13` calm-scene motion · `32eaf69` play key is the only switch · `e4a9611` card header ·
   `22e004b` Studio wording · `d2c72b5` six Home tiles + art · `a940d2b` search/packs ·
-  `974ffd1` brass shuffle + banner · `abccdc7` card icon · `8bb53ef` scene preview + still at rest.
+  `974ffd1` brass shuffle + banner · `abccdc7` card icon · `8bb53ef` scene preview + still at rest ·
+  `2a720f0` harness legs rewritten to the new card contract (265/0).
 - Release **2.0.6-beta / versionCode 14** built and installed on the **phone over wireless adb**
   (`192.168.1.95:46017`, paired this session with code at `:33049`) and on the **Tab A9+**
   (`adb-R92XB0RWN3B-67B1Tm`). Site tree is the source of truth: `C:/Users/Moddy/webmusic-hub/site/resonance`.
@@ -44,10 +45,10 @@ A CDP devtools attachment also defeats the throttle — that asymmetry is the te
 `npx eslint@9 --config eslint.config.mjs app/src/main/assets/www` (0) · lintRelease / testUnitTests.
 
 ## Open, in order
-1. **Preview not confirmed by finger**: my automated tap on Shuffle measured 0.02 %/1.5 s
-   (almost certainly a missed tap, not dead code). Tab the chip with sound stopped and watch.
-2. **Rest frame reads dark** (card mean luminance 13/255): the scene is there; lift exposure of
-   the held frame if his eye says "black".
+1. ~~Preview confirmed by finger~~ **DONE**: with sound stopped, Shuffle produced 0.52 % of screen
+   change per 1.5 s (rest is 0.02 %), and tapping the picture stopped it (0.02 %).
+2. **Rest frame is a picture but dim** (card mean luminance 13/255): the scene is there as a dark
+   field with its points of light. Lifting its exposure is a LOOK decision — his eye.
 3. ~~Gates on the final bytes~~ **DONE 2026-11-10: harness 265/0, contrast 0, tablet 82/0, eslint 0**
    (four legs rewritten to the new contract: rest holds a frame, a pick previews, no toggle key,
    banner plate, shuffle key is an image, tiles must all resolve, window label waits 1.4 s).
