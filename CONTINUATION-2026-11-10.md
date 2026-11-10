@@ -20,8 +20,8 @@ Supersedes the session-15 block below; same project, same gates, same signing ma
 - **FGS proof on glass:** `isForeground=true`, `types=0x00000002` (mediaPlayback), notification
   channel `playback`, state PLAYING, and ActivityManager logged
   `Background started FGS: Allowed … uidState: TOP`.
-- Tests: harness **265/0**, eslint **0**, contrast **0**, tablet **82/0** (see Gates — re-run on the
-  final bytes before publishing).
+- **Gates green on these bytes**: harness **265/0** (final run, `cache/harness-final.log`),
+  contrast **TOTAL LOW-CONTRAST 0**, tablet pass **82/0**, eslint **0**.
 
 ## Shipped this session
 - **Play channel UI**: `channel()` bridge method; on `play` the Settings update row, the More-sheet
