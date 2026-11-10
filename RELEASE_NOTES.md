@@ -21,6 +21,13 @@
 `resonance-studio-2.1.1.apk` (versionCode 16) installs straight over 2.1.0 — same signing key.
 Built for the sideload channel; the Google Play build is delivered by Play.
 
+**VirusTotal:** 0 detections. `resonance-studio-2.1.1.apk`, sha256
+`21b53aee6c12cc3e44093aa20d59cbaa0aba8231f11c78946dd3fdf69c1580ff`, 992,837 B — 0 malicious, 0 suspicious across 66 engines that returned a verdict
+(8 do not analyse APKs, 1 timed out). Report:
+https://www.virustotal.com/gui/file/21b53aee6c12cc3e44093aa20d59cbaa0aba8231f11c78946dd3fdf69c1580ff
+The app itself says the same thing without a hash, because embedding the hash would change the
+file that was scanned.
+
 # Resonance Studio 2.1.0
 
 **Fourteen doors on Home, and every number now tells the truth.**
