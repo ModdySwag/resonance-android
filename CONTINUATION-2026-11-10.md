@@ -51,25 +51,23 @@ the guide's Home line) and `libCount()` — `GnauralPacks.LIBRARY.length`, measu
 Sessions ("130 in the library") and the page search placeholder. A tile or pack added later moves the
 numbers automatically; the hardcoded copy must not come back.
 
-## Open, in order
-1. ~~VirusTotal~~ **DONE 2026-11-10.** API key supplied; scanned the final 992,101 B APK
-   (`826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`): **0 malicious, 0
-   suspicious**, 65 clean verdicts, 8 `type-unsupported`, 1 timeout (Bkav), 1 failure (Skyhigh),
-   75 engines listed. Record: `docs/play/VIRUSTOTAL-2.1.0.md`, audit row 12, checklist 1.8c,
-   `RELEASE_NOTES.md`. **Re-scan after ANY rebuild** — a new hash invalidates the report. The
-   in-app About line stays hash-free on purpose: embedding a hash changes the file that was scanned.
-2. **Privacy page is staged, not uploaded**: `webmusic-hub/site/resonance/privacy/index.html` and
-   `radio-browser/deploy/resonance/privacy/index.html`, byte-identical (12,823 B, no scripts).
-   Upload with `upload-site.py --only resonance/privacy/index.html` then `--verify`, on his word.
-3. **Downloads card line, at publish time only** (do not upload yet): under the Android card's
-   size/sha add `VirusTotal 0/65 · report` linking to
-   `https://www.virustotal.com/gui/file/826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`.
-   The card's sha, `updates.json` and the report must all name the same bytes.
-4. **Play Console work** (owner): create the app, Play App Signing with the existing upload key,
-   paste the listing, data-safety answers (No collection / No IAP), content rating, FGS declaration.
-5. **Sideload publish path** (owner's word): copy the APK to `deploy/downloads/`, regenerate
-   `updates.json` (`make-updates-json.py --resonance-only`), update the card's sha/size, upload.
-6. Re-install after any further change — both devices are on the final bytes as of this save.
+## Done — published 2026-11-10 (sideload + policy + GitHub)
+- APK live at https://moddys.net/downloads/resonance-studio-v2.1.0.apk — 992,101 B, sha256
+  `826c66e6…5013c2`, re-downloaded and hashed after upload.
+- `updates.json` and the downloads card carry 2.1.0 / code 15 / the same sha / 0.9 MB / the
+  VirusTotal line; `upload-site.py --verify` → 0 files not in sync.
+- Privacy page live at https://moddys.net/resonance/privacy/ (301 from the no-slash form), 200,
+  `admin@moddys.net`, no placeholders.
+- GitHub `main` pushed (`dcbe47b`), tag `v2.1.0`, release with the APK (API digest matches).
+
+## Open (owner-side only)
+1. **Play Console**: create the app, Play App Signing with `resonance-release.p12` as the upload key,
+   paste `LISTING.md`, answer `DATA-SAFETY.md` (no collection, no IAP), content rating, FGS
+   declaration, then upload `app-play-release.aab` (1,009,326 B, sha `bd882a00…197d`) to internal
+   testing. Nothing else on this project is waiting on code.
+2. Anything that changes the app after this point means: rebuild both channels, re-run the gates
+   (harness 265/0, contrast, tablet, eslint), re-install both devices, **re-scan with VirusTotal**
+   (new hash), re-upload the APK, regenerate the feed, update the card's sha/size.
 
 ## Traps added this session
 - **A ZipFile left open in the execute_code kernel locks the built AAB**: Gradle then fails at
