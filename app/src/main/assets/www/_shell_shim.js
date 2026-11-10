@@ -1595,11 +1595,20 @@
 
   /* ================================================================ screens === */
 
+  /* Counts are read from the library the page actually built, never typed. A hardcoded
+     "Eight sessions" survived three waves of new tiles and read as a lie on the tour. */
+  function libCount() {
+    try {
+      var L = (window.GnauralPacks && window.GnauralPacks.LIBRARY) || [];
+      return L.length || 0;
+    } catch (e) { return 0; }
+  }
+
   var SCREENS = [
     { id: "home", label: "Home", icon: "home", title: "Resonance", large: true,
-      sub: function () { return ""; } },
+      sub: function () { return STATES.length + " sessions"; } },
     { id: "sessions", label: "Sessions", icon: "list", title: "Sessions",
-      sub: function () { return ""; } },
+      sub: function () { var n = libCount(); return n ? n + " in the library" : ""; } },
     { id: "studio", label: "Studio", icon: "sliders", title: "Studio",
       sub: function () { return "The sound you are building"; } },
     { id: "vis", label: "Visualise", icon: "vis", title: "Visualise",
@@ -3843,7 +3852,7 @@
       { nav: "home", sel: ".rs-hero", title: "The player",
         body: "Play, volume, loop and the clock. A session keeps running while you move between " +
               "screens, and the mini player follows you." },
-      { nav: "home", sel: "#rsStates", title: "Eight sessions",
+      { nav: "home", sel: "#rsStates", title: STATES.length + " sessions",
         body: "Deep sleep through Morning. One tap loads the session and starts it — the pulse " +
               "bands tell you what each one is aiming at." },
       { nav: "studio", sel: "#rsMix", title: "The mix",
@@ -4063,7 +4072,7 @@
         'built-in sessions are ready to play; everything about them can be changed.</p>' +
         '<h4>Start here</h4>' +
         '<ul>' +
-        '<li><b>Home</b> — eight sessions, from Deep sleep to Morning. Tap a card and it loads ' +
+        '<li><b>Home</b> — ' + STATES.length + ' sessions, from Deep sleep to Morning. Tap a card and it loads ' +
         'and plays.</li>' +
         '<li><b>Sessions</b> — the whole library, searchable. Tap a row to load it.</li>' +
         '<li><b>Studio</b> — build a tone from a carrier and a beat, pick a bed, press play. ' +
@@ -5437,6 +5446,11 @@
     wireHome(); wireVis(); wireSettings();
     wireSearchKeyboard();
     buildModules();
+    /* the page ships "Search 100+ session"; name the real library instead */
+    var searchBox = $id("search");
+    if (searchBox && libCount()) {
+      searchBox.setAttribute("placeholder", "Search " + libCount() + " sessions — try sleep");
+    }
     deviceFacts();
     var ver = $id("rsVer");
     if (ver) ver.textContent = "v" + (deviceFacts().app || "?");

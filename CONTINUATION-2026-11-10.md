@@ -4,13 +4,13 @@ Supersedes the session-15 block below; same project, same gates, same signing ma
 
 ## State
 - **Version 2.1.0 / versionCode 15** (no beta suffix). Both channels built from one tree.
-- **Play AAB** `app/build/outputs/bundle/playRelease/app-play-release.aab` — 1,009,200 B,
-  sha256 `c0c27053d8c1338013aea609e8dd9db782ab1cb08fecbd6b45ba2b945aaa43eb`.
+- **Play AAB** `app/build/outputs/bundle/playRelease/app-play-release.aab` — 1,009,326 B,
+  sha256 `bd882a00b62a0a3e8217cfc8e6ebd0607f50e1a3a55d5b8c0bba54835383197d`.
   Manifest on the artifact: **no INTERNET, no ACCESS_NETWORK_STATE, no REQUEST_INSTALL_PACKAGES**,
   no installer `<queries>`, `mediaPlayback` service, `allowBackup=false` + dataExtractionRules,
   baseline profile in `BUNDLE-METADATA/…/baseline.prof`.
-- **Sideload APK** `app/build/outputs/apk/release/app-release.apk` — 991,973 B,
-  sha256 `6a81812559e4c05cc90c37c557333fb304798716be3f4becfc27c8a442bd63b9`,
+- **Sideload APK** `app/build/outputs/apk/release/app-release.apk` — 992,101 B,
+  sha256 `826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`,
   signed with `resonance-release.p12` (cert 08:B8:…:B6). Keeps INTERNET + the updater, deliberately.
 - Installed on the **phone** (`192.168.1.95:46017`) and the **Tab A9+**
   (`adb-R92XB0RWN3B-67B1Tm`); both read back `versionCode=15`. The app had been absent from both
@@ -44,10 +44,17 @@ Supersedes the session-15 block below; same project, same gates, same signing ma
   copies say free, no in-app purchases (the old A$7.99 unlock described code that does not exist);
   `CHECKLIST.md` and `DATA-SAFETY.md` refreshed.
 
+## Counts are read, never typed (fixed after he spotted it)
+The tour still said "Eight sessions" three waves after Home grew to fourteen. Every count is now
+taken from the data: `STATES.length` for the Home tiles (app-bar sub "14 sessions", tour step 4 title,
+the guide's Home line) and `libCount()` — `GnauralPacks.LIBRARY.length`, measured **130** — for
+Sessions ("130 in the library") and the page search placeholder. A tile or pack added later moves the
+numbers automatically; the hardcoded copy must not come back.
+
 ## Open, in order
 1. **VirusTotal is the one blocked item.** No API key on the host; the public upload page was
    driven twice with Playwright and never started a scan. Needs `VT_API_KEY`, then scan
-   `app-release.apk` (991,973 B) and record engines/detections/sha/report URL **outside** the APK
+   `app-release.apk` (992,101 B) and record engines/detections/sha/report URL **outside** the APK
    (embedding the result changes the hash). The About screen already says releases are scanned and
    the report is linked from the download page.
 2. **Privacy page is staged, not uploaded**: `webmusic-hub/site/resonance/privacy/index.html` and

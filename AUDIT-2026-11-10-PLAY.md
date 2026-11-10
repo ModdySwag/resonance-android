@@ -70,10 +70,10 @@ the APK and a byte scan of the bundled assets — not from memory or the build l
 
 Everything below is measured on the built artifacts, not on the source tree:
 
-- `app/build/outputs/bundle/playRelease/app-play-release.aab` — **1,009,200 B**,
-  sha256 `c0c27053d8c1338013aea609e8dd9db782ab1cb08fecbd6b45ba2b945aaa43eb` (the Play build).
-- `app/build/outputs/apk/release/app-release.apk` — **991,973 B**,
-  sha256 `6a81812559e4c05cc90c37c557333fb304798716be3f4becfc27c8a442bd63b9` (the sideload build,
+- `app/build/outputs/bundle/playRelease/app-play-release.aab` — **1,009,326 B**,
+  sha256 `bd882a00b62a0a3e8217cfc8e6ebd0607f50e1a3a55d5b8c0bba54835383197d` (the Play build).
+- `app/build/outputs/apk/release/app-release.apk` — **992,101 B**,
+  sha256 `826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2` (the sideload build,
   cert `08:B8:CB:BF…:B6`). Both report `versionCode=15`, `versionName=2.1.0`.
 
 | # | Finding | State now | Evidence |
