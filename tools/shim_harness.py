@@ -678,6 +678,27 @@ def main():
         page.wait_for_timeout(300)
         suite.check("and the key brings it back", page.evaluate(
             "document.getElementById('rsCymPanel').classList.contains('on')"))
+        # owner report: with the sheet open the key was the only way out; a tap on the
+        # picture must put it away too, and a tap on the sheet's own body must not
+        rects = page.evaluate("""(() => {
+          const p = document.getElementById('rsCymPanel');
+          const r = p.getBoundingClientRect();
+          return {left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+                  vw: innerWidth, vh: innerHeight};
+        })()""")
+        page.mouse.click((rects["left"] + rects["right"]) / 2, rects["bottom"] - 8)
+        page.wait_for_timeout(300)
+        suite.check("a tap on the sheet's own body leaves it open", page.evaluate(
+            "document.getElementById('rsCymPanel').classList.contains('on')"), rects["top"])
+        stage_y = max(90, rects["top"] - 26)
+        page.mouse.click(rects["vw"] / 2, stage_y)
+        page.wait_for_timeout(300)
+        suite.check("a tap on the picture dismisses the Setup sheet", page.evaluate(
+            "!document.getElementById('rsCymPanel').classList.contains('on')"), stage_y)
+        page.click("#rsCymSetup")
+        page.wait_for_timeout(300)
+        suite.check("and the key brings it back once more", page.evaluate(
+            "document.getElementById('rsCymPanel').classList.contains('on')"))
         suite.check("a scene chip is preselected to match", page.evaluate(
             "!!document.querySelector('#rsScenes button[aria-pressed=true]')"))
         page.click("#rsScenes button[data-scene=minnaert-cloud]")

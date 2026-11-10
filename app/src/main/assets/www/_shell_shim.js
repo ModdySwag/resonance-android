@@ -3164,12 +3164,13 @@
     var setupCtl = doc.getElementById("rsCymCtl");
     if (setupCtl) setupSheet.appendChild(setupCtl);
     root.appendChild(setupSheet);
-    function closeSetup() {
-      var live = doc.getElementById("rsCymPanel");
-      if (live) live.classList.remove("on");
-      var btn = doc.getElementById("rsCymSetup");
-      if (btn) btn.setAttribute("aria-expanded", "false");
+    function setSetup(on) {
+      var live = doc.getElementById("rsCymPanel") || setupSheet;
+      live.classList.toggle("on", on);
+      var btn = doc.getElementById("rsCymSetup") || setup;
+      btn.setAttribute("aria-expanded", on ? "true" : "false");
     }
+    function closeSetup() { setSetup(false); }
     var setupGrab = doc.createElement("button");
     setupGrab.id = "rsCymSetupGrab";
     setupGrab.className = "rs-cym-setupGrab";
@@ -3190,11 +3191,23 @@
     setup.onclick = function (e) {
       if (e && e.stopPropagation) e.stopPropagation();
       var live = doc.getElementById("rsCymPanel") || setupSheet;
-      var on = !live.classList.contains("on");
-      live.classList.toggle("on", on);
-      var btn = doc.getElementById("rsCymSetup") || setup;
-      btn.setAttribute("aria-expanded", on ? "true" : "false");
+      setSetup(!live.classList.contains("on"));
     };
+    /* The key is not the only way out: a tap anywhere on the chamber dismisses the sheet,
+       the way the page's Controls drawer closes on its scrim. Capture phase so it lands
+       with the tap; taps inside the sheet (its chips, its faders, the grabber) are left
+       alone, and so is the key itself, whose own handler toggles. */
+    function setupOutside(e) {
+      var p = doc.getElementById("rsCymPanel");
+      if (!p || !p.classList.contains("on")) return;
+      var t = e.target;
+      var b = doc.getElementById("rsCymSetup");
+      if (p.contains(t) || (b && b.contains(t))) return;
+      closeSetup();
+    }
+    if (root.__rsSetupOutside) root.removeEventListener("pointerdown", root.__rsSetupOutside, true);
+    root.__rsSetupOutside = setupOutside;
+    root.addEventListener("pointerdown", setupOutside, true);
     /* placed in the navigation row below (left of ?), not as its own line */
 
     /* Two rows of hardware. Navigation (back / status / help / close) on the first,
@@ -3220,6 +3233,9 @@
     tr.appendChild(stop);
     tr.appendChild(vol);
     if (ctl) tr.appendChild(ctl);
+    /* the page's Controls drawer and this sheet are two panels over one stage: opening the
+       drawer puts the sheet away rather than leaving both up */
+    if (ctl) ctl.addEventListener("click", closeSetup);
     act.appendChild(nav);
     act.appendChild(tr);
 
