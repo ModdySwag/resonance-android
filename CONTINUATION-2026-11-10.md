@@ -52,20 +52,24 @@ Sessions ("130 in the library") and the page search placeholder. A tile or pack 
 numbers automatically; the hardcoded copy must not come back.
 
 ## Open, in order
-1. **VirusTotal is the one blocked item.** No API key on the host; the public upload page was
-   driven twice with Playwright and never started a scan. Needs `VT_API_KEY`, then scan
-   `app-release.apk` (992,101 B) and record engines/detections/sha/report URL **outside** the APK
-   (embedding the result changes the hash). The About screen already says releases are scanned and
-   the report is linked from the download page.
+1. ~~VirusTotal~~ **DONE 2026-11-10.** API key supplied; scanned the final 992,101 B APK
+   (`826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`): **0 malicious, 0
+   suspicious**, 65 clean verdicts, 8 `type-unsupported`, 1 timeout (Bkav), 1 failure (Skyhigh),
+   75 engines listed. Record: `docs/play/VIRUSTOTAL-2.1.0.md`, audit row 12, checklist 1.8c,
+   `RELEASE_NOTES.md`. **Re-scan after ANY rebuild** — a new hash invalidates the report. The
+   in-app About line stays hash-free on purpose: embedding a hash changes the file that was scanned.
 2. **Privacy page is staged, not uploaded**: `webmusic-hub/site/resonance/privacy/index.html` and
    `radio-browser/deploy/resonance/privacy/index.html`, byte-identical (12,823 B, no scripts).
    Upload with `upload-site.py --only resonance/privacy/index.html` then `--verify`, on his word.
-3. **Play Console work** (owner): create the app, Play App Signing with the existing upload key,
+3. **Downloads card line, at publish time only** (do not upload yet): under the Android card's
+   size/sha add `VirusTotal 0/65 · report` linking to
+   `https://www.virustotal.com/gui/file/826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`.
+   The card's sha, `updates.json` and the report must all name the same bytes.
+4. **Play Console work** (owner): create the app, Play App Signing with the existing upload key,
    paste the listing, data-safety answers (No collection / No IAP), content rating, FGS declaration.
-4. **Sideload publish path** (owner's word): copy the APK to `deploy/downloads/`, regenerate
+5. **Sideload publish path** (owner's word): copy the APK to `deploy/downloads/`, regenerate
    `updates.json` (`make-updates-json.py --resonance-only`), update the card's sha/size, upload.
-5. Re-install the final APK on both devices after any further change (the tablet currently has a
-   build one compile older than the phone's).
+6. Re-install after any further change — both devices are on the final bytes as of this save.
 
 ## Traps added this session
 - **A ZipFile left open in the execute_code kernel locks the built AAB**: Gradle then fails at

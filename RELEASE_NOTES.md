@@ -1,3 +1,39 @@
+# Resonance Studio 2.1.0
+
+**Fourteen doors on Home, and every number now tells the truth.**
+
+## What changed
+
+- **Home has fourteen sessions.** Six new short doors join the eight state cards — Settle the
+  room, Reset break, One tone 396, Forty a second, Settling in, Six breaths — each pinned to an
+  exact library session and each with its own plate.
+- **The counts are read, not typed.** Home says 14 sessions, Sessions says 130 in the library,
+  and the tour says the same. They come from the library the app actually built.
+- **The mini viewer runs.** Its scenes breathe, drift and settle instead of holding a still
+  frame, and the play key is the only switch: pause or stop paints one frame and holds it.
+  Shuffle and the arrows start a silent preview; tapping the picture ends it.
+- **A safety notice on first launch.** Headphones for binaural, comfortable volume, a clinician
+  first if you have epilepsy or a seizure disorder, never while driving — plus the licence and
+  warranty terms in plain words. It shows once, and it is in Settings afterwards.
+- **Copy trimmed.** The Studio's headphone and fold notes are gone; Settings gained Session
+  packs and the safety notice.
+
+## Installing
+
+`resonance-studio-2.1.0.apk` (versionCode 15) installs straight over 2.0.x — same signing key.
+Built for the sideload channel; the Google Play build is delivered by Play.
+
+**VirusTotal:** 0 detections. `resonance-studio-2.1.0.apk`, sha256
+`826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2`, 992,101 B — 0 malicious,
+0 suspicious across 65 engines that returned a verdict (8 do not analyse APKs). Report:
+https://www.virustotal.com/gui/file/826c66e61b04b04434f232de28290061c986e047d909f58218dcde937a5013c2
+The app itself says the same thing without a hash, because embedding the hash would change the
+file that was scanned.
+
+Cheers Moddy !
+
+---
+
 # Resonance Studio 2.0.5-beta
 
 **The chamber becomes an instrument.** The cymatic chamber now wears the same amplifier
