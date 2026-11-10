@@ -66,6 +66,7 @@ the data-safety answers with their evidence, and the privacy page.
 
 ```bash
 python tools/play_assets.py     # regenerate the assets from the app
+python tools/site_shots.py      # and the moddys.net downloads card's shots
 python tools/check_listing.py   # limits, sizes, shot count
 ```
 

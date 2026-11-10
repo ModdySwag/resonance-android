@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """Render the Play Store asset set from the real app, in the sizes the console demands.
 
-Phone screenshots are 1080x1920 (9:16) - a 360x640 viewport at device_scale_factor 3.
+Phone screenshots are 1080x1920 (9:16) - a 432x768 viewport at device_scale_factor 2.5,
+which lands on 1080x1920 with no resampling. 432 px is the CSS width this shell is drawn
+for (the owner's phone measures 433), so the shot is the phone layout rather than a
+360-wide squeeze of it.
+
 The icon is 512x512 and the feature graphic 1024x500. Everything is rendered from the
 bundled page with the shell injected, so a shot can never show a UI that does not exist.
+
+Two things gate the first screen in 2.1.0: the safety notice and the welcome tour (the
+tour sits over the tiles and intercepts the tap). Both are acknowledged in the stored
+prefs before the page boots, so a shot shows the app as it looks after a person has said
+yes once - not the gate itself.
 
 These are WEB RENDERS: the notification, lock screen and system dialogs only exist on a
 device, so they are not in the set and the listing says so.
@@ -17,6 +26,7 @@ import socketserver
 import sys
 import threading
 
+from PIL import Image, ImageStat
 from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -25,13 +35,20 @@ WWW = os.path.join(PROJECT, "app", "src", "main", "assets", "www")
 OUT = os.path.join(PROJECT, "store")
 SHIM = open(os.path.join(WWW, "_shell_shim.js"), encoding="utf-8").read()
 
+SHOT_W, SHOT_H, SHOT_DSF = 432, 768, 2.5      # -> 1080x1920 exactly
+
 BRIDGE = r"""
 (() => {
   if (window.ResonanceJs) return;
+  try {
+    localStorage.setItem("resonance.app.theme.v1",
+      JSON.stringify({notice: 1, tour: "done", ui: "full"}));
+  } catch (e) {}
   window.ResonanceJs = {
     state(){}, log(){}, url(){}, dismissKeyboard(){}, copy(){ return true; },
+    channel(){ return "sideload"; },
     device(){ return JSON.stringify({manufacturer:"Google",model:"Pixel 7",api:34,release:"14",
-      app:"2.0.0-beta",webview:"Chrome 126",engine:"Chrome 126",engineLabel:"WebView",
+      app:"2.1.0",webview:"Chrome 126",engine:"Chrome 126",engineLabel:"WebView",
       platform:"android",osName:"Android",notifications:true,density:"420",
       system:"Android 14 (API 34)",compat:{supported:true,recommended:true,
       system:"Android 14 (API 34)",hardLabel:"Android 8.0",softLabel:"Android 11",engineNote:""}}); },
@@ -78,45 +95,76 @@ def serve():
     return s, "http://127.0.0.1:%d/app/index.html" % port
 
 
+def prep(page):
+    """The once-only gate, already answered: notice acknowledged, tour finished."""
+    page.evaluate("""() => {
+      try {
+        const k = "resonance.app.theme.v1";
+        const p = JSON.parse(localStorage.getItem(k) || "{}");
+        p.notice = 1; p.tour = "done"; p.ui = "full";
+        localStorage.setItem(k, JSON.stringify(p));
+      } catch (e) {}
+      const n = document.getElementById("rsNotice"); if (n) n.remove();
+      const t = document.getElementById("rsTour"); if (t) t.remove();
+      const c = document.documentElement.className;
+      document.documentElement.className = c.replace(/\\brs-t-on\\b/g, "")
+        .replace(/\\brs-navhide\\b/g, "").replace(/\\brs-minihide\\b/g, "");
+    }""")
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     httpd, url = serve()
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=["--autoplay-policy=no-user-gesture-required", "--mute-audio"])
 
-        # ---- phone screenshots: 360x640 @3 = 1080x1920 -------------------------------
-        ctx = browser.new_context(viewport={"width": 360, "height": 640}, device_scale_factor=3,
+        # ---- phone screenshots: 432x768 @2.5 = 1080x1920 ----------------------------
+        ctx = browser.new_context(viewport={"width": SHOT_W, "height": SHOT_H},
+                                  device_scale_factor=SHOT_DSF,
                                   has_touch=True, is_mobile=True, color_scheme="dark")
         page = ctx.new_page()
+        page.set_default_timeout(15000)
         page.add_init_script(BRIDGE)
         page.goto(url, wait_until="load")
         page.add_script_tag(content=SHIM)
         page.wait_for_selector("#rsApp", timeout=20000)
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1800)
+        prep(page)
 
         shots = [
             ("01-home.png", "home", None),
-            ("02-playing.png", "home", "play"),
             ("03-sessions.png", "sessions", None),
             ("04-studio.png", "studio", None),
             ("05-visualise.png", "vis", None),
             ("06-chamber.png", "chamber", None),
             ("07-settings.png", "settings", None),
+            # last: it starts a session, and the toast it raises sits over the next screen
+            ("02-playing.png", "home", "play"),
         ]
         for name, where, act in shots:
             if where == "chamber":
                 page.evaluate("window.__rs.nav('vis')")
                 page.wait_for_timeout(400)
                 page.evaluate("window.__rs.chamber()")
-                page.wait_for_timeout(1800)
+                page.wait_for_timeout(700)
+                # a preset with a readable Chladni figure; the session's default plate
+                # resolves to a two-lobe curve that photographs as a soft blur
+                page.evaluate("window.ResonanceCymatics.api.scene('cathedral')")
+                page.wait_for_timeout(2200)
             else:
                 page.evaluate("window.__rs.nav(%r)" % where)
                 page.wait_for_timeout(450)
                 if act == "play":
                     page.click("#rsStates .rs-tile")
-                    page.wait_for_timeout(1400)
-            page.screenshot(path=os.path.join(OUT, name))
-            print("shot", name)
+                    # the shell's toast lasts 2600 ms; a shot must not carry it
+                    page.wait_for_timeout(3200)
+            path = os.path.join(OUT, name)
+            page.screenshot(path=path)
+            im = Image.open(path)
+            mean = ImageStat.Stat(im.convert("L")).mean[0]
+            print("  shot %-16s %s  mean %5.1f  %d B" % (name, im.size, mean, os.path.getsize(path)))
+            if mean < 12:
+                raise SystemExit("blank frame for %s (mean %.1f) - capture it again" % (name, mean))
             if where == "chamber":
                 page.evaluate("window.ResonanceCymatics.close()")
                 page.wait_for_timeout(300)
