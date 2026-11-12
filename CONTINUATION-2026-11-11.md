@@ -1,5 +1,12 @@
 # 2.1.3-beta — the code-review fixes, shipped 2026-11-11
 
+- **Phone re-paired and proved on the glass (13 Nov).** `adb pair 192.168.1.95:35399 849522`, connect
+  `192.168.1.95:43909`; installed code 18, boots (`page: shim ready`). On-device export test:
+  Studio → Export WAV at the default **20 min** produced
+  `Downloads/Resonance Studio/Focus_40_gamma_-20min.wav`, **211,680,044 bytes** in ~20 s with the app
+  alive; header verified on the device (RIFF/WAVE, PCM, 2 ch, 44100 Hz, 16-bit, data 211,680,000 =
+  exactly 20:00). That is the streaming path writing straight to disk — the case that used to peak
+  ~635 MB and kill the renderer.
 Answered the open GitHub issue ("Full code review", 11 items) against the tree, then landed the
 blocking + high items. **Published**: site APK
 `resonance-studio-v2.1.3-beta.apk` 994,045 B sha256
