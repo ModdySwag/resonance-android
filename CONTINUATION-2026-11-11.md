@@ -35,6 +35,14 @@ blocking + high items. **Published**: site APK
   CI workflow modernisation (android-36, wrapper, lint/tests), README's stale "71 checks",
   graph idling, `onPause()` — all documented as the next pass.
 
+- **CI is green again (13 Nov)** — the last red leg was the shell harness, not the build: *"the map's
+  backing store follows the device pixel ratio"* compared `canvas.width` to
+  `Math.floor(clientWidth * dpr)` at one instant, while `clientWidth` is integer-rounded and the map
+  repaints on the tick — a race that happened to pass locally and lose on a slower runner. The leg now
+  polls for up to 3 s and allows 1 px, and reports the measured `[width, clientWidth, dpr, height,
+  clientHeight]` on failure. Run `9b675f0`: **Shell shim 274/0 in CI**, Debug APK green — the first
+  green `Build APK` run since 5 Nov. The release workflow was already green on `v2.1.3-beta`.
+
 ## State
 - Tablet: installed from the built bytes, `versionCode=18`, 2.1.3-beta. **Phone is unpaired** —
   wireless adb refused (`actively refused`), needs a fresh `adb pair` code before it can be
