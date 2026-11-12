@@ -1,3 +1,41 @@
+# 2.1.3-beta — the code-review fixes, shipped 2026-11-11
+
+Answered the open GitHub issue ("Full code review", 11 items) against the tree, then landed the
+blocking + high items. **Published**: site APK
+`resonance-studio-v2.1.3-beta.apk` 994,045 B sha256
+`05e94a4d8e89b74f4ec280fbf439e9b0ad8d0a2c35531b135872173020f86d4c`; feed 2.1.3-beta / code 18 /
+994045; card v2.1.3-beta + sha + VirusTotal 0/64; GitHub tag `v2.1.3-beta` with the same digest.
+
+## What was real (all verified on the tree, not taken on trust)
+- **Manifest drift was real and worse than reported**: 3 of 63 entries bad, because `app/app.js`
+  and `app/viz.js` had been edited in the app tree only, while `site/resonance` (the declared
+  source of truth) still held the 2.1.2 audio fix's predecessors. Regenerating from the app tree
+  would have left the website stale; `sync-assets` would have reverted the shipped fix. Fixed by
+  backporting both files to the site first, then syncing: **69/69 in sync, manifest 69 files / 0
+  bad**, so the CI step that has been red since `06d66b3` passes again.
+- **`ctx.close()` unhandled rejection** — real; both call sites now `.catch()`. The author's
+  273/1 harness run was a flake: mine is **274/0** on both the old and the new bytes.
+- **WAV export OOM** — real. Now **streams** through `fileStart`/`fileChunk`/`fileEnd` in 1-second
+  blocks; only a browser (no bridge) falls back to the blob path, capped at 60 min. Proved with a
+  bridge-recording probe: `fileStart` once, 44-byte header + 5 min of PCM = **52,920,044 bytes**
+  through `fileEnd`, zero page errors.
+- **Space key** — real; excludes `BUTTON|A|role=button|role=link|contentEditable` and any open
+  dialog/overlay/tour.
+- **Receiver leak / save leak / configChanges** — receiver unregisters before the id check;
+  `save.abort()` in `onDestroy`; `locale|layoutDirection|colorMode|keyboard|navigation` added.
+- Overstated in the report: "the gate is broken" (one flaky sample) and the out-of-band release
+  assets (each was digest-verified). Not done yet: CSP + strict interceptor, service watchdog,
+  CI workflow modernisation (android-36, wrapper, lint/tests), README's stale "71 checks",
+  graph idling, `onPause()` — all documented as the next pass.
+
+## State
+- Tablet: installed from the built bytes, `versionCode=18`, 2.1.3-beta. **Phone is unpaired** —
+  wireless adb refused (`actively refused`), needs a fresh `adb pair` code before it can be
+  installed/tested.
+- Gates on these bytes: harness 274/0, contrast 0, tablet 82/0, eslint 0. VirusTotal 0 malicious /
+  0 suspicious (64 clean, 8 type-unsupported, 2 timeouts, 1 failure, 75 engines).
+- Play AAB rebuilt at 2.1.3-beta for the Console step; not uploaded.
+
 # Resonance Studio Android — 2026-11-11
 
 ## SHIPPED — 2.1.2-beta (code 17) is live, published 2026-11-11
