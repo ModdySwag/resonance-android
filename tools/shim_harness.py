@@ -246,10 +246,27 @@ def main():
                     page.evaluate("(() => { const c = document.getElementById('rsSched');"
                                   " if (!c) return 0; const r = c.getBoundingClientRect();"
                                   " return getComputedStyle(c).display === 'block' ? r.height : 0; })()") >= 110)
-        suite.check("the map's backing store follows the device pixel ratio",
-                    page.evaluate("(() => { const c = document.getElementById('rsSched');"
-                                  " return c.width === Math.floor(c.clientWidth * devicePixelRatio) &&"
-                                  " c.height === Math.floor(c.clientHeight * devicePixelRatio); })()"))
+        # clientWidth is an integer-rounded CSS value and the shell repaints its map on the
+        # tick, so an exact equality sampled at one instant is a race: it can be true here and
+        # false on a slower CI runner (measured: green locally, red on GitHub). The contract is
+        # "the backing store tracks the DPR within rounding", so poll for it and allow 1 px.
+        def sched_dpr_ok():
+            return page.evaluate(
+                "(() => { const c = document.getElementById('rsSched'); if (!c) return false;"
+                " const d = window.devicePixelRatio || 1;"
+                " return Math.abs(c.width - c.clientWidth * d) <= 1 &&"
+                "        Math.abs(c.height - c.clientHeight * d) <= 1; })()")
+
+        ok = sched_dpr_ok()
+        deadline = time.time() + 3.0
+        while not ok and time.time() < deadline:
+            page.wait_for_timeout(150)
+            ok = sched_dpr_ok()
+        detail = page.evaluate(
+            "(() => { const c = document.getElementById('rsSched');"
+            " return c ? [c.width, c.clientWidth, window.devicePixelRatio || 1,"
+            " c.height, c.clientHeight].join(' / ') : 'no canvas'; })()")
+        suite.check("the map's backing store follows the device pixel ratio", ok, detail)
         page.evaluate("(() => { const st = window.__gnauralAPI.state;"
                       " window.__keepCurves = st.curves; st.curves = null; window.__rs.sched(); })()")
         suite.check("with no session the map draws its empty state",
