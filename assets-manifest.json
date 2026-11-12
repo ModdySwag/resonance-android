@@ -12,7 +12,7 @@
     "app/cymrender.js": "72478fdb10232265dae251ecb2eb5bb708df479f699a8797ff94e26163db772f",
     "app/engine.js": "2d353ff93a0d847039ebada97d604f0d4d29564e593eabf49475af97e2af5a0b",
     "app/gnm.js": "a89fec6affee780142431264597d9e56938897a4ee4d4a74b5d55215c577b969",
-    "app/index.html": "ea41aad79bf7556cee01127987fff1f7189afead9b0fa74490e36d1a9ceca48d",
+    "app/index.html": "d239887041ab31ba4afe261fd0efd05b4dca8e8f31198d6f039ec4f8e947b68c",
     "app/pack.js": "906fb29dc6b21506ab2572f39e2c8cc0207e218288fcd1ecce7800b4d6dc84f4",
     "app/pack/breathing.zip": "e3441816843101ae2a9ca6aa50dc50167202d5c65ce7b26d2bee194aba531399",
     "app/pack/classic.zip": "5c22d02f9a075a8f0f09511d1ab588a9b9e6a39750ffc5cab8ea90f57d064ce8",
@@ -70,6 +70,6 @@
     "app/worklet-processor.js": "face806669c3afa63e32f77510d8710e9d1926d9e56e65dcc90b7692362d29cd",
     "site.css": "0d890288f848f30b30adf34174539706b43b5f2f8465a1be487d6b0c477b81f9"
   },
-  "generated": "2026-11-12T16:38:48Z",
+  "generated": "2026-11-12T17:16:59Z",
   "source": "C:\\Users\\Moddy\\webmusic-hub\\site\\resonance"
 }

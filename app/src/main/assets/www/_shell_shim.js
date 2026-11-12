@@ -5609,6 +5609,8 @@
     /* first launch: the safety notice gates a listening tool; the tour follows it */
     if (IS_APP && !prefs.notice) window.setTimeout(showNotice, 500);
     else if (!prefs.tour) window.setTimeout(tourAuto, 1600);
+    /* the page hid itself before the shell arrived (see app/index.html); first paint is Home */
+    doc.documentElement.classList.remove("rs-boot");
     report("shim ready | session=" + (sessionTitle() || "none"));
   }
 

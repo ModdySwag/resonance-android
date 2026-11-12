@@ -3,6 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Installed app only. The shell is injected at onPageFinished, so without this the page's own
+     desktop layout paints for a frame or two first - a visible flash of the old interface. The
+     shell removes rs-boot once the phone UI is built; the timer is the escape hatch if it never
+     runs. Inert on the website (no ResonanceJs). -->
+<script>(function () {
+  if (!window.ResonanceJs) return;
+  var d = document.documentElement;
+  d.className += " rs-boot";
+  setTimeout(function () {
+    if (!window.__rs) d.className = d.className.replace(/\s*rs-boot\b/, "");
+  }, 4000);
+})();</script>
+<style>html.rs-boot{background:#0F0C0A}html.rs-boot body{visibility:hidden}</style>
 <!-- Desktop shell only: the wordmark must not walk out to the marketing page (which redirects
      back anyway), so it points at this directory. Browsers keep "../" and the landing page. -->
 <script>(function () {
