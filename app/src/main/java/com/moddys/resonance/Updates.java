@@ -213,9 +213,12 @@ final class Updates {
             BroadcastReceiver done = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context c, Intent i) {
+                    /* Unregister first, on every path: a completion for some other download
+                       used to return here and leave this receiver (and the Activity it
+                       captured) alive for the rest of the process. */
+                    try { c.getApplicationContext().unregisterReceiver(this); } catch (Exception e) { }
                     long finished = i.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                     if (finished != id) return;
-                    try { c.getApplicationContext().unregisterReceiver(this); } catch (Exception e) { }
                     install(act, dm, id, sha256);
                 }
             };

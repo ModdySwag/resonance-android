@@ -109,7 +109,7 @@
              while these two files were being fetched. Then state.ctx/state.master are gone
              and connecting into them throws "Overload resolution failed" out of a promise
              nobody can catch. Abandon this boot instead. */
-          if (state.ctx !== ctx || !state.master) { try { ctx.close(); } catch (e) { } return; }
+          if (state.ctx !== ctx || !state.master) { ctx.close().catch(function () { }); return; }
           var node = new AudioWorkletNode(ctx, "gnaural-processor", {
             numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2]
           });
@@ -215,7 +215,7 @@
     state.master = null;
     state.mode = "";
     state.fallback = null;
-    if (ctx) { try { ctx.close(); } catch (e) { } }
+    if (ctx) { ctx.close().catch(function () { }); }
   }
   function togglePlay() { state.playing ? pause() : play(); }
 
@@ -706,25 +706,73 @@
     eng.loops = 1;
     eng.reset();
     eng.paused = false;
-    var chunks = [], done = 0, chunkSamples = E.SAMPLE_RATE * 10;
+    /* Write the WAV as it is rendered. The old path held every sample, copied it again in
+       encodeWav and a third time in the Blob: 20 minutes peaked near 635 MB and "full"
+       (240 min) near 7.6 GB, which kills the renderer and the session with it. On Android
+       the bridge sinks the bytes straight to Downloads; in a browser the blob path stays,
+       capped at an hour because there is no stream to write to. */
+    var J = window.ResonanceJs;
+    var streamable = !!(J && typeof J.fileStart === "function");
+    var capMin = streamable ? 240 : 60;
+    if (minutes > capMin) { minutes = capMin; frames = Math.min(frames, minutes * 60 * E.SAMPLE_RATE); }
+    var name = state.fileBase + (frames < Math.round(total * E.SAMPLE_RATE) ? "-" + minutes + "min" : "") + ".wav";
+    var stream = streamable && J.fileStart(name, "audio/wav");
+    var chunks = stream ? null : [], done = 0, dead = false;
+
+    function wavHeader(bytes) {
+      var b = new ArrayBuffer(44), dv = new DataView(b), str = function (o, t) {
+        for (var i = 0; i < t.length; i++) dv.setUint8(o + i, t.charCodeAt(i));
+      };
+      str(0, "RIFF"); dv.setUint32(4, 36 + bytes, true); str(8, "WAVE"); str(12, "fmt ");
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true);
+      dv.setUint32(24, E.SAMPLE_RATE, true); dv.setUint32(28, E.SAMPLE_RATE * 4, true);
+      dv.setUint16(32, 4, true); dv.setUint16(34, 16, true); str(36, "data");
+      dv.setUint32(40, bytes, true);
+      return b;
+    }
+    function push(IntegerView) {
+      if (!stream) { chunks.push(IntegerView); return true; }
+      var bytes = new Uint8Array(IntegerView.buffer, IntegerView.byteOffset, IntegerView.byteLength), out = "";
+      for (var i = 0; i < bytes.length; i += 8192) {
+        out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      }
+      var ok = J.fileChunk(btoa(out));
+      if (!ok) dead = true;
+      return ok;
+    }
     var L = new Float32Array(44100), R = new Float32Array(44100);
+    if (stream) push(new Int16Array(wavHeader(frames * 4)));   /* header, stream sink only */
     $("prog").hidden = false;
     function step() {
       var t0 = performance.now();
-      while (done < frames && performance.now() - t0 < 120) {
+      while (done < frames && !dead && performance.now() - t0 < 120) {
         var n = Math.min(44100, frames - done);
         eng.render(L, R, n);
         var c = new Int16Array(n * 2);
         for (var i = 0; i < n; i++) { c[i * 2] = clamp16(L[i] * 32767); c[i * 2 + 1] = clamp16(R[i] * 32767); }
-        chunks.push(c);
+        push(c);
         done += n;
       }
       $("prog").value = done / frames;
+      if (dead) {
+        try { J.fileEnd(); } catch (e) { }
+        $("prog").hidden = true;
+        toast("The export could not be written — check free space in Downloads");
+        return;
+      }
       if (done < frames) { setTimeout(step, 0); return; }
+      if (stream) {
+        var r = J.fileEnd();
+        $("prog").hidden = true;
+        toast(r && r.indexOf("ok:") === 0
+          ? "Exported " + fmtTime(frames / E.SAMPLE_RATE) + " to Downloads/Resonance Studio"
+          : "Export finished, but Android reported: " + r);
+        return;
+      }
       var blob = new Blob([encodeWav(chunks, E.SAMPLE_RATE)], { type: "audio/wav" });
       var a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = state.fileBase + (frames < Math.round(total * E.SAMPLE_RATE) ? "-" + minutes + "min" : "") + ".wav";
+      a.download = name;
       document.body.appendChild(a); a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
       $("prog").hidden = true;
@@ -785,7 +833,12 @@
     $("exportBtn").onclick = exportWav;
     $("exportMin").onchange = function () { state.exportMinutes = parseInt(this.value, 10); };
     document.addEventListener("keydown", function (ev) {
-      if (ev.code === "Space" && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) {
+      var el = document.activeElement, tag = el ? el.tagName : "";
+      var role = el && el.getAttribute ? el.getAttribute("role") : "";
+      var typing = /^(INPUT|SELECT|TEXTAREA)$/.test(tag) || el && el.isContentEditable;
+      var control = /^(BUTTON|A)$/.test(tag) || role === "button" || role === "link";
+      var dialog = document.querySelector("dialog[open],.rs-ov-on,#rsTour.rs-t-on");
+      if (ev.code === "Space" && !typing && !control && !dialog) {
         ev.preventDefault(); togglePlay();
       }
     });

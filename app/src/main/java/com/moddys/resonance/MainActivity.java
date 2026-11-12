@@ -382,6 +382,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         pageRef = new WeakReference<>(null);
+        /* A stream that was still open would leave a partial file and a leaked descriptor. */
+        if (save != null) save.abort();
         stopPageAudio();
         super.onDestroy();
     }
