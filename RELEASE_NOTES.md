@@ -1,3 +1,35 @@
+# Resonance Studio 2.1.5-beta
+
+**The update finishes, and the shell stops leaking.**
+
+## What changed
+
+- **The update flow finishes.** Tapping Update now, granting Android's "install unknown apps"
+  permission and coming back used to leave the app stuck on "Downloading…" for ever, with the
+  APK stranded in Downloads. The permission is now asked for before the download; on return the
+  download starts, or an already-downloaded APK goes straight to the installer. Cancel the
+  installer and the button comes back instead of staying dead.
+- **A paused session no longer leaves a dead notification behind.** The playback service checks
+  every 30 seconds that the page behind it still answers, and drops the notification and itself
+  when it does not.
+- **The shell refuses anything that is not its own files.** The bundled page is served with a
+  Content-Security-Policy, and a request for any other origin gets a 403.
+- **No repainting while nothing is playing.** The clock and graph update once a second when idle
+  instead of fifteen times a second.
+- **The compatibility notice is recorded when it is dismissed**, not when it goes on screen.
+
+## Installing
+
+`resonance-studio-v2.1.5-beta.apk` (versionCode 20) installs straight over 2.1.4 — same signing
+key. Built for the sideload channel; the Google Play build is delivered by Play.
+
+**VirusTotal:** 0 malicious, 0 suspicious. `resonance-studio-v2.1.5-beta.apk`, sha256
+`b6f709e11149d681198ffb19fc4e20aa006e84e41eeccbcd2a23686d838d4bff`, 996,713 B — 62 engines
+returned a clean verdict, 8 do not analyse Android packages, 1 timed out and 4 failed to complete
+of 75. Report: https://www.virustotal.com/gui/file/b6f709e11149d681198ffb19fc4e20aa006e84e41eeccbcd2a23686d838d4bff
+
+---
+
 # Resonance Studio 2.1.2-beta
 
 **The sound now ends when the app does.**
