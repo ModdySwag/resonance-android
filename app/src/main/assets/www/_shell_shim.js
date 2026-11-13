@@ -5030,7 +5030,16 @@
         var b = e.target.closest("[data-rs-upd]");
         if (!b) return;
         if (b.getAttribute("data-rs-upd") === "later") { updEl.style.display = "none"; return; }
+        if (b.disabled) return;
+        if (UPD.state === "installNeeded") {
+          /* The update is waiting on the one grant only the person can give: reopen the
+             Android screen (or continue if they already allowed it). */
+          b.textContent = "Opening…";
+          native("resumeInstall", []);
+          return;
+        }
         b.disabled = true;
+        UPD.state = "downloading";
         native("updateApp", [UPD.latest.url, UPD.latest.version, UPD.latest.sha256]);
         b.textContent = "Downloading…";
         var note = updEl.querySelector(".rs-upd-n");
@@ -5055,6 +5064,44 @@
       UPD.state = "available";
       UPD.manual = false;          /* the strip itself is the answer */
       try { updShow(); } catch (e) { }
+      return UPD.state;
+    },
+    /* The app is downloading (or resumed a download after the grant): keep the strip honest
+       instead of leaving "Downloading…" on screen for ever. */
+    downloading: function () {
+      UPD.state = "downloading";
+      try { updShow(); } catch (e) { }
+      var go = updEl && updEl.querySelector('[data-rs-upd="go"]');
+      var note = updEl && updEl.querySelector(".rs-upd-n");
+      if (go) { go.disabled = true; go.textContent = "Downloading…"; }
+      if (note) note.textContent = "Android will ask to install it when the download finishes.";
+      return UPD.state;
+    },
+    /* Downloaded and verified, but Android needs the per-app "install unknown apps" grant.
+       The button reopens that screen; the app carries on by itself when the person returns. */
+    installNeeded: function () {
+      UPD.state = "installNeeded";
+      try { updShow(); } catch (e) { }
+      var go = updEl && updEl.querySelector('[data-rs-upd="go"]');
+      var note = updEl && updEl.querySelector(".rs-upd-n");
+      if (go) { go.disabled = false; go.textContent = "Allow installs"; }
+      if (note) note.textContent = "Android needs permission to install the update. Tap, allow it, then come back - the rest happens on its own.";
+      return UPD.state;
+    },
+    /* The system installer is up. */
+    installing: function () {
+      UPD.state = "installing";
+      var go = updEl && updEl.querySelector('[data-rs-upd="go"]');
+      var note = updEl && updEl.querySelector(".rs-upd-n");
+      if (go) { go.disabled = true; go.textContent = "Installing…"; }
+      if (note) note.textContent = "Finish the install in the Android dialog.";
+      return UPD.state;
+    },
+    /* Back from the installer without installing: give the strip back rather than a dead
+       "Installing…" the person cannot get out of. */
+    installCancelled: function () {
+      UPD.state = "available";
+      if (UPD.latest) { try { updShow(); } catch (e) { } }
       return UPD.state;
     },
     none: function (latest) {

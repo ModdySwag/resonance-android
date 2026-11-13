@@ -184,6 +184,7 @@
       state.playing = true;
       $("play").textContent = "❚❚ Pause";
       $("play").classList.add("on");
+      startPaint();                     /* the meters start moving now, not on the next 1 Hz tick */
     });
   }
   function pause() {
@@ -783,11 +784,13 @@
   function clamp16(x) { return x > 32767 ? 32767 : x < -32768 ? -32768 : x | 0; }
 
   /* ------------------------------------------------------------------ loop */
-  var lastFrame = 0;
-  function raf(ts) {
-    requestAnimationFrame(raf);
-    if (ts - lastFrame < 66) return;  // ~15 fps for panel updates
-    lastFrame = ts;
+  /* Paint only while there is something to watch. The clock, the meters and the graph used
+     to be repainted 15 times a second forever - playing or not - which is most of the janky
+     frames QUALITY-GATES reports and pure battery for a still screen. The RAF loop lives
+     while a session is playing; a 1 Hz timer keeps the clock honest and the graph current
+     the rest of the time, and restarts the loop when play begins. */
+  var lastFrame = 0, rafId = 0;
+  function paint(ts) {
     if (state.mode === "spn" && state.fallback) {
       var f = state.fallback;
       state.live = { sample: f.currentSample, total: Math.floor(f.totalDuration * E.SAMPLE_RATE),
@@ -807,6 +810,20 @@
     });
     drawGraph();
   }
+  function raf(ts) {
+    if (!state.playing) { rafId = 0; paint(ts); return; }   // the loop stops itself when the sound does
+    rafId = requestAnimationFrame(raf);
+    if (ts - lastFrame < 66) return;  // ~15 fps for panel updates
+    lastFrame = ts;
+    paint(ts);
+  }
+  function startPaint() {
+    if (!rafId && state.playing) rafId = requestAnimationFrame(raf);
+  }
+  setInterval(function () {
+    if (state.playing) startPaint();
+    else paint(Date.now());            // one repaint a second: the clock, a settled meter
+  }, 1000);
 
   /* ------------------------------------------------------------------ boot */
   function boot() {
@@ -930,9 +947,9 @@
         return { voices: s.voices.length, duration: state.engine.duration(), warnings: p.warnings };
       } catch (e) { return { error: e.message }; }
     };
-    requestAnimationFrame(raf);
+    paint(Date.now());
+    startPaint();
   }
-
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })();

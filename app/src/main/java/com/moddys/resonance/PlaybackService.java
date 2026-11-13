@@ -18,9 +18,12 @@ import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
+import android.webkit.ValueCallback;
 
 /**
  * Keeps a session alive while the app is backgrounded or the screen is off, and owns the
@@ -65,6 +68,11 @@ public class PlaybackService extends Service {
     private static final long WAKE_TIMEOUT_MS = 12L * 60L * 60L * 1000L;
     private static final String TAG = "ResonanceStudio";
 
+    /** How often the service checks that the page behind it still answers. */
+    private static final long WATCHDOG_MS = 30_000L;
+    /** Unanswered checks in a row that mean the renderer is gone, not merely busy. */
+    private static final int WATCHDOG_MISSES = 2;
+
     /** How far the media stream is pulled down while another app asks us to duck. */
     private static final float DUCK_FRACTION = 0.2f;
 
@@ -85,6 +93,54 @@ public class PlaybackService extends Service {
      *  page that has never played (that is what created a paused notification at every
      *  launch) and refuses to resurrect it after teardown. */
     private static boolean live;
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private int pingCount, pongCount, missedPings;
+
+    /**
+     * A foreground service that outlives its page is a notification nobody can act on: Play
+     * has no page to resume into, and Stop leaves a shade entry with a dead session behind it.
+     *
+     * <p>The page's own state messages cannot prove liveness - a paused page sends none, by
+     * design (only a change of playing/title is pushed), and a wedged renderer sends nothing
+     * either. So the service asks the page a trivial question every 30 s and counts the
+     * silence: one unanswered check is a hiccup, two in a row (a minute of silence) means the
+     * renderer is gone and the service drops the foreground notification and stops itself.
+     */
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!live) return;
+            handler.removeCallbacks(this);
+            if (!pageAlive()) {
+                Log.i(TAG, "watchdog: no page behind the service - stopping");
+                teardown();
+                return;
+            }
+            if (pongCount < pingCount) {
+                missedPings++;
+                if (missedPings >= WATCHDOG_MISSES) {
+                    Log.w(TAG, "watchdog: the page has not answered " + missedPings + " checks - stopping");
+                    teardown();
+                    return;
+                }
+            } else {
+                missedPings = 0;
+            }
+            final int seq = ++pingCount;
+            boolean asked = MainActivity.pagePing(new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    if (value != null && seq > pongCount) pongCount = seq;
+                }
+            });
+            if (!asked) {
+                teardown();
+                return;
+            }
+            handler.postDelayed(this, WATCHDOG_MS);
+        }
+    };
 
     static boolean isLive() { return live; }
 
@@ -156,6 +212,8 @@ public class PlaybackService extends Service {
             wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ResonanceStudio:session");
             wake.setReferenceCounted(false);
         }
+
+        handler.postDelayed(watchdog, WATCHDOG_MS);
     }
 
     @Override
@@ -224,6 +282,7 @@ public class PlaybackService extends Service {
     @Override
     public void onDestroy() {
         live = false;
+        handler.removeCallbacks(watchdog);
         if (noisy != null) {
             try { unregisterReceiver(noisy); } catch (Throwable ignored) { }
             noisy = null;

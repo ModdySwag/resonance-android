@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -45,6 +46,27 @@ final class Updates {
     private static final long CHECK_AGAIN_AFTER_MS = 10 * 60 * 1000L;
 
     private static long lastCheckedAt = 0;
+
+    /**
+     * A download or install the person has already asked for, waiting on the one thing only
+     * they can give: the "install unknown apps" grant. Without this the flow dead-ended -
+     * the app opened the settings screen and forgot the request, the shell's button stayed on
+     * "Downloading…" for ever, and the only way forward was to leave the app and install the
+     * APK from Downloads by hand.
+     */
+    private static final int STAGE_NONE = 0;
+    private static final int STAGE_PERMISSION = 1;   // waiting for the grant
+    private static final int STAGE_INSTALLER = 2;    // the system installer is on screen
+    private static int pendingStage = STAGE_NONE;
+
+    /** What to download once the grant lands (permission is asked before any bytes move). */
+    private static String pendingUrl, pendingVersion, pendingSha;
+    /** A downloaded, verified APK waiting for the grant (permission pulled mid-flight). */
+    private static Uri pendingApk;
+
+    /** The download in flight, so the poll and the receiver cannot both install it. */
+    private static volatile long activeDownloadId = -1;
+    private static final Handler UI = new Handler(Looper.getMainLooper());
 
     private Updates() { }
 
@@ -198,6 +220,30 @@ final class Updates {
             toast(act, "The update feed has no valid checksum - not downloading.");
             return;
         }
+        /* Android 8+ makes "install unknown apps" a per-app permission and only the person
+           can grant it. Ask before moving any bytes, and remember the request: the grant used
+           to be a dead end (settings opened, request forgotten, ribbon stuck on
+           "Downloading…" for ever, APK stranded in Downloads). */
+        if (!act.getPackageManager().canRequestPackageInstalls()) {
+            pendingUrl = url.trim();
+            pendingVersion = version;
+            pendingSha = sha256;
+            pendingStage = STAGE_PERMISSION;
+            tellShell("installNeeded");
+            toast(act, "Allow installs for Resonance Studio - the update continues when you come back.");
+            openInstallSettings(act);
+            return;
+        }
+        startDownload(act, url, version, sha256);
+    }
+
+    /** The download itself, once the install grant is in place (or was never needed). */
+    private static void startDownload(final Activity act, String url, String version, final String sha256) {
+        pendingStage = STAGE_NONE;
+        pendingUrl = null;
+        pendingVersion = null;
+        pendingSha = null;
+        tellShell("downloading");
         try {
             final DownloadManager dm = (DownloadManager) act.getSystemService(Context.DOWNLOAD_SERVICE);
             if (dm == null) { toast(act, "This device has no download service."); return; }
@@ -218,14 +264,19 @@ final class Updates {
                        captured) alive for the rest of the process. */
                     try { c.getApplicationContext().unregisterReceiver(this); } catch (Exception e) { }
                     long finished = i.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                    if (finished != id) return;
+                    if (finished != id || !isActive(id)) return;   // the poll may have won
+                    activeDownloadId = -1;
                     install(act, dm, id, sha256);
                 }
             };
             IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-            /* the completion broadcast comes from the system, so NOT_EXPORTED still sees it
-               (and no other app can forge one to swallow the install) */
-            act.getApplicationContext().registerReceiver(done, filter, Context.RECEIVER_NOT_EXPORTED);
+            /* The completion is sent by the downloads provider - a different app and uid -
+               so a NOT_EXPORTED receiver never sees it on Android 13+ and the install never
+               started. Exported is safe here: a forged completion still has to name this
+               download id, and the APK is re-hashed before anything is installed. */
+            act.getApplicationContext().registerReceiver(done, filter, Context.RECEIVER_EXPORTED);
+            activeDownloadId = id;
+            pollDownload(act, dm, id, sha256, 0);       // the path that cannot be dropped
             toast(act, "Downloading the update - Android will ask to install it when it lands.");
         } catch (Exception e) {
             Log.w(TAG, "update download: " + e);
@@ -236,39 +287,171 @@ final class Updates {
     private static void install(Activity act, DownloadManager dm, long id, String sha256) {
         try {
             Uri apk = dm.getUriForDownloadedFile(id);
-            if (apk == null) { toast(act, "The downloaded update could not be opened."); return; }
+            if (apk == null) {
+                tellShell("installCancelled");      // the shell's button must not stay dead
+                toast(act, "The downloaded update could not be opened.");
+                return;
+            }
 
             /* The feed carries a checksum, so verify what arrived before offering it: a
                truncated download must not reach the installer pretending to be an app.
                A missing or malformed checksum is a refusal, not a skip - the old code
                installed unverified bytes when the feed omitted the field. */
             if (sha256 == null || !sha256.trim().matches("[0-9a-fA-F]{64}")) {
+                tellShell("installCancelled");
                 toast(act, "The update feed has no valid checksum - not installing.");
                 return;
             }
             if (!matches(act, apk, sha256)) {
+                tellShell("installCancelled");
                 toast(act, "The downloaded file did not match the published one - not installing.");
                 return;
             }
 
             /* Android 8+ makes "install unknown apps" a per-app permission. Installing an
-               update over the running app needs it, and only the user can grant it. */
+               update over the running app needs it, and only the user can grant it. Keep the
+               verified APK and finish the job when they come back instead of dropping it. */
             if (!act.getPackageManager().canRequestPackageInstalls()) {
-                toast(act, "Allow \"install unknown apps\" for Resonance Studio, then tap Update again.");
-                Intent allow = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:" + act.getPackageName()));
-                allow.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                act.startActivity(allow);
+                pendingApk = apk;
+                pendingStage = STAGE_PERMISSION;
+                tellShell("installNeeded");
+                toast(act, "Allow installs for Resonance Studio - the update continues when you come back.");
+                openInstallSettings(act);
                 return;
             }
 
+            launchInstaller(act, apk);
+        } catch (Exception e) {
+            pendingStage = STAGE_NONE;
+            pendingApk = null;
+            tellShell("installCancelled");
+            Log.w(TAG, "update install: " + e);
+            toast(act, "Could not start the installer: " + e);
+        }
+    }
+
+    /** Hand a verified APK to the system installer and remember that we did. */
+    private static void launchInstaller(Activity act, Uri apk) {
+        try {
+            pendingStage = STAGE_INSTALLER;
+            tellShell("installing");
             Intent i = new Intent(Intent.ACTION_VIEW);
             i.setDataAndType(apk, APK_MIME);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
             act.startActivity(i);
         } catch (Exception e) {
+            pendingStage = STAGE_NONE;
+            pendingApk = null;
+            tellShell("installCancelled");
             Log.w(TAG, "update install: " + e);
             toast(act, "Could not start the installer: " + e);
+        }
+    }
+
+    /** The one screen that lets this app install its own update. */
+    private static void openInstallSettings(Activity act) {
+        try {
+            Intent allow = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + act.getPackageName()));
+            allow.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(allow);
+        } catch (Exception e) {
+            Log.w(TAG, "install settings: " + e);
+            toast(act, "Open Settings > Apps > Special access > Install unknown apps, allow Resonance Studio, then tap Update.");
+        }
+    }
+
+    /**
+     * Called from {@link MainActivity#onResume}. A person who taps "Update now", grants the
+     * permission and comes back gets the rest of the update without touching anything again:
+     * the download starts (or the already-downloaded APK goes to the installer).
+     */
+    static void onResumed(Activity act) {
+        if (pendingStage == STAGE_PERMISSION) {
+            if (!act.getPackageManager().canRequestPackageInstalls()) return;   // not granted yet
+            if (pendingApk != null) launchInstaller(act, pendingApk);
+            else if (pendingUrl != null) startDownload(act, pendingUrl, pendingVersion, pendingSha);
+            else pendingStage = STAGE_NONE;
+            return;
+        }
+        if (pendingStage == STAGE_INSTALLER) {
+            /* Back from the installer: either the update replaced this process (in which case
+               nothing here runs again) or the person cancelled. Give the strip back rather
+               than leaving a dead "Installing…" on screen. */
+            pendingStage = STAGE_NONE;
+            pendingApk = null;
+            tellShell("installCancelled");
+        }
+    }
+
+    /** The shell's "Allow installs" / "Install now" button. */
+    static void resumeInstall(Activity act) {
+        if (pendingApk != null) {
+            if (act.getPackageManager().canRequestPackageInstalls()) launchInstaller(act, pendingApk);
+            else openInstallSettings(act);
+            return;
+        }
+        if (pendingUrl != null) {
+            if (act.getPackageManager().canRequestPackageInstalls()) {
+                startDownload(act, pendingUrl, pendingVersion, pendingSha);
+            } else {
+                openInstallSettings(act);
+            }
+            return;
+        }
+        toast(act, "Nothing is waiting to install - check for updates again.");
+    }
+
+    /** Tell the shell what stage the update is in; harmless when there is no page. */
+    private static void tellShell(String method) {
+        MainActivity.pageCommand("window.__rsUpdate && window.__rsUpdate." + method + "()");
+    }
+
+    private static boolean isActive(long id) { return activeDownloadId == id; }
+
+    /**
+     * Watch the download to its end without depending on a broadcast.
+     *
+     * <p>ACTION_DOWNLOAD_COMPLETE is sent by the downloads provider, not by this app, and a
+     * RECEIVER_NOT_EXPORTED receiver refuses it - which is how an update could finish
+     * downloading, leave the APK in Downloads and leave the shell's strip on "Downloading…"
+     * for ever. The poll is the part no delivery rule can drop; the receiver above is the
+     * fast path and both are guarded by the same id so the install runs once.
+     */
+    private static void pollDownload(final Activity act, final DownloadManager dm, final long id,
+                                     final String sha, final int attempt) {
+        UI.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!isActive(id)) return;
+                if (act.isFinishing() || act.isDestroyed()) { activeDownloadId = -1; return; }
+                int status = statusOf(dm, id);
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    activeDownloadId = -1;
+                    install(act, dm, id, sha);
+                } else if (status == DownloadManager.STATUS_FAILED) {
+                    activeDownloadId = -1;
+                    tellShell("installCancelled");
+                    toast(act, "The update download did not finish - try again.");
+                } else if (attempt < 300) {                 // ~10 minutes at 2 s
+                    pollDownload(act, dm, id, sha, attempt + 1);
+                }
+            }
+        }, 2000);
+    }
+
+    private static int statusOf(DownloadManager dm, long id) {
+        Cursor c = null;
+        try {
+            c = dm.query(new DownloadManager.Query().setFilterById(id));
+            if (c != null && c.moveToFirst()) {
+                return c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+            }
+            return DownloadManager.STATUS_PENDING;
+        } catch (Exception e) {
+            return DownloadManager.STATUS_PENDING;
+        } finally {
+            if (c != null) c.close();
         }
     }
 

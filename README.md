@@ -95,7 +95,7 @@ The shell is the one file that is ours: `app/src/main/assets/www/_shell_shim.js`
 | `_shell_shim.js` | the entire app UI: navigation, screens, visualise binding, file paths, state to the service |
 | `PlaybackService.java` | foreground service, MediaSession, notification and lock-screen controls |
 | `Compat.java` · `Updates.java` | launch compatibility notice · self-update via the site's feed |
-| `tools/shim_harness.py` | the acceptance gate: 71 checks against the real page in a real browser |
+| `tools/shim_harness.py` | the acceptance gate: 274 checks against the real page in a real browser |
 | `tools/validate_android_project.py` · `tools/apk_identity.py` | static pre-flight · published-APK identity and signature proof |
 
 Nothing about playback is reimplemented: every button calls the page's own

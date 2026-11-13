@@ -32,7 +32,7 @@ jobs:
       - name: Ensure the exact SDK components this build targets
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -62,6 +62,25 @@ jobs:
           PY
           node --input-type=module --check < app/src/main/assets/www/_shell_shim.js
 
+      # The gates the tag used to skip. A release is the one build nobody can re-run for a
+      # user, so it runs everything the push build runs before it is allowed to assemble.
+      - name: Lint and unit-test before anything is assembled
+        run: ./gradlew --no-daemon :app:lintRelease :app:testUnitTests --stacktrace
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Drive the shell shim on the real page
+        run: python tools/shim_harness.py
+
       - name: Decode the signing keystore
         run: |
           if [ -z "${{ secrets.RESONANCE_KEYSTORE_BASE64 }}" ]; then
@@ -77,7 +96,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.RESONANCE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RESONANCE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RESONANCE_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease :app:bundleRelease --stacktrace
+        run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease --stacktrace
 
       # Never publish something unsigned by accident: an unsigned APK installs for nobody.
       - name: Confirm the APK is actually signed

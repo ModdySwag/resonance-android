@@ -114,8 +114,22 @@ class Gate:
         return None
 
     def tracks(self, uid):
+        """Rows in audio_flinger's own track table for this uid.
+
+        Android 16 prints the table as `F2 125 yes 3949/ 10575 ...` under a
+        "N Tracks of which M are active" header, so the client is the 4th column, not
+        the start of the line. Older dumps start the row with `pid/ uid`. Event-log
+        lines (AT::add / AT::remove) also carry `pid/ uid` but start with a timestamp,
+        so neither pattern matches them - a removed track must not count.
+        """
         out = self.sh("shell", "dumpsys", "media.audio_flinger")
-        return [ln.strip() for ln in out.splitlines() if re.match(r"^\s+\d+/\s+%s\b" % uid, ln)]
+        hits = []
+        for ln in out.splitlines():
+            m = (re.match(r"^\s+(?:F\d+|[A-Z]\d+)\s+\d+\s+(?:yes|no)\s+(\d+)/\s*(\d+)\b", ln)
+                 or re.match(r"^\s+(\d+)/\s*(\d+)\b", ln))
+            if m and m.group(2) == str(uid):
+                hits.append(ln.strip())
+        return hits
 
     def service_state(self):
         out = self.sh("shell", "dumpsys", "activity", "services", DEBUG_PKG)
@@ -254,14 +268,20 @@ def main():
     # `cmd activity stack remove` takes the same framework path - task removed -> Activity
     # destroyed -> PlaybackService.onTaskRemoved - so the gate drives that and stays honest.
     rec = g.sh("shell", "dumpsys", "activity", "recents")
-    m = re.search(r"#[0-9]+ type=standard A=%s" % uid, rec)
+    # Only the listed recent tasks count. mHiddenTasks keeps a removed task's id and
+    # affinity for the lifetime of the process, so a whole-dump search for "A=<uid>"
+    # can never go quiet (it read as a failure on the very first run on Android 16).
+    listed = [ln for ln in rec.splitlines()
+              if re.match(r"\s*\*\s*Recent #\d+: Task\{", ln) and "A=%s" % uid in ln]
+    m = re.search(r"#[0-9]+ type=standard A=%s" % uid, listed[0]) if listed else None
     tid = re.search(r"#(\d+)", m.group(0)).group(1) if m else None
     g.check("task removal: the app owns a recent task", tid is not None, tid)
     if tid:
         g.sh("shell", "cmd", "activity", "stack", "remove", tid)
         time.sleep(4)
-        g.check("task removal: the task is actually gone from recents",
-                "A=%s" % uid not in g.sh("shell", "dumpsys", "activity", "recents"))
+        after = [ln for ln in g.sh("shell", "dumpsys", "activity", "recents").splitlines()
+                 if re.match(r"\s*\*\s*Recent #\d+: Task\{", ln) and "A=%s" % uid in ln]
+        g.check("task removal: the task is actually gone from recents", not after, after)
         g.check("task removal: the playback service is gone", g.service_state() == "gone",
                 g.service_state())
         g.check("task removal: NO audio track survives for this uid  <- the bug",

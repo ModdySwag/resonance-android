@@ -79,6 +79,35 @@ public class MainActivity extends Activity {
     private static final int REQ_NOTIFICATIONS = 1001;
     private static final int REQ_FILE = 1002;
 
+    /**
+     * What this WebView may load. The page is entirely self-contained - the shell, the engine,
+     * the worklet source and the packs all arrive through {@link #shouldInterceptRequest} - so
+     * anything that is not the app's own origin is refused. The page does need
+     * <code>'unsafe-inline'</code> (two inline boot scripts and the shell's inline styles) and
+     * <code>blob:</code> worklets (the engine concatenates its AudioWorklet source into a Blob).
+     *
+     * <p>The policy is delivered as a response header rather than a &lt;meta&gt; tag in
+     * index.html: that file is shared with the website, and a website does not need the app's
+     * policy imposed on it. The header covers every document and asset this WebView receives.
+     */
+    private static final String CSP =
+            "default-src 'self'; "
+            /* blob: is the engine's AudioWorklet source (it concatenates engine.js and
+               worklet-processor.js into one module); Chrome checks script-src for worklet
+               modules, not worker-src, so it has to be named here. */
+            + "script-src 'self' 'unsafe-inline' blob:; "
+            + "style-src 'self' 'unsafe-inline'; "
+            + "img-src 'self' data: blob:; "
+            + "media-src 'self' data: blob:; "
+            + "font-src 'self' data:; "
+            + "connect-src 'self'; "
+            + "worker-src 'self' blob:; "
+            + "child-src 'self' blob:; "
+            + "object-src 'none'; "
+            + "base-uri 'none'; "
+            + "form-action 'none'; "
+            + "frame-ancestors 'none'";
+
     /** One-shot flags for prompts that must never reappear on their own. */
     private static final String META = "rs_meta";
     private static final String META_NOTIF_ASKED = "notif_explained";
@@ -123,6 +152,15 @@ public class MainActivity extends Activity {
             web.restoreState(state);
         }
         pageRef = new WeakReference<>(web);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        /* Returning from the "install unknown apps" screen is the moment the update the
+           person already asked for can carry on: download, or hand the verified APK to the
+           installer. Without this the grant was a dead end. */
+        Updates.onResumed(this);
     }
 
     /** Draw behind the system bars: the page pads itself with env(safe-area-inset-*). */
@@ -258,7 +296,18 @@ public class MainActivity extends Activity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 try {
                     Uri u = request.getUrl();
-                    if (u == null || !HOST.equals(u.getHost())) return null;
+                    if (u == null) return null;
+                    String scheme = u.getScheme();
+                    /* data:, blob: and about: never reach the network; WebView handles them. */
+                    if (scheme == null || !("https".equals(scheme) || "http".equals(scheme))) return null;
+                    if (!HOST.equals(u.getHost())) {
+                        /* The page is a bundled asset and fetches only its own files. Anything
+                           else is either an injection or a mistake: refuse it here, so the
+                           bridge can never be reached from a document that pulled remote
+                           script. The app's own update check is Java-side, not the page. */
+                        Log.w(TAG, "blocked off-origin request: " + u);
+                        return forbidden();
+                    }
                     String path = u.getPath();
                     if (path == null || path.isEmpty() || path.equals("/")) path = "/app/index.html";
                     if (path.contains("..")) return notFound();
@@ -275,6 +324,8 @@ public class MainActivity extends Activity {
                     /* The assets are the app's own copy and change with every APK: never let
                        the WebView's HTTP cache answer for a previous version's file. */
                     headers.put("Cache-Control", "no-cache");
+                    /* One policy for every byte this WebView is allowed to see. */
+                    headers.put("Content-Security-Policy", CSP);
                     WebResourceResponse resp = new WebResourceResponse(mime, encodingOf(mime), in);
                     resp.setResponseHeaders(headers);
                     return resp;
@@ -342,6 +393,12 @@ public class MainActivity extends Activity {
 
     private WebResourceResponse notFound() {
         return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found",
+                Collections.<String, String>emptyMap(), null);
+    }
+
+    /** The answer to a request for anything that is not the app's own origin. */
+    private WebResourceResponse forbidden() {
+        return new WebResourceResponse("text/plain", "utf-8", 403, "Forbidden",
                 Collections.<String, String>emptyMap(), null);
     }
 
@@ -474,6 +531,33 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    /**
+     * Ask the page to answer a trivial expression, so the playback service can tell a page
+     * that is merely paused from one whose renderer has stopped answering at all.
+     *
+     * <p>A {@link WeakReference} that is still set only proves the {@link WebView} object
+     * exists; it says nothing about the renderer behind it. <code>evaluateJavascript</code>
+     * answers on the UI thread when the renderer is alive, and never calls back when it is
+     * wedged - that silence is the signal the watchdog acts on.
+     *
+     * @return false when there is no page to ask at all, in which case the callback is not used.
+     */
+    static boolean pagePing(final ValueCallback<String> answer) {
+        final WebView w = pageRef.get();
+        if (w == null) return false;
+        w.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    w.evaluateJavascript("1", answer);
+                } catch (Throwable t) {
+                    try { answer.onReceiveValue(null); } catch (Throwable ignored) { }
+                }
+            }
+        });
+        return true;
     }
 
     private String shim() {
@@ -931,6 +1015,15 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() { Updates.downloadAndInstall(MainActivity.this, url, version, sha256); }
+            });
+        }
+
+        /** The shell's "Allow installs" button: reopen the grant screen, or carry on. */
+        @JavascriptInterface
+        public void resumeInstall() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() { Updates.resumeInstall(MainActivity.this); }
             });
         }
 

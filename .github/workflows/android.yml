@@ -35,7 +35,7 @@ jobs:
       - name: Ensure the exact SDK components this build targets
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -79,7 +79,7 @@ jobs:
           python3 -c "import json; json.load(open('app/src/main/assets/www/compat.json')); print('compat.json parses')"
 
       - name: Build
-        run: gradle :app:assembleDebug --stacktrace
+        run: ./gradlew --no-daemon :app:assembleDebug --stacktrace
 
       - name: Show what was produced
         run: ls -la app/build/outputs/apk/debug/

@@ -202,8 +202,18 @@ final class Compat {
                     }
                 });
             }
+            /* Record it when the notice is closed, not when it is shown: an interrupted
+               activity (process death, task removal, a recreation that loses the dialog)
+               used to count as "read" before the person had read a word. */
+            final SharedPreferences fp = prefs;
+            final String fkey = key;
+            b.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface d) {
+                    fp.edit().putString(KEY_SHOWN, fkey).apply();
+                }
+            });
             b.show();
-            prefs.edit().putString(KEY_SHOWN, key).apply();
         } catch (Exception e) {
             /* a compatibility notice must never be the reason the app fails to start */
             Log.w(TAG, "compat notice failed: " + e);
